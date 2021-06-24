@@ -1,0 +1,7 @@
+[submodule "CMake/common"]
+	path = CMake/common
+	url = https://github.com/Eyescale/CMake.git
+	branch = 89c330d50b978276dcea3af700258e554be8dfd7
+[submodule "MorphIO"]
+path = MorphIO
+url = https://github.com/BlueBrain/MorphIO.git
