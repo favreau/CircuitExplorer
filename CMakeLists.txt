@@ -1,122 +1,13 @@
-# Copyright (c) 2015-2021, EPFL/Blue Brain Project
+# Copyright (c) 2020-2021, Cyrille Favreau
 # All rights reserved. Do not distribute without permission.
+# Responsible Author: Cyrille Favreau <cyrille.favreau@epfl.ch>
 #
-# This file is part of Brayns <https://github.com/BlueBrain/Brayns>
+# This file is part of https://github.com/BlueBrain/CircuitExplorer
 
 cmake_minimum_required(VERSION 3.1 FATAL_ERROR)
 
-project(CIRCUITEXPLORER VERSION 0.1.0)
-set(CIRCUITEXPLORER_VERSION_ABI 1)
+set(NAME CIRCUITEXPLORER)
+set(PACKAGE_VERSION 0.1.0)
+project(${NAME} VERSION ${PACKAGE_VERSION})
 
-list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/CMake
-                              ${CMAKE_SOURCE_DIR}/CMake/common)
-if(NOT EXISTS ${CMAKE_SOURCE_DIR}/CMake/common/Common.cmake)
-  message(FATAL_ERROR "CMake/common missing, run: git submodule update --init --recursive")
-endif()
-
-include(Common)
-common_find_package(Brayns REQUIRED)
-common_find_package(Brion REQUIRED)
-common_find_package(ospray 1.8 SYSTEM)
-common_find_package(CGAL)
-common_find_package(OpenMP)
-common_find_package_post()
-
-# reuse ispc setup and macros from ospray
-list(APPEND CMAKE_MODULE_PATH ${OSPRAY_CMAKE_ROOT})
-if(CMAKE_BUILD_TYPE STREQUAL Debug)
-  set(OSPRAY_DEBUG_BUILD ON)
-endif()
-include(ispc)
-
-set(CIRCUITEXPLORER_SOURCES
-    module/ispc/camera/DOFPerspectiveCamera.cpp
-    module/ispc/camera/SphereClippingPerspectiveCamera.cpp
-    module/ispc/render/CircuitExplorerMaterial.cpp
-    module/ispc/render/CircuitExplorerBasicRenderer.cpp
-    module/ispc/render/CircuitExplorerAdvancedRenderer.cpp
-    module/ispc/render/VoxelizedSimulationRenderer.cpp
-    module/ispc/render/ProximityDetectionRenderer.cpp
-    module/ispc/render/CellGrowthRenderer.cpp
-    module/ispc/render/utils/CircuitExplorerAbstractRenderer.cpp
-    module/ispc/render/utils/CircuitExplorerSimulationRenderer.cpp
-    module/ispc/render/DefaultMaterial.cpp
-    plugin/api/CircuitExplorerParams.cpp
-    plugin/meshing/MetaballsGenerator.cpp
-    plugin/meshing/PointCloudMesher.cpp
-    plugin/CircuitExplorerPlugin.cpp
-    plugin/io/VoltageSimulationHandler.cpp
-    plugin/io/CellGrowthHandler.cpp
-    plugin/io/SpikeSimulationHandler.cpp
-    plugin/io/MorphologyCollageLoader.cpp
-    plugin/io/PairSynapsesLoader.cpp
-    plugin/io/AbstractCircuitLoader.cpp
-    plugin/io/MeshCircuitLoader.cpp
-    plugin/io/AdvancedCircuitLoader.cpp
-    plugin/io/AstrocyteLoader.cpp
-    plugin/io/SynapseCircuitLoader.cpp
-    plugin/io/BrickLoader.cpp
-    plugin/io/MorphologyLoader.cpp
-    plugin/io/SynapseJSONLoader.cpp
-    plugin/io/Utils.cpp
-)
-
-set(CIRCUITEXPLORER_PUBLIC_HEADERS
-    plugin/api/CircuitExplorerParams.h
-    plugin/meshing/MetaballsGenerator.h
-    plugin/meshing/PointCloudMesher.h
-    plugin/CircuitExplorerPlugin.h
-    plugin/io/CellGrowthHandler.h
-    plugin/io/VoltageSimulationHandler.h
-    plugin/io/SpikeSimulationHandler.h
-    plugin/io/BrickLoader.h
-    plugin/io/AbstractCircuitLoader.h
-    plugin/io/PairSynapsesLoader.h
-    plugin/io/MeshCircuitLoader.h
-    plugin/io/MorphologyCollageLoader.h
-    plugin/io/AdvancedCircuitLoader.h
-    plugin/io/AstrocyteLoader.h
-    plugin/io/SynapseCircuitLoader.h
-    plugin/io/MorphologyLoader.h
-    plugin/io/SynapseJSONLoader.h
-    plugin/io/Utils.h
-)
-
-set(CIRCUITEXPLORER_ISPC_SOURCES
-    module/ispc/camera/utils.ispc
-    module/ispc/camera/DOFPerspectiveCamera.ispc
-    module/ispc/camera/SphereClippingPerspectiveCamera.ispc
-    module/ispc/render/CircuitExplorerMaterial.ispc
-    module/ispc/render/CircuitExplorerBasicRenderer.ispc
-    module/ispc/render/CircuitExplorerAdvancedRenderer.ispc
-    module/ispc/render/VoxelizedSimulationRenderer.ispc
-    module/ispc/render/ProximityDetectionRenderer.ispc
-    module/ispc/render/CellGrowthRenderer.ispc
-    module/ispc/render/utils/CircuitExplorerSimulationRenderer.ispc
-    module/ispc/render/utils/CircuitExplorerRandomGenerator.ispc
-    module/ispc/render/DefaultMaterial.ispc
-)
-
-# Compile ispc code
-list(APPEND ALL_ISPC_INCLUDES ${OSPRAY_INCLUDE_DIRS})
-include_directories_ispc(${ALL_ISPC_INCLUDES} )
-ospray_ispc_compile(${CIRCUITEXPLORER_ISPC_SOURCES})
-list(APPEND CIRCUITEXPLORER_SOURCES ${ISPC_OBJECTS})
-
-# Compile C++ code
-include_directories(
-    SYSTEM
-    ${CMAKE_CURRENT_SOURCE_DIR}
-)
-
-set(CIRCUITEXPLORER_LINK_LIBRARIES
-    PUBLIC ${OSPRAY_LIBRARIES}
-    PRIVATE braynsCommon braynsParameters braynsIO braynsEngine braynsPluginAPI
-    braynsOSPRayEngine glm vmmlib Brion Brain
-    ${FREEIMAGE_LIBRARIES} ${HDF5_LIBRARIES}
-)
-
-set(CIRCUITEXPLORER_OMIT_LIBRARY_HEADER ON)
-set(CIRCUITEXPLORER_OMIT_VERSION_HEADERS ON)
-set(CIRCUITEXPLORER_OMIT_EXPORT ON)
-common_library(CircuitExplorer)
+add_subdirectory(core)

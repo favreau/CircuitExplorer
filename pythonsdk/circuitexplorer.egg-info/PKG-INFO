@@ -1,0 +1,60 @@
+Metadata-Version: 2.1
+Name: circuitexplorer
+Version: 0.1.0
+Summary: Python API for the Blue Brain CircuitExplorer
+Home-page: https://github.com/BlueBrain/CircuitExplorer.git
+Author: Blue Brain Project, EPFL
+Author-email: bbp-open-source@googlegroups.com
+License: LGPLv3
+Project-URL: Documentation, https://bluebrain.github.io/CircuitExplorer/
+Project-URL: Source, https://github.com/BlueBrain/CircuitExplorer
+Keywords: covid,covid19,coronavirus,bbp,blue,brain,virus,molecule,molecular system
+Platform: UNKNOWN
+Classifier: Development Status :: 4 - Beta
+Classifier: License :: OSI Approved :: GNU Lesser General Public License v3 (LGPLv3)
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3.6
+Classifier: Programming Language :: Python :: 3.7
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Topic :: Software Development :: Libraries
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Description-Content-Type: text/markdown
+
+# Blue Brain CircuitExplorer Python SDK
+
+The CircuitExplorer package provides an extended python API for the Blue Brain CircuitExplorer application
+
+## Installation
+
+### 1. From the Python Package Index
+
+```
+(venv)$ pip install circuitexplorer
+```
+
+### 2. From source
+
+Clone the repository and install it:
+
+```
+(venv)$ git clone https://github.com/favreau/CircuitExplorer.git
+(venv)$ cd CircuitExplorer/circuitexplorer/pythonsdk
+(venv)$ python setup.py install
+```
+
+## API
+
+### Connect to running Blue Brain CircuitExplorer instance
+
+```python
+>>> from circuitexplorer import CircuitExplorer
+>>> bio_explorer = CircuitExplorer('localhost:8200')
+```
+
+# Upload to pypi
+
+```bash
+twine upload dist/*
+```
+
+

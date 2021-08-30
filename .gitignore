@@ -1,4 +1,5 @@
 ./
+dist/
 Build/
 build/
 debug/
@@ -24,4 +25,3 @@ CMakeFiles
 *.cxxflags
 .vscode
 .python-version
-
