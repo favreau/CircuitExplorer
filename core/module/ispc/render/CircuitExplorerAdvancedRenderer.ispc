@@ -895,8 +895,7 @@ inline void processElectronShading(varying ScreenSample& sample,
 {
     const vec3f viewer = normalize(sample.ray.org - attributes.origin);
     const float el = max(0.f, dot(viewer, attributes.normal));
-    //    const float cosNL = 1.f - pow(el, attributes.userParameter);
-    const float cosNL = pow(el, attributes.userParameter);
+    const float cosNL = 1.f - pow(el, attributes.userParameter);
     attributes.shadingContribution = cosNL * attributes.diffuseColor;
     attributes.simulationColor = cosNL * attributes.simulationColor;
     attributes.specularColor = make_vec3f(0.f);
@@ -906,7 +905,7 @@ inline void processElectronTransparencyShading(varying ScreenSample& sample,
                                                ShadingAttributes& attributes)
 {
     const vec3f viewer = normalize(sample.ray.org - attributes.origin);
-    const float el = 1.f - max(0.f, dot(viewer, attributes.normal));
+    const float el = max(0.f, dot(viewer, attributes.normal));
     const float cosNL = 1.f - pow(el, attributes.userParameter);
     attributes.shadingContribution = cosNL * attributes.diffuseColor;
     attributes.simulationColor = cosNL * attributes.simulationColor;
