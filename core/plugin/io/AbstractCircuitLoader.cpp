@@ -866,14 +866,21 @@ float AbstractCircuitLoader::_importMorphologies(
         const auto mitochondriaDensity =
             properties.getProperty<double>(PROP_MITOCHONDRIA_DENSITY.name);
 
-        MorphologyInfo morphologyInfo;
-        morphologyInfo =
-            loader.importMorphology(morphologyProps, uri, model, i,
-                                    transformations[i], nullptr, nullptr,
-                                    compartmentReport, mitochondriaDensity);
+        try
+        {
+            MorphologyInfo morphologyInfo;
+            morphologyInfo =
+                loader.importMorphology(morphologyProps, uri, model, i,
+                                        transformations[i], nullptr, nullptr,
+                                        compartmentReport, mitochondriaDensity);
 
-        maxDistanceToSoma =
-            std::max(morphologyInfo.maxDistanceToSoma, maxDistanceToSoma);
+            maxDistanceToSoma =
+                std::max(morphologyInfo.maxDistanceToSoma, maxDistanceToSoma);
+        }
+        catch (const std::runtime_error &e)
+        {
+            PLUGIN_ERROR(e.what());
+        }
 
         callback.updateProgress("Loading morphologies...",
                                 (float)i / (float)uris.size());
