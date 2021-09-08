@@ -41,9 +41,10 @@ namespace circuittodb
     std::cout << "[" << std::this_thread::get_id() << "] [DEBUG] [" \
               << PLUGIN_PREFIX << "] " << message << std::endl;
 #endif
-#define PLUGIN_TIMER(__time, __msg)                                      \
-    std::cout << "[TIMER] [" << PLUGIN_PREFIX << "] [" << __time << "] " \
-              << __msg << std::endl;
+#define PLUGIN_TIMER(__time, __msg)                                 \
+    std::cout << "[" << std::this_thread::get_id() << "] [TIMER] [" \
+              << PLUGIN_PREFIX << "] [" << __time << "] " << __msg  \
+              << std::endl;
 
 #define PLUGIN_THROW(message)              \
     {                                      \
