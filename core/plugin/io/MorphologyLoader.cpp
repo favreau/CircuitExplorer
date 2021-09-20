@@ -17,9 +17,8 @@
  */
 
 #include "MorphologyLoader.h"
-#include "Utils.h"
 #include <common/Logs.h>
-#include <common/Types.h>
+#include <common/Utils.h>
 #include <plugin/meshing/MetaballsGenerator.h>
 
 #include <brayns/common/simulation/AbstractSimulationHandler.h>
@@ -34,6 +33,7 @@ namespace circuitexplorer
 {
 const std::string SUPPORTED_EXTENTION_H5 = "h5";
 const std::string SUPPORTED_EXTENTION_SWC = "swc";
+const Vector3f DISPLACEMENT_PARAMS = {0.05f, 2.f, 0.f}; // Amplitude & frequency
 
 // From http://en.cppreference.com/w/cpp/types/numeric_limits/epsilon
 template <class T>
@@ -79,16 +79,15 @@ bool MorphologyLoader::isSupported(const std::string& /*filename*/,
 
 MorphologyInfo MorphologyLoader::importMorphology(
     const PropertyMap& properties, const servus::URI& source, Model& model,
-    const uint64_t index, const Matrix4f& transformation,
-    brain::Synapses* afferentSynapses, brain::Synapses* efferentSynapses,
-    CompartmentReportPtr compartmentReport,
+    const uint64_t index, const SynapsesInfo& synapsesInfo,
+    const Matrix4f& transformation, CompartmentReportPtr compartmentReport,
     const float mitochondriaDensity) const
 {
     ParallelModelContainer modelContainer;
-    _importMorphology(properties, source, index, modelContainer, transformation,
-                      compartmentReport, afferentSynapses, efferentSynapses,
-                      mitochondriaDensity);
+    _importMorphology(properties, source, index, transformation, modelContainer,
+                      compartmentReport, synapsesInfo, mitochondriaDensity);
 
+    // Apply transformation to everything except synapes
     modelContainer.applyTransformation(transformation);
     modelContainer.addSpheresToModel(model);
     modelContainer.addCylindersToModel(model);
@@ -100,10 +99,9 @@ MorphologyInfo MorphologyLoader::importMorphology(
 
 void MorphologyLoader::_importMorphology(
     const PropertyMap& properties, const servus::URI& source,
-    const uint64_t index, ParallelModelContainer& model,
-    const Matrix4f& transformation, CompartmentReportPtr compartmentReport,
-    brain::Synapses* afferentSynapses, brain::Synapses* efferentSynapses,
-    const float mitochondriaDensity) const
+    const uint64_t index, const Matrix4f& transformation,
+    ParallelModelContainer& model, CompartmentReportPtr compartmentReport,
+    const SynapsesInfo& synapsesInfo, const float mitochondriaDensity) const
 {
     const auto sectionTypes = getSectionTypesFromProperties(properties);
     const auto useRealisticSoma =
@@ -116,8 +114,8 @@ void MorphologyLoader::_importMorphology(
         _createRealisticSoma(properties, source, model);
     else
         _importMorphologyFromURI(properties, source, index, transformation,
-                                 compartmentReport, model, afferentSynapses,
-                                 efferentSynapses, mitochondriaDensity);
+                                 compartmentReport, model, synapsesInfo,
+                                 mitochondriaDensity);
 }
 
 double MorphologyLoader::_getCorrectedRadius(const PropertyMap& properties,
@@ -258,15 +256,17 @@ void MorphologyLoader::_connectSDFSomaChildren(
         const auto& samples = child.getSamples();
         const Vector3f sample{samples[0].x(), samples[0].y(), samples[0].z()};
 
-        // Create a sigmoid cone with half of soma radius to center of soma
-        // to give it an organic look.
+        // Create a sigmoid cone with soma radius to center of soma to give it
+        // an organic look.
         const auto radiusEnd =
             _getCorrectedRadius(properties, samples[0].w() * 0.5f);
+
         const size_t geomIdx =
             _addSDFGeometry(sdfMorphologyData,
                             createSDFConePillSigmoid(somaPosition, sample,
-                                                     somaRadius * 0.5f,
-                                                     radiusEnd, userDataOffset),
+                                                     somaRadius, radiusEnd,
+                                                     userDataOffset,
+                                                     DISPLACEMENT_PARAMS),
                             {}, materialId, -1);
         child_indices.insert(geomIdx);
     }
@@ -597,10 +597,12 @@ void MorphologyLoader::_addStepSphereGeometry(
             // points we don't need to add any sphere between segments
             // except at the bifurcation
 
-            const size_t idx = _addSDFGeometry(sdfMorphologyData,
-                                               createSDFSphere(position, radius,
-                                                               userDataOffset),
-                                               {}, materialId, section);
+            const size_t idx =
+                _addSDFGeometry(sdfMorphologyData,
+                                createSDFSphere(position, radius,
+                                                userDataOffset,
+                                                DISPLACEMENT_PARAMS),
+                                {}, materialId, section);
 
             sdfMorphologyData.bifurcationIndices.push_back(idx);
         }
@@ -623,9 +625,10 @@ void MorphologyLoader::_addStepConeGeometry(
     {
         const auto geom =
             (almost_equal(radius, previousRadius, 100000))
-                ? createSDFPill(position, target, radius, userDataOffset)
+                ? createSDFPill(position, target, radius, userDataOffset,
+                                DISPLACEMENT_PARAMS)
                 : createSDFConePill(position, target, radius, previousRadius,
-                                    userDataOffset);
+                                    userDataOffset, DISPLACEMENT_PARAMS);
         _addSDFGeometry(sdfMorphologyData, geom, {}, materialId, section);
     }
     else if (almost_equal(radius, previousRadius, 100000))
@@ -674,9 +677,8 @@ float MorphologyLoader::_distanceToSoma(const brain::neuron::Section& section,
 
 void MorphologyLoader::_importMorphologyFromURI(
     const PropertyMap& properties, const servus::URI& uri, const uint64_t index,
-    const Matrix4f& /*transformation*/, CompartmentReportPtr compartmentReport,
-    ParallelModelContainer& model, brain::Synapses* /*afferentSynapses*/,
-    brain::Synapses* /*efferentSynapses*/,
+    const Matrix4f& transformation, CompartmentReportPtr compartmentReport,
+    ParallelModelContainer& model, const SynapsesInfo& synapsesInfo,
     const float mitochondriaDensity) const
 {
     SDFMorphologyData sdfMorphologyData;
@@ -888,11 +890,75 @@ void MorphologyLoader::_importMorphologyFromURI(
         }
     }
 
+    // Synapses
+    const size_t materialId =
+        _getMaterialIdFromColorScheme(properties,
+                                      brain::neuron::SectionType::soma);
+    if (synapsesInfo.afferentSynapses)
+        for (const auto& synapse : *synapsesInfo.afferentSynapses)
+        {
+            if (synapsesInfo.prePostSynapticUsecase &&
+                synapse.getPresynapticGID() != synapsesInfo.preGid)
+                continue;
+            _buildAfferentSynapse(synapse, transformation, materialId + 1,
+                                  synapsesInfo.radius, model);
+        }
+    if (synapsesInfo.efferentSynapses && !synapsesInfo.prePostSynapticUsecase)
+        for (const auto& synapse : *synapsesInfo.efferentSynapses)
+            _buildEfferentSynapse(synapse, transformation, materialId + 2,
+                                  synapsesInfo.radius, model);
+
+    // Finalization
     if (useSDFGeometry)
     {
         _connectSDFBifurcations(sdfMorphologyData, morphologyTree);
         _finalizeSDFGeometries(model, sdfMorphologyData);
     }
+}
+
+void MorphologyLoader::_buildAfferentSynapse(
+    const brain::Synapse& synapse, const Matrix4f& transformation,
+    const size_t materialId, const float radius,
+    ParallelModelContainer& model) const
+{
+    const Vector3f from(synapse.getPostsynapticSurfacePosition().x(),
+                        synapse.getPostsynapticSurfacePosition().y(),
+                        synapse.getPostsynapticSurfacePosition().z());
+    const Vector3f to(synapse.getPostsynapticCenterPosition().x(),
+                      synapse.getPostsynapticCenterPosition().y(),
+                      synapse.getPostsynapticCenterPosition().z());
+
+    // Transform synapses to morphology space
+    glm::vec3 scale;
+    glm::quat rotation;
+    glm::vec3 translation;
+    glm::vec3 skew;
+    glm::vec4 perspective;
+    glm::decompose(inverse(transformation), scale, rotation, translation, skew,
+                   perspective);
+
+    model.addSphere(materialId, {translation + rotation * from, radius});
+    model.addCylinder(materialId, {translation + rotation * from,
+                                   translation + rotation * to, radius * 0.5f});
+}
+
+void MorphologyLoader::_buildEfferentSynapse(
+    const brain::Synapse& synapse, const Matrix4f& transformation,
+    const size_t materialId, const float radius,
+    ParallelModelContainer& model) const
+{
+    const Vector3f from(synapse.getPresynapticSurfacePosition().x(),
+                        synapse.getPresynapticSurfacePosition().y(),
+                        synapse.getPresynapticSurfacePosition().z());
+    const Vector3f to(synapse.getPresynapticCenterPosition().x(),
+                      synapse.getPresynapticCenterPosition().y(),
+                      synapse.getPresynapticCenterPosition().z());
+    model.addSphere(materialId,
+                    {transformVector3f(from, inverse(transformation)), radius});
+    model.addCylinder(materialId,
+                      {transformVector3f(from, inverse(transformation)),
+                       transformVector3f(to, inverse(transformation)),
+                       radius * 0.5f});
 }
 
 size_t MorphologyLoader::_getMaterialIdFromColorScheme(
@@ -952,7 +1018,7 @@ ModelDescriptorPtr MorphologyLoader::importFromFile(
     // the UI
 
     auto model = _scene.createModel();
-    importMorphology(props, servus::URI(fileName), *model, 0);
+    importMorphology(props, servus::URI(fileName), *model, 0, SynapsesInfo());
     createMissingMaterials(*model);
 
     auto modelDescriptor =

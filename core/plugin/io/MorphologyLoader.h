@@ -25,9 +25,6 @@
 #include <brayns/common/types.h>
 #include <brayns/parameters/GeometryParameters.h>
 
-#include <brain/brain.h>
-#include <brion/brion.h>
-
 #include <unordered_map>
 #include <vector>
 
@@ -102,9 +99,8 @@ public:
      */
     MorphologyInfo importMorphology(
         const PropertyMap& properties, const servus::URI& source, Model& model,
-        const uint64_t index, const Matrix4f& transformation = Matrix4f(),
-        brain::Synapses* afferentSynapses = nullptr,
-        brain::Synapses* efferentSynapses = nullptr,
+        const uint64_t index, const SynapsesInfo& synapsesInfo,
+        const Matrix4f& transformation = Matrix4f(),
         CompartmentReportPtr compartmentReport = nullptr,
         const float mitocondriaDensity = 0.f) const;
 
@@ -140,11 +136,10 @@ private:
 
     void _importMorphology(const PropertyMap& properties,
                            const servus::URI& source, const uint64_t index,
-                           ParallelModelContainer& model,
                            const Matrix4f& transformation,
+                           ParallelModelContainer& model,
                            CompartmentReportPtr compartmentReport,
-                           brain::Synapses* afferentSynapses = nullptr,
-                           brain::Synapses* efferentSynapses = nullptr,
+                           const SynapsesInfo& synapsesInfo,
                            const float mitochondriaDensity = 0.f) const;
 
     /**
@@ -261,8 +256,7 @@ private:
                                   const Matrix4f& transformation,
                                   CompartmentReportPtr compartmentReport,
                                   ParallelModelContainer& model,
-                                  brain::Synapses* afferentSynapses = nullptr,
-                                  brain::Synapses* efferentSynapses = nullptr,
+                                  const SynapsesInfo& synapsesInfo,
                                   const float mitochondriaDensity = 0.f) const;
 
     /**
@@ -283,6 +277,16 @@ private:
      */
     float _distanceToSoma(const brain::neuron::Section& section,
                           const size_t sampleId) const;
+
+    void _buildAfferentSynapse(const brain::Synapse& synapse,
+                               const Matrix4f& transformation,
+                               const size_t materialId, const float radius,
+                               ParallelModelContainer& model) const;
+
+    void _buildEfferentSynapse(const brain::Synapse& synapse,
+                               const Matrix4f& transformation,
+                               const size_t materialId, const float radius,
+                               ParallelModelContainer& model) const;
 
     void _generateMitochondria(ParallelModelContainer& model,
                                const float somaRadius,

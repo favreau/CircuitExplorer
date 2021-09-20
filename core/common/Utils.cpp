@@ -20,27 +20,28 @@
 
 namespace circuitexplorer
 {
-Vector3f get_translation(const Matrix4f& matrix)
+brayns::Vector3f get_translation(const brayns::Matrix4f& matrix)
 {
-    return Vector3f(glm::value_ptr(matrix)[12], glm::value_ptr(matrix)[13],
-                    glm::value_ptr(matrix)[14]);
+    return brayns::Vector3f(glm::value_ptr(matrix)[12],
+                            glm::value_ptr(matrix)[13],
+                            glm::value_ptr(matrix)[14]);
 }
 
-brain::Matrix4f glm_to_vmmlib(const Matrix4f& matrix)
+brain::Matrix4f glm_to_vmmlib(const brayns::Matrix4f& matrix)
 {
-    brain::Matrix4f tf;
-    memcpy(&tf.array, glm::value_ptr(matrix), sizeof(tf.array));
-    return tf;
+    brain::Matrix4f result;
+    memcpy(&result.array, glm::value_ptr(matrix), sizeof(result.array));
+    return result;
 }
 
-Matrix4f vmmlib_to_glm(const brain::Matrix4f& matrix)
+brayns::Matrix4f vmmlib_to_glm(const brain::Matrix4f& matrix)
 {
-    Matrix4f tf;
-    memcpy(glm::value_ptr(tf), &matrix.array, sizeof(matrix.array));
-    return tf;
+    brayns::Matrix4f result;
+    memcpy(glm::value_ptr(result), &matrix.array, sizeof(matrix.array));
+    return result;
 }
 
-bool inBox(const Vector3f& point, const Boxf& box)
+bool inBox(const brayns::Vector3f& point, const brayns::Boxf& box)
 {
     const auto min = box.getMin();
     const auto max = box.getMax();
@@ -48,7 +49,7 @@ bool inBox(const Vector3f& point, const Boxf& box)
             point.x <= max.x && point.y <= max.y && point.z <= max.z);
 }
 
-Vector3f getPointInSphere()
+brayns::Vector3f getPointInSphere()
 {
     float d, x, y, z;
     do
@@ -58,7 +59,19 @@ Vector3f getPointInSphere()
         z = (rand() % 1000 - 500) / 1000.f;
         d = sqrt(x * x + y * y + z * z);
     } while (d > 1.f);
-    return Vector3f(x, y, z);
+    return brayns::Vector3f(x, y, z);
 }
 
+brayns::Vector3f transformVector3f(const brayns::Vector3f& v,
+                                   const brayns::Matrix4f& transformation)
+{
+    glm::vec3 scale;
+    glm::quat rotation;
+    glm::vec3 translation;
+    glm::vec3 skew;
+    glm::vec4 perspective;
+    glm::decompose(transformation, scale, rotation, translation, skew,
+                   perspective);
+    return translation + rotation * v;
+}
 } // namespace circuitexplorer

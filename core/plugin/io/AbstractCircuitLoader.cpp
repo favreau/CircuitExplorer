@@ -19,12 +19,12 @@
 #include "AbstractCircuitLoader.h"
 #include "MorphologyLoader.h"
 #include "SpikeSimulationHandler.h"
-#include "Utils.h"
 #include "VoltageSimulationHandler.h"
 
 #include <common/CommonTypes.h>
 #include <common/Logs.h>
 #include <common/Types.h>
+#include <common/Utils.h>
 #include <plugin/io/CellGrowthHandler.h>
 
 #include <brayns/common/Timer.h>
@@ -131,6 +131,17 @@ brain::GIDSet AbstractCircuitLoader::_getGids(
         properties.getProperty<std::string>(PROP_PRESYNAPTIC_NEURON_GID.name);
     const auto postSynapticNeuron =
         properties.getProperty<std::string>(PROP_POSTSYNAPTIC_NEURON_GID.name);
+
+    // Pre/post synaptic sanity check
+    const bool pre = preSynapticNeuron.empty();
+    const bool post = postSynapticNeuron.empty();
+    bool prePostSynapticUsecase = false;
+    if (!pre || !post)
+    {
+        if (pre || post)
+            PLUGIN_THROW("Pre and post synaptic Gids must be specified");
+        prePostSynapticUsecase = true;
+    }
 
     brain::GIDSet gids;
     targetGIDOffsets.push_back(0);
@@ -853,6 +864,25 @@ float AbstractCircuitLoader::_importMorphologies(
 
     PropertyMap morphologyProps(properties);
     MorphologyLoader loader(_scene, std::move(morphologyProps));
+    auto gid = gids.begin();
+
+    const auto preSynapticNeuron =
+        properties.getProperty<std::string>(PROP_PRESYNAPTIC_NEURON_GID.name);
+    const auto postSynapticNeuron =
+        properties.getProperty<std::string>(PROP_POSTSYNAPTIC_NEURON_GID.name);
+    const bool prePostSynapticUsecase =
+        (!preSynapticNeuron.empty() && !postSynapticNeuron.empty());
+
+    const bool loadAfferentSynapses =
+        properties.getProperty<bool>(PROP_LOAD_AFFERENT_SYNAPSES.name);
+    const bool loadEfferentSynapses =
+        properties.getProperty<bool>(PROP_LOAD_EFFERENT_SYNAPSES.name);
+    const double synapseRadius =
+        properties.getProperty<double>(PROP_SYNAPSE_RADIUS.name);
+
+    const auto mitochondriaDensity =
+        properties.getProperty<double>(PROP_MITOCHONDRIA_DENSITY.name);
+
     for (uint64_t i = 0; i < gids.size(); ++i)
     {
         const auto uri = somasOnly ? brain::URI() : uris[i];
@@ -861,17 +891,33 @@ float AbstractCircuitLoader::_importMorphologies(
                                               targetGIDOffsets, layerIds,
                                               morphologyTypes,
                                               electrophysiologyTypes, false);
-
         loader.setDefaultMaterialId(id);
-        const auto mitochondriaDensity =
-            properties.getProperty<double>(PROP_MITOCHONDRIA_DENSITY.name);
 
         try
         {
+            SynapsesInfo synapsesInfo;
+            synapsesInfo.radius = synapseRadius;
+            synapsesInfo.prePostSynapticUsecase = prePostSynapticUsecase;
+            if (prePostSynapticUsecase)
+            {
+                synapsesInfo.preGid =
+                    boost::lexical_cast<uint64_t>(preSynapticNeuron);
+                synapsesInfo.postGid =
+                    boost::lexical_cast<uint64_t>(postSynapticNeuron);
+            }
+            if (loadAfferentSynapses)
+                synapsesInfo.afferentSynapses =
+                    std::unique_ptr<brain::Synapses>(new brain::Synapses(
+                        circuit.getAfferentSynapses({*gid})));
+            if (loadEfferentSynapses)
+                synapsesInfo.efferentSynapses =
+                    std::unique_ptr<brain::Synapses>(new brain::Synapses(
+                        circuit.getEfferentSynapses({*gid})));
+
             MorphologyInfo morphologyInfo;
             morphologyInfo =
                 loader.importMorphology(morphologyProps, uri, model, i,
-                                        transformations[i], nullptr, nullptr,
+                                        synapsesInfo, transformations[i],
                                         compartmentReport, mitochondriaDensity);
 
             maxDistanceToSoma =
@@ -884,104 +930,12 @@ float AbstractCircuitLoader::_importMorphologies(
 
         callback.updateProgress("Loading morphologies...",
                                 (float)i / (float)uris.size());
-    }
 
-    // Synapses
-    const bool loadAfferentSynapses =
-        properties.getProperty<bool>(PROP_LOAD_AFFERENT_SYNAPSES.name);
-    const bool loadEfferentSynapses =
-        properties.getProperty<bool>(PROP_LOAD_EFFERENT_SYNAPSES.name);
-    const double synapseRadius =
-        properties.getProperty<double>(PROP_SYNAPSE_RADIUS.name);
-    const std::string preSynapticGID =
-        properties.getProperty<std::string>(PROP_PRESYNAPTIC_NEURON_GID.name);
-    const std::string postSynapticGID =
-        properties.getProperty<std::string>(PROP_POSTSYNAPTIC_NEURON_GID.name);
-    if (!preSynapticGID.empty() && !postSynapticGID.empty())
-        _loadPairSynapses(properties, circuit, stoi(preSynapticGID),
-                          stoi(postSynapticGID), synapseRadius, model);
-    else
-        _loadAllSynapses(properties, circuit, gids, synapseRadius,
-                         loadAfferentSynapses, loadEfferentSynapses, model);
+        ++gid;
+    }
 
     PLUGIN_TIMER(chrono.elapsed(), "Loading of " << gids.size() << " cells");
     return maxDistanceToSoma;
-}
-
-void AbstractCircuitLoader::_loadPairSynapses(const PropertyMap &properties,
-                                              const brain::Circuit &circuit,
-                                              const uint32_t &preGid,
-                                              const uint32_t &postGid,
-                                              const float synapseRadius,
-                                              Model &model) const
-{
-    PLUGIN_INFO("Loading pair Synapses (" << preGid << " -> " << postGid
-                                          << ")");
-    const brain::Synapses &postAfferentSynapses(
-        circuit.getAfferentSynapses({postGid}));
-
-    size_t materialId =
-        _getMaterialFromCircuitAttributes(properties, 2, NO_MATERIAL, {}, {},
-                                          {}, {}, false);
-    for (const auto &synapse : postAfferentSynapses)
-    {
-        const auto gid = synapse.getPresynapticGID();
-        if (gid == preGid)
-            _buildAfferentSynapses(synapse, materialId, synapseRadius, model);
-    }
-}
-
-void AbstractCircuitLoader::_loadAllSynapses(const PropertyMap &properties,
-                                             const brain::Circuit &circuit,
-                                             const brain::GIDSet &gids,
-                                             const float synapseRadius,
-                                             const bool loadAfferentSynapses,
-                                             const bool loadEfferentSynapses,
-                                             Model &model) const
-{
-    uint64_t i = 0;
-    for (const auto &gid : gids)
-    {
-        const size_t id =
-            _getMaterialFromCircuitAttributes(properties, i, NO_MATERIAL, {},
-                                              {}, {}, {}, false);
-        if (loadAfferentSynapses)
-        {
-            const brain::Synapses &afferentSynapses(
-                circuit.getAfferentSynapses({gid}));
-            for (const brain::Synapse &synapse : afferentSynapses)
-                _buildAfferentSynapses(synapse, id + 1, synapseRadius, model);
-        }
-
-        if (loadEfferentSynapses)
-        {
-            const brain::Synapses &efferentSynapses(
-                circuit.getEfferentSynapses({gid}));
-            for (const brain::Synapse &synapse : efferentSynapses)
-                _buildEfferentSynapses(synapse, id + 2, synapseRadius, model);
-        }
-        ++i;
-    }
-}
-
-void AbstractCircuitLoader::_buildAfferentSynapses(
-    const brain::Synapse &synapse, const size_t materialId, const float radius,
-    Model &model) const
-{
-    const Vector3f from(synapse.getPostsynapticSurfacePosition().x(),
-                        synapse.getPostsynapticSurfacePosition().y(),
-                        synapse.getPostsynapticSurfacePosition().z());
-    model.addSphere(materialId, {from, radius});
-}
-
-void AbstractCircuitLoader::_buildEfferentSynapses(
-    const brain::Synapse &synapse, const size_t materialId, const float radius,
-    Model &model) const
-{
-    const Vector3f from(synapse.getPresynapticSurfacePosition().x(),
-                        synapse.getPresynapticSurfacePosition().y(),
-                        synapse.getPresynapticSurfacePosition().z());
-    model.addSphere(materialId, {from, radius});
 }
 
 ModelDescriptorPtr AbstractCircuitLoader::importFromBlob(

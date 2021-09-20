@@ -75,7 +75,7 @@ set(CIRCUITEXPLORER_SOURCES
     plugin/io/BrickLoader.cpp
     plugin/io/MorphologyLoader.cpp
     plugin/io/SynapseJSONLoader.cpp
-    plugin/io/Utils.cpp
+    common/Utils.cpp
 )
 
 set(CIRCUITEXPLORER_PUBLIC_HEADERS

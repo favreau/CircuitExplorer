@@ -16,19 +16,22 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#pragma once
+#include "Types.h"
+
+#include <brayns/common/mathTypes.h>
+#include <brayns/common/types.h>
 
 #include <brain/brain.h>
 
-#include <brayns/common/types.h>
+#include <glm/gtx/matrix_decompose.hpp>
 
 namespace circuitexplorer
 {
-using namespace brayns;
-
-Vector3f get_translation(const Matrix4f& matrix);
-brain::Matrix4f glm_to_vmmlib(const Matrix4f& matrix);
-Matrix4f vmmlib_to_glm(const brain::Matrix4f& matrix);
-bool inBox(const Vector3f& point, const Boxf& box);
-Vector3f getPointInSphere();
+brayns::Vector3f get_translation(const brayns::Matrix4f& matrix);
+brain::Matrix4f glm_to_vmmlib(const brayns::Matrix4f& matrix);
+brayns::Matrix4f vmmlib_to_glm(const brain::Matrix4f& matrix);
+bool inBox(const brayns::Vector3f& point, const brayns::Boxf& box);
+brayns::Vector3f getPointInSphere();
+brayns::Vector3f transformVector3f(const brayns::Vector3f& v,
+                                   const brayns::Matrix4f& transformation);
 } // namespace circuitexplorer

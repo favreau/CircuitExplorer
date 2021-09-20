@@ -153,21 +153,12 @@ private:
 
     void _setDefaultCircuitColorMap(Model &model) const;
 
-    // Synapses
-    void _buildAfferentSynapses(const brain::Synapse &synapse,
-                                const size_t materialId, const float radius,
-                                Model &model) const;
-    void _buildEfferentSynapses(const brain::Synapse &synapse,
-                                const size_t materialId, const float radius,
-                                Model &model) const;
+// Synapses
+#if 0
     void _loadPairSynapses(const PropertyMap &properties,
                            const brain::Circuit &circuit,
                            const uint32_t &preGid, const uint32_t &postGid,
                            const float synapseRadius, Model &model) const;
-    void _loadAllSynapses(const PropertyMap &properties,
-                          const brain::Circuit &circuit,
-                          const brain::GIDSet &gids, const float synapseRadius,
-                          const bool loadAfferentSynapses,
-                          const bool loadEfferentSynapses, Model &model) const;
+#endif
 };
 } // namespace circuitexplorer

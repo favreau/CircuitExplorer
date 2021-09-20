@@ -18,6 +18,8 @@
 
 #pragma once
 
+#include "Utils.h"
+
 #include <Defines.h>
 
 #include <brayns/common/PropertyMap.h>
@@ -28,6 +30,9 @@
 #include <brayns/common/mathTypes.h>
 #include <brayns/common/types.h>
 #include <brayns/engineapi/Model.h>
+
+#include <brain/brain.h>
+#include <brion/brion.h>
 
 #include <memory>
 #include <vector>
@@ -306,6 +311,16 @@ struct MorphologyInfo
     float maxDistanceToSoma;
 };
 
+struct SynapsesInfo
+{
+    std::unique_ptr<brain::Synapses> afferentSynapses{nullptr};
+    std::unique_ptr<brain::Synapses> efferentSynapses{nullptr};
+    float radius{1.f};
+    bool prePostSynapticUsecase{false};
+    uint64_t preGid;
+    uint64_t postGid;
+};
+
 struct ParallelModelContainer
 {
     void addSphere(const size_t materialId, const brayns::Sphere& sphere)
@@ -393,33 +408,27 @@ struct ParallelModelContainer
 
     void applyTransformation(const brayns::Matrix4f& transformation)
     {
-        glm::vec3 scale;
-        glm::quat rotation;
-        glm::vec3 translation;
-        glm::vec3 skew;
-        glm::vec4 perspective;
-        glm::decompose(transformation, scale, rotation, translation, skew,
-                       perspective);
-
         for (auto& s : spheres)
             for (auto& sphere : s.second)
-                sphere.center = translation + rotation * sphere.center;
+                sphere.center =
+                    transformVector3f(sphere.center, transformation);
         for (auto& c : cylinders)
             for (auto& cylinder : c.second)
             {
-                cylinder.center = translation + rotation * cylinder.center;
-                cylinder.up = translation + rotation * cylinder.up;
+                cylinder.center =
+                    transformVector3f(cylinder.center, transformation);
+                cylinder.up = transformVector3f(cylinder.up, transformation);
             }
         for (auto& c : cones)
             for (auto& cone : c.second)
             {
-                cone.center = translation + rotation * cone.center;
-                cone.up = translation + rotation * cone.up;
+                cone.center = transformVector3f(cone.center, transformation);
+                cone.up = transformVector3f(cone.up, transformation);
             }
         for (auto& s : sdfGeometries)
         {
-            s.p0 = translation + rotation * s.p0;
-            s.p1 = translation + rotation * s.p1;
+            s.p0 = transformVector3f(s.p0, transformation);
+            s.p1 = transformVector3f(s.p1, transformation);
         }
     }
 

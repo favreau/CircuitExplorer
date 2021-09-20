@@ -153,9 +153,8 @@ void AstrocyteLoader::_importMorphologiesFromURIs(
         loader.setDefaultMaterialId(materialId);
 
         MorphologyInfo morphologyInfo;
-        morphologyInfo =
-            loader.importMorphology(morphologyProps, uri, model, i, Matrix4f(),
-                                    nullptr, nullptr, nullptr);
+        morphologyInfo = loader.importMorphology(morphologyProps, uri, model, i,
+                                                 SynapsesInfo());
         callback.updateProgress("Loading morphologies...",
                                 (float)i / (float)uris.size());
     }
