@@ -390,6 +390,25 @@ class CircuitExplorer:
         return self._client.request(self.PLUGIN_API_PREFIX + 'save-model-to-cache', params=params,
                                     response_timeout=self.DEFAULT_RESPONSE_TIMEOUT)
 
+    def save_model_to_mesh(self, model_id, path, density=1, radius_multiplier=1.0, shrink_factor=0.5, skin=True):
+        """
+        Save a model to the specified cache file
+
+        :param int model_id: Id of the model to save
+        :param str path: Path of the cache file
+        :return: Result of the request submission
+        :rtype: str
+        """
+        params = dict()
+        params['modelId'] = model_id
+        params['path'] = path
+        params['density'] = density
+        params['radiusMultiplier'] = radius_multiplier
+        params['shrinkFactor'] = shrink_factor
+        params['skin'] = skin
+        return self._client.request(self.PLUGIN_API_PREFIX + 'save-model-to-mesh', params=params,
+                                    response_timeout=self.DEFAULT_RESPONSE_TIMEOUT)
+
     def set_material_extra_attributes(self, model_id):
         """
         Add extra attributes to all materials in the model (shading mode, clipped, etc)

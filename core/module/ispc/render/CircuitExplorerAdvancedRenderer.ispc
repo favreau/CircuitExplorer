@@ -931,7 +931,7 @@ inline void processNoiseShading(DifferentialGeometry& dg,
                                 const varying Ray& ray,
                                 ShadingAttributes& attributes)
 {
-    vec3f point = attributes.userParameter * dg.P;
+    const vec3f point = attributes.userParameter * dg.P;
 
     const float n1 = 0.25f + 0.75f * clamp(worleyNoise(point, 2.f), 0.f, 1.f);
 

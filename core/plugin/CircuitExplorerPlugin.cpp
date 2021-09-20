@@ -63,6 +63,27 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
+#if 1
+#include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
+#include <CGAL/Polygon_mesh_processing/compute_normal.h>
+#include <CGAL/Polygon_mesh_processing/triangulate_faces.h>
+#include <CGAL/Polyhedron_3.h>
+#include <CGAL/Skin_surface_3.h>
+#include <CGAL/Union_of_balls_3.h>
+#include <CGAL/mesh_skin_surface_3.h>
+#include <CGAL/mesh_union_of_balls_3.h>
+#include <CGAL/subdivide_union_of_balls_mesh_3.h>
+
+typedef CGAL::Exact_predicates_inexact_constructions_kernel K;
+typedef CGAL::Skin_surface_traits_3<K> Traits;
+typedef K::Point_3 Point_3;
+typedef K::Weighted_point_3 Weighted_point;
+typedef CGAL::Polyhedron_3<K> Polyhedron;
+typedef CGAL::Skin_surface_traits_3<K> Traits;
+typedef CGAL::Skin_surface_3<Traits> Skin_surface_3;
+typedef CGAL::Union_of_balls_3<Traits> Union_of_balls_3;
+#endif
+
 namespace circuitexplorer
 {
 using namespace brayns;
@@ -391,9 +412,15 @@ void CircuitExplorerPlugin::init()
 
         endPoint = PLUGIN_API_PREFIX + "save-model-to-cache";
         PLUGIN_INFO("Registering '" + endPoint + "' endpoint");
-        actionInterface->registerNotification<SaveModelToCache>(
+        actionInterface->registerNotification<ExportModelToFile>(
             endPoint,
-            [&](const SaveModelToCache& param) { _saveModelToCache(param); });
+            [&](const ExportModelToFile& param) { _exportModelToFile(param); });
+
+        endPoint = PLUGIN_API_PREFIX + "save-model-to-mesh";
+        PLUGIN_INFO("Registering '" + endPoint + "' endpoint");
+        actionInterface->registerNotification<ExportModelToMesh>(
+            endPoint,
+            [&](const ExportModelToMesh& param) { _exportModelToMesh(param); });
 
         endPoint = PLUGIN_API_PREFIX + "set-connections-per-value";
         PLUGIN_INFO("Registering '" + endPoint + "' endpoint");
@@ -823,7 +850,8 @@ void CircuitExplorerPlugin::_setSynapseAttributes(
     }
 }
 
-void CircuitExplorerPlugin::_saveModelToCache(const SaveModelToCache& saveModel)
+void CircuitExplorerPlugin::_exportModelToFile(
+    const ExportModelToFile& saveModel)
 {
     auto modelDescriptor = _api->getScene().getModel(saveModel.modelId);
     if (modelDescriptor)
@@ -833,6 +861,54 @@ void CircuitExplorerPlugin::_saveModelToCache(const SaveModelToCache& saveModel)
     }
     else
         PLUGIN_ERROR("Model " << saveModel.modelId << " is not registered");
+}
+
+void CircuitExplorerPlugin::_exportModelToMesh(const ExportModelToMesh& payload)
+{
+    auto modelDescriptor = _api->getScene().getModel(payload.modelId);
+    if (modelDescriptor)
+    {
+        const auto& model = modelDescriptor->getModel();
+        std::list<Weighted_point> l;
+        for (const auto& spheres : model.getSpheres())
+        {
+            uint64_t count = 0;
+            for (const auto& s : spheres.second)
+            {
+                if (count % payload.density == 0)
+                    l.push_front(
+                        Weighted_point(Point_3(s.center.x, s.center.y,
+                                               s.center.z),
+                                       payload.radiusMultiplier * s.radius));
+                ++count;
+            }
+        }
+
+        PLUGIN_INFO("Constructing skin surface from " << l.size()
+                                                      << " spheres");
+
+        Polyhedron polyhedron;
+        if (payload.skin)
+        {
+            Skin_surface_3 skinSurface(l.begin(), l.end(),
+                                       payload.shrinkFactor);
+
+            PLUGIN_INFO("Meshing skin surface...");
+            CGAL::mesh_skin_surface_3(skinSurface, polyhedron);
+            CGAL::Polygon_mesh_processing::triangulate_faces(polyhedron);
+        }
+        else
+        {
+            Union_of_balls_3 union_of_balls(l.begin(), l.end());
+            CGAL::mesh_union_of_balls_3(union_of_balls, polyhedron);
+        }
+
+        PLUGIN_INFO("Export mesh to " << payload.path);
+        std::ofstream out(payload.path);
+        out << polyhedron;
+    }
+    else
+        PLUGIN_ERROR("Model " << payload.modelId << " is not registered");
 }
 
 void CircuitExplorerPlugin::_setConnectionsPerValue(

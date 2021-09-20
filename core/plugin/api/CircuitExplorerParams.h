@@ -31,13 +31,26 @@ struct Response
 std::string to_json(const Response& param);
 
 /** Save model to cache */
-struct SaveModelToCache
+struct ExportModelToFile
 {
     int32_t modelId;
     std::string path;
 };
 
-bool from_json(SaveModelToCache& modelSave, const std::string& payload);
+bool from_json(ExportModelToFile& modelSave, const std::string& payload);
+
+/** Save model to mesh */
+struct ExportModelToMesh
+{
+    int32_t modelId;
+    std::string path;
+    int32_t density;
+    double radiusMultiplier;
+    double shrinkFactor;
+    bool skin;
+};
+
+bool from_json(ExportModelToMesh& modelSave, const std::string& payload);
 
 struct MaterialDescriptor
 {

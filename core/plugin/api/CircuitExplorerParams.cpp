@@ -57,13 +57,32 @@ std::string to_json(const Response& param)
     return "";
 }
 
-bool from_json(SaveModelToCache& param, const std::string& payload)
+bool from_json(ExportModelToFile& param, const std::string& payload)
 {
     try
     {
         auto js = nlohmann::json::parse(payload);
         FROM_JSON(param, js, modelId);
         FROM_JSON(param, js, path);
+    }
+    catch (...)
+    {
+        return false;
+    }
+    return true;
+}
+
+bool from_json(ExportModelToMesh& param, const std::string& payload)
+{
+    try
+    {
+        auto js = nlohmann::json::parse(payload);
+        FROM_JSON(param, js, modelId);
+        FROM_JSON(param, js, path);
+        FROM_JSON(param, js, density);
+        FROM_JSON(param, js, radiusMultiplier);
+        FROM_JSON(param, js, shrinkFactor);
+        FROM_JSON(param, js, skin);
     }
     catch (...)
     {

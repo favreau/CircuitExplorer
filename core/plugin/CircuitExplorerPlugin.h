@@ -64,7 +64,8 @@ private:
     void _setSynapseAttributes(const SynapseAttributes&);
     void _setConnectionsPerValue(const ConnectionsPerValue&);
     void _setMetaballsPerSimulationValue(const MetaballsFromSimulationValue&);
-    void _saveModelToCache(const SaveModelToCache&);
+    void _exportModelToFile(const ExportModelToFile&);
+    void _exportModelToMesh(const ExportModelToMesh&);
 
     // Handlers
     void _attachCellGrowthHandler(const AttachCellGrowthHandler& payload);
