@@ -98,8 +98,9 @@ public:
      * @return Information about the morphology
      */
     MorphologyInfo importMorphology(
-        const PropertyMap& properties, const servus::URI& source, Model& model,
-        const uint64_t index, const SynapsesInfo& synapsesInfo,
+        const Gid& gid, const PropertyMap& properties,
+        const servus::URI& source, Model& model, const uint64_t index,
+        const SynapsesInfo& synapsesInfo,
         const Matrix4f& transformation = Matrix4f(),
         CompartmentReportPtr compartmentReport = nullptr,
         const float mitocondriaDensity = 0.f) const;
@@ -134,7 +135,7 @@ private:
     double _getCorrectedRadius(const PropertyMap& properties,
                                const double radius) const;
 
-    void _importMorphology(const PropertyMap& properties,
+    void _importMorphology(const Gid& gid, const PropertyMap& properties,
                            const servus::URI& source, const uint64_t index,
                            const Matrix4f& transformation,
                            ParallelModelContainer& model,
@@ -155,6 +156,26 @@ private:
                                   const uint64_t index,
                                   CompartmentReportPtr compartmentReport,
                                   ParallelModelContainer& model) const;
+
+    /**
+     * @brief _importMorphologyFromURI imports a morphology from the specified
+     * URI
+     * @param uri URI of the morphology
+     * @param index Index of the current morphology
+     * @param materialFunc A function mapping brain::neuron::SectionType to a
+     * material id
+     * @param compartmentReport Compartment report to map to the morphology
+     * @param model Model container to whichh the morphology should be loaded
+     * @param mitochondriaDensity Density of mitocondria in the soma and axon
+     * into
+     */
+    void _importMorphologyFromURI(const Gid& gid, const PropertyMap& properties,
+                                  const servus::URI& uri, const uint64_t index,
+                                  const Matrix4f& transformation,
+                                  CompartmentReportPtr compartmentReport,
+                                  ParallelModelContainer& model,
+                                  const SynapsesInfo& synapsesInfo,
+                                  const float mitochondriaDensity = 0.f) const;
 
     /**
      * @brief _createRealisticSoma Creates a realistic soma using the metaballs
@@ -240,26 +261,6 @@ private:
         const size_t section, SDFMorphologyData& sdfMorphologyData) const;
 
     /**
-     * @brief _importMorphologyFromURI imports a morphology from the specified
-     * URI
-     * @param uri URI of the morphology
-     * @param index Index of the current morphology
-     * @param materialFunc A function mapping brain::neuron::SectionType to a
-     * material id
-     * @param compartmentReport Compartment report to map to the morphology
-     * @param model Model container to whichh the morphology should be loaded
-     * @param mitochondriaDensity Density of mitocondria in the soma and axon
-     * into
-     */
-    void _importMorphologyFromURI(const PropertyMap& properties,
-                                  const servus::URI& uri, const uint64_t index,
-                                  const Matrix4f& transformation,
-                                  CompartmentReportPtr compartmentReport,
-                                  ParallelModelContainer& model,
-                                  const SynapsesInfo& synapsesInfo,
-                                  const float mitochondriaDensity = 0.f) const;
-
-    /**
      * @brief _getMaterialIdFromColorScheme returns the material id
      * corresponding to the morphology color scheme and the section type
      * @param sectionType Section type of the morphology
@@ -278,15 +279,21 @@ private:
     float _distanceToSoma(const brain::neuron::Section& section,
                           const size_t sampleId) const;
 
-    void _buildAfferentSynapse(const brain::Synapse& synapse,
-                               const Matrix4f& transformation,
-                               const size_t materialId, const float radius,
-                               ParallelModelContainer& model) const;
+    void _addAfferentSynapse(const bool useSDF, const brain::Synapse& synapse,
+                             const Vector3f& somaPosition,
+                             const float somaRadius,
+                             const Matrix4f& transformation,
+                             const size_t materialId, const float radius,
+                             ParallelModelContainer& model,
+                             SDFMorphologyData& sdfMorphologyData) const;
 
-    void _buildEfferentSynapse(const brain::Synapse& synapse,
-                               const Matrix4f& transformation,
-                               const size_t materialId, const float radius,
-                               ParallelModelContainer& model) const;
+    void _addEfferentSynapse(const bool useSDF, const brain::Synapse& synapse,
+                             const Vector3f& somaPosition,
+                             const float somaRadius,
+                             const Matrix4f& transformation,
+                             const size_t materialId, const float radius,
+                             ParallelModelContainer& model,
+                             SDFMorphologyData& sdfMorphologyData) const;
 
     void _generateMitochondria(ParallelModelContainer& model,
                                const float somaRadius,

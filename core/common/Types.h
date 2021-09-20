@@ -59,6 +59,9 @@ using VoltageSimulationHandlerPtr = std::shared_ptr<VoltageSimulationHandler>;
 class SpikeSimulationHandler;
 using SpikeSimulationHandlerPtr = std::shared_ptr<SpikeSimulationHandler>;
 
+/** */
+typedef uint32_t Gid;
+
 /** Circuit color scheme */
 enum class CircuitColorScheme
 {
@@ -317,8 +320,8 @@ struct SynapsesInfo
     std::unique_ptr<brain::Synapses> efferentSynapses{nullptr};
     float radius{1.f};
     bool prePostSynapticUsecase{false};
-    uint64_t preGid;
-    uint64_t postGid;
+    Gid preGid;
+    Gid postGid;
 };
 
 struct ParallelModelContainer

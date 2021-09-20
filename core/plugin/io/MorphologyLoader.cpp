@@ -78,14 +78,15 @@ bool MorphologyLoader::isSupported(const std::string& /*filename*/,
 }
 
 MorphologyInfo MorphologyLoader::importMorphology(
-    const PropertyMap& properties, const servus::URI& source, Model& model,
-    const uint64_t index, const SynapsesInfo& synapsesInfo,
+    const Gid& gid, const PropertyMap& properties, const servus::URI& source,
+    Model& model, const uint64_t index, const SynapsesInfo& synapsesInfo,
     const Matrix4f& transformation, CompartmentReportPtr compartmentReport,
     const float mitochondriaDensity) const
 {
     ParallelModelContainer modelContainer;
-    _importMorphology(properties, source, index, transformation, modelContainer,
-                      compartmentReport, synapsesInfo, mitochondriaDensity);
+    _importMorphology(gid, properties, source, index, transformation,
+                      modelContainer, compartmentReport, synapsesInfo,
+                      mitochondriaDensity);
 
     // Apply transformation to everything except synapes
     modelContainer.applyTransformation(transformation);
@@ -98,7 +99,7 @@ MorphologyInfo MorphologyLoader::importMorphology(
 }
 
 void MorphologyLoader::_importMorphology(
-    const PropertyMap& properties, const servus::URI& source,
+    const Gid& gid, const PropertyMap& properties, const servus::URI& source,
     const uint64_t index, const Matrix4f& transformation,
     ParallelModelContainer& model, CompartmentReportPtr compartmentReport,
     const SynapsesInfo& synapsesInfo, const float mitochondriaDensity) const
@@ -113,7 +114,7 @@ void MorphologyLoader::_importMorphology(
     else if (useRealisticSoma)
         _createRealisticSoma(properties, source, model);
     else
-        _importMorphologyFromURI(properties, source, index, transformation,
+        _importMorphologyFromURI(gid, properties, source, index, transformation,
                                  compartmentReport, model, synapsesInfo,
                                  mitochondriaDensity);
 }
@@ -676,10 +677,10 @@ float MorphologyLoader::_distanceToSoma(const brain::neuron::Section& section,
 }
 
 void MorphologyLoader::_importMorphologyFromURI(
-    const PropertyMap& properties, const servus::URI& uri, const uint64_t index,
-    const Matrix4f& transformation, CompartmentReportPtr compartmentReport,
-    ParallelModelContainer& model, const SynapsesInfo& synapsesInfo,
-    const float mitochondriaDensity) const
+    const Gid& gid, const PropertyMap& properties, const servus::URI& uri,
+    const uint64_t index, const Matrix4f& transformation,
+    CompartmentReportPtr compartmentReport, ParallelModelContainer& model,
+    const SynapsesInfo& synapsesInfo, const float mitochondriaDensity) const
 {
     SDFMorphologyData sdfMorphologyData;
 
@@ -739,7 +740,6 @@ void MorphologyLoader::_importMorphologyFromURI(
     const auto& sections = morphology.getSections(sectionTypes);
     const auto morphologyTree =
         _calculateMorphologyTreeStructure(properties, sections);
-    std::vector<double> sectionEndRadius(sections.size(), -1.0f);
 
     // Dendrites and axon
     for (const size_t sectionI : morphologyTree.sectionTraverseOrder)
@@ -886,7 +886,6 @@ void MorphologyLoader::_importMorphologyFromURI(
             }
             previousSample = sample;
             previousRadius = radius;
-            sectionEndRadius[sectionI] = radius;
         }
     }
 
@@ -894,19 +893,31 @@ void MorphologyLoader::_importMorphologyFromURI(
     const size_t materialId =
         _getMaterialIdFromColorScheme(properties,
                                       brain::neuron::SectionType::soma);
+    const Vector3f somaPosition =
+        glm::make_vec3(morphology.getSoma().getCentroid().array);
+    const double somaRadius =
+        _getCorrectedRadius(properties, morphology.getSoma().getMeanRadius());
+
+    const auto inverseTransformation = inverse(transformation);
     if (synapsesInfo.afferentSynapses)
         for (const auto& synapse : *synapsesInfo.afferentSynapses)
         {
             if (synapsesInfo.prePostSynapticUsecase &&
-                synapse.getPresynapticGID() != synapsesInfo.preGid)
-                continue;
-            _buildAfferentSynapse(synapse, transformation, materialId + 1,
-                                  synapsesInfo.radius, model);
+                gid != synapsesInfo.postGid)
+                if (synapse.getPresynapticGID() != synapsesInfo.preGid)
+                    continue;
+
+            _addAfferentSynapse(useSDFGeometry, synapse, somaPosition,
+                                somaRadius, inverseTransformation,
+                                materialId + 1, synapsesInfo.radius, model,
+                                sdfMorphologyData);
         }
     if (synapsesInfo.efferentSynapses && !synapsesInfo.prePostSynapticUsecase)
         for (const auto& synapse : *synapsesInfo.efferentSynapses)
-            _buildEfferentSynapse(synapse, transformation, materialId + 2,
-                                  synapsesInfo.radius, model);
+            _addEfferentSynapse(useSDFGeometry, synapse, somaPosition,
+                                somaRadius, inverseTransformation,
+                                materialId + 2, synapsesInfo.radius, model,
+                                sdfMorphologyData);
 
     // Finalization
     if (useSDFGeometry)
@@ -916,49 +927,61 @@ void MorphologyLoader::_importMorphologyFromURI(
     }
 }
 
-void MorphologyLoader::_buildAfferentSynapse(
-    const brain::Synapse& synapse, const Matrix4f& transformation,
-    const size_t materialId, const float radius,
-    ParallelModelContainer& model) const
+void MorphologyLoader::_addAfferentSynapse(
+    const bool useSDFGeometry, const brain::Synapse& synapse,
+    const Vector3f& somaPosition, const float somaRadius,
+    const Matrix4f& transformation, const size_t materialId, const float radius,
+    ParallelModelContainer& model, SDFMorphologyData& sdfMorphologyData) const
 {
-    const Vector3f from(synapse.getPostsynapticSurfacePosition().x(),
-                        synapse.getPostsynapticSurfacePosition().y(),
-                        synapse.getPostsynapticSurfacePosition().z());
-    const Vector3f to(synapse.getPostsynapticCenterPosition().x(),
-                      synapse.getPostsynapticCenterPosition().y(),
-                      synapse.getPostsynapticCenterPosition().z());
+    Vector3f target(synapse.getPostsynapticCenterPosition().x(),
+                    synapse.getPostsynapticCenterPosition().y(),
+                    synapse.getPostsynapticCenterPosition().z());
+    target = transformVector3f(target, transformation);
+    if (length(target - somaPosition) <= somaRadius)
+        return;
+    Vector3f position(synapse.getPostsynapticSurfacePosition().x(),
+                      synapse.getPostsynapticSurfacePosition().y(),
+                      synapse.getPostsynapticSurfacePosition().z());
+    position = transformVector3f(position, transformation);
 
-    // Transform synapses to morphology space
-    glm::vec3 scale;
-    glm::quat rotation;
-    glm::vec3 translation;
-    glm::vec3 skew;
-    glm::vec4 perspective;
-    glm::decompose(inverse(transformation), scale, rotation, translation, skew,
-                   perspective);
+    const auto sectionId = synapse.getPostsynapticSectionID();
+    const auto matId = materialId + 5;
+    _addStepSphereGeometry(useSDFGeometry, true, position, radius, matId, -1,
+                           model, sectionId, sdfMorphologyData);
 
-    model.addSphere(materialId, {translation + rotation * from, radius});
-    model.addCylinder(materialId, {translation + rotation * from,
-                                   translation + rotation * to, radius * 0.5f});
+    if (position != target)
+        _addStepConeGeometry(useSDFGeometry, position, radius * 0.5f, target,
+                             radius * 0.5f, matId, -1, model, sectionId,
+                             sdfMorphologyData);
 }
 
-void MorphologyLoader::_buildEfferentSynapse(
-    const brain::Synapse& synapse, const Matrix4f& transformation,
-    const size_t materialId, const float radius,
-    ParallelModelContainer& model) const
+void MorphologyLoader::_addEfferentSynapse(
+    const bool useSDFGeometry, const brain::Synapse& synapse,
+    const Vector3f& somaPosition, const float somaRadius,
+    const Matrix4f& transformation, const size_t materialId, const float radius,
+    ParallelModelContainer& model, SDFMorphologyData& sdfMorphologyData) const
 {
-    const Vector3f from(synapse.getPresynapticSurfacePosition().x(),
-                        synapse.getPresynapticSurfacePosition().y(),
-                        synapse.getPresynapticSurfacePosition().z());
-    const Vector3f to(synapse.getPresynapticCenterPosition().x(),
-                      synapse.getPresynapticCenterPosition().y(),
-                      synapse.getPresynapticCenterPosition().z());
-    model.addSphere(materialId,
-                    {transformVector3f(from, inverse(transformation)), radius});
-    model.addCylinder(materialId,
-                      {transformVector3f(from, inverse(transformation)),
-                       transformVector3f(to, inverse(transformation)),
-                       radius * 0.5f});
+    Vector3f target(synapse.getPresynapticCenterPosition().x(),
+                    synapse.getPresynapticCenterPosition().y(),
+                    synapse.getPresynapticCenterPosition().z());
+    target = transformVector3f(target, transformation);
+    if (length(target - somaPosition) <= somaRadius)
+        return;
+
+    Vector3f position(synapse.getPresynapticSurfacePosition().x(),
+                      synapse.getPresynapticSurfacePosition().y(),
+                      synapse.getPresynapticSurfacePosition().z());
+    position = transformVector3f(position, transformation);
+
+    const auto sectionId = synapse.getPresynapticSectionID();
+    const auto matId = materialId + 6;
+    _addStepSphereGeometry(useSDFGeometry, true, position, radius, matId, -1,
+                           model, sectionId, sdfMorphologyData);
+
+    if (position != target)
+        _addStepConeGeometry(useSDFGeometry, position, radius * 0.5f, target,
+                             radius * 0.5f, matId, -1, model, sectionId,
+                             sdfMorphologyData);
 }
 
 size_t MorphologyLoader::_getMaterialIdFromColorScheme(
@@ -1018,7 +1041,8 @@ ModelDescriptorPtr MorphologyLoader::importFromFile(
     // the UI
 
     auto model = _scene.createModel();
-    importMorphology(props, servus::URI(fileName), *model, 0, SynapsesInfo());
+    importMorphology(0, props, servus::URI(fileName), *model, 0,
+                     SynapsesInfo());
     createMissingMaterials(*model);
 
     auto modelDescriptor =

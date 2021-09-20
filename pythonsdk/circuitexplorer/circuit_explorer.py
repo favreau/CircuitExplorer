@@ -224,6 +224,92 @@ class CircuitExplorer:
 
         return self._client.request(method='add-model', params=params)
 
+    def load_pair_synapses_usecase(self, path, pre_synaptic_neuron, post_synaptic_neuron,
+                                   radius_multiplier=1, radius_correction=0,
+                                   load_soma=True, load_axon=True, load_dendrite=True,
+                                   load_apical_dendrite=True, use_sdf=False,
+                                   dampen_branch_thickness_changerate=True,
+                                   morphology_color_scheme=MORPHOLOGY_COLOR_SCHEME_NONE,
+                                   morphology_quality=GEOMETRY_QUALITY_HIGH,
+                                   synapse_radius=0.0):
+        """
+        Load a circuit from a give Blue/Circuit configuration file
+
+        :param str path: Path to the CircuitConfig or BlueConfig configuration file
+        :param str name: Name of the model
+        :param float radius_multiplier: Multiplies morphology radius by the specified value
+        :param float radius_correction: Forces morphology radii to the specified value
+        :param bool load_soma: Defines if the somas should be loaded
+        :param bool load_axon: Defines if the axons should be loaded
+        :param bool load_dendrite: Defines if the dendrites should be loaded
+        :param bool load_apical_dendrite: Defines if the apical dendrites should be loaded
+        :param bool use_sdf: Defines if signed distance field geometries should be used
+        :param bool dampen_branch_thickness_changerate: Defines if the dampen branch
+        thicknesschangerate option should be used (Only application is use_sdf is True)
+        :param int morphology_color_scheme: Defines the color scheme to apply to the morphologies (
+        MORPHOLOGY_COLOR_SCHEME_NONE, MORPHOLOGY_COLOR_SCHEME_BY_SECTION_TYPE)
+        :param int morphology_quality: Defines the level of quality for each geometry (
+        GEOMETRY_QUALITY_LOW, GEOMETRY_QUALITY_MEDIUM, GEOMETRY_QUALITY_HIGH)
+        :param float synapse_radius: Synapse radius
+        :return: Result of the request submission
+        :rtype: str
+        """
+        gids = list()
+        props = dict()
+        props['000DbConnectionString'] = ''  # Currently not used
+        props['001Density'] = 100.0
+        props['002RandomSeed'] = 0
+        props['010Targets'] = ''
+        props['011Gids'] = ''
+        props['012PreNeuron'] = '%d' % pre_synaptic_neuron
+        props['013PostNeuron'] = '%d' % post_synaptic_neuron
+
+        props['020Report'] = ''
+        props['021ReportType'] = CircuitExplorer.REPORT_TYPE_NONE
+        props['022UserDataType'] = CircuitExplorer.USER_DATATYPE_NONE
+        props['023SynchronousMode'] = False
+
+        props['030CircuitColorScheme'] = CircuitExplorer.CIRCUIT_COLOR_SCHEME_NEURON_BY_ID
+
+        props['040MeshFolder'] = ''
+        props['041MeshFilenamePattern'] = ''
+        props['042MeshTransformation'] = False
+
+        props['050RadiusMultiplier'] = radius_multiplier
+        props['051RadiusCorrection'] = radius_correction
+        props['052SectionTypeSoma'] = load_soma
+        props['053SectionTypeAxon'] = load_axon
+        props['054SectionTypeDendrite'] = load_dendrite
+        props['055SectionTypeApicalDendrite'] = load_apical_dendrite
+
+        props['060UseSdfgeometry'] = use_sdf
+        props['061DampenBranchThicknessChangerate'] = dampen_branch_thickness_changerate
+
+        props['070RealisticSoma'] = False
+        props['071MetaballsSamplesFromSoma'] = 0
+        props['072MetaballsGridSize'] = 0
+        props['073MetaballsThreshold'] = 0.0
+
+        props['080MorphologyColorScheme'] = morphology_color_scheme
+
+        props['090MorphologyQuality'] = morphology_quality
+        props['091MaxDistanceToSoma'] = 1e6
+        props['100CellClipping'] = False
+        props['101AreasOfInterest'] = 0
+
+        props['110SynapseRadius'] = synapse_radius
+        props['111LoadAfferentSynapses'] = True
+        props['112LoadEfferentSynapses'] = False
+
+        props['120MitochondriaDensity'] = 0.0
+
+        params = dict()
+        params['name'] = 'Pair-symapses (%d, %d)' % (pre_synaptic_neuron, post_synaptic_neuron)
+        params['path'] = path
+        params['loader_properties'] = props
+
+        return self._client.request(method='add-model', params=params)
+
     # pylint: disable=R0913, R0914
     def set_material(self, model_id, material_id, diffuse_color=(1.0, 1.0, 1.0),
                      specular_color=(1.0, 1.0, 1.0), specular_exponent=20.0, opacity=1.0,

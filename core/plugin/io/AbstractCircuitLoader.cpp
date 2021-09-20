@@ -44,7 +44,7 @@ const strings LOADER_EXTENSIONS{"BlueConfig",    "BlueConfig3",
                                 "CircuitConfig", ".json",
                                 "circuit",       "CircuitConfig_nrn"};
 const std::string GID_PATTERN = "{gid}";
-const size_t NB_MATERIALS_PER_INSTANCE = 3;
+const size_t NB_MATERIALS_PER_INSTANCE = 10;
 
 AbstractCircuitLoader::AbstractCircuitLoader(
     Scene &scene, const ApplicationParameters &applicationParameters,
@@ -149,8 +149,8 @@ brain::GIDSet AbstractCircuitLoader::_getGids(
     // Pair synapse usecase
     if (!preSynapticNeuron.empty() && !postSynapticNeuron.empty())
     {
-        gids.insert(boost::lexical_cast<uint64_t>(preSynapticNeuron));
-        gids.insert(boost::lexical_cast<uint64_t>(postSynapticNeuron));
+        gids.insert(boost::lexical_cast<Gid>(preSynapticNeuron));
+        gids.insert(boost::lexical_cast<Gid>(postSynapticNeuron));
         return gids;
     }
 
@@ -901,9 +901,9 @@ float AbstractCircuitLoader::_importMorphologies(
             if (prePostSynapticUsecase)
             {
                 synapsesInfo.preGid =
-                    boost::lexical_cast<uint64_t>(preSynapticNeuron);
+                    boost::lexical_cast<Gid>(preSynapticNeuron);
                 synapsesInfo.postGid =
-                    boost::lexical_cast<uint64_t>(postSynapticNeuron);
+                    boost::lexical_cast<Gid>(postSynapticNeuron);
             }
             if (loadAfferentSynapses)
                 synapsesInfo.afferentSynapses =
@@ -916,7 +916,7 @@ float AbstractCircuitLoader::_importMorphologies(
 
             MorphologyInfo morphologyInfo;
             morphologyInfo =
-                loader.importMorphology(morphologyProps, uri, model, i,
+                loader.importMorphology(*gid, morphologyProps, uri, model, i,
                                         synapsesInfo, transformations[i],
                                         compartmentReport, mitochondriaDensity);
 
