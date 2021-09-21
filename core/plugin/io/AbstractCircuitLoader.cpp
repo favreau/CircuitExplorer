@@ -880,9 +880,6 @@ float AbstractCircuitLoader::_importMorphologies(
     const double synapseRadius =
         properties.getProperty<double>(PROP_SYNAPSE_RADIUS.name);
 
-    const auto mitochondriaDensity =
-        properties.getProperty<double>(PROP_MITOCHONDRIA_DENSITY.name);
-
     for (uint64_t i = 0; i < gids.size(); ++i)
     {
         const auto uri = somasOnly ? brain::URI() : uris[i];
@@ -918,7 +915,7 @@ float AbstractCircuitLoader::_importMorphologies(
             morphologyInfo =
                 loader.importMorphology(*gid, morphologyProps, uri, model, i,
                                         synapsesInfo, transformations[i],
-                                        compartmentReport, mitochondriaDensity);
+                                        compartmentReport);
 
             maxDistanceToSoma =
                 std::max(morphologyInfo.maxDistanceToSoma, maxDistanceToSoma);

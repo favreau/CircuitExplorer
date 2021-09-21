@@ -94,7 +94,6 @@ public:
      * @param index Index of the morphology
      * @param defaultMaterialId Material to use
      * @param compartmentReport Compartment report to map to the morphology
-     * @param mitocondriaDensity Density of mitochondria in the soma and axon
      * @return Information about the morphology
      */
     MorphologyInfo importMorphology(
@@ -102,8 +101,7 @@ public:
         const servus::URI& source, Model& model, const uint64_t index,
         const SynapsesInfo& synapsesInfo,
         const Matrix4f& transformation = Matrix4f(),
-        CompartmentReportPtr compartmentReport = nullptr,
-        const float mitocondriaDensity = 0.f) const;
+        CompartmentReportPtr compartmentReport = nullptr) const;
 
     /**
      * @brief setDefaultMaterialId Set the default material for the morphology
@@ -166,7 +164,6 @@ private:
      * material id
      * @param compartmentReport Compartment report to map to the morphology
      * @param model Model container to whichh the morphology should be loaded
-     * @param mitochondriaDensity Density of mitocondria in the soma and axon
      * into
      */
     void _importMorphologyFromURI(const Gid& gid, const PropertyMap& properties,
@@ -174,8 +171,7 @@ private:
                                   const Matrix4f& transformation,
                                   CompartmentReportPtr compartmentReport,
                                   ParallelModelContainer& model,
-                                  const SynapsesInfo& synapsesInfo,
-                                  const float mitochondriaDensity = 0.f) const;
+                                  const SynapsesInfo& synapsesInfo) const;
 
     /**
      * @brief _createRealisticSoma Creates a realistic soma using the metaballs
@@ -295,9 +291,9 @@ private:
                              ParallelModelContainer& model,
                              SDFMorphologyData& sdfMorphologyData) const;
 
-    void _generateMitochondria(ParallelModelContainer& model,
-                               const float somaRadius,
-                               const float mitochondriaDensity) const;
+    void _addMitochondria(ParallelModelContainer& model,
+                          const size_t materialId, const float somaRadius,
+                          const float mitochondriaDensity) const;
 
     size_t _defaultMaterialId{NO_MATERIAL};
     PropertyMap _defaults;

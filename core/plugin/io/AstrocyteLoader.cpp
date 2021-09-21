@@ -73,7 +73,6 @@ AstrocyteLoader::AstrocyteLoader(
         {PROP_PRESYNAPTIC_NEURON_GID.name, std::string("")});
     _fixedDefaults.setProperty(
         {PROP_POSTSYNAPTIC_NEURON_GID.name, std::string("")});
-    _fixedDefaults.setProperty({PROP_MITOCHONDRIA_DENSITY.name, 0.0});
 }
 
 std::vector<std::string> AstrocyteLoader::getSupportedExtensions() const
@@ -92,8 +91,8 @@ ModelDescriptorPtr AstrocyteLoader::importFromFile(
     const std::string &filename, const LoaderProgress &callback,
     const PropertyMap &properties) const
 {
-    PLUGIN_INFO("Loading morphologies from " << filename);
-    callback.updateProgress("Loading morphologies ...", 0);
+    PLUGIN_INFO("Loading astrocyte from " << filename);
+    callback.updateProgress("Loading astrocyte ...", 0);
     PropertyMap props = _defaults;
     props.merge(_fixedDefaults);
     props.merge(properties);
@@ -131,6 +130,7 @@ PropertyMap AstrocyteLoader::getCLIProperties()
     pm.setProperty(PROP_USE_SDF_GEOMETRY);
     pm.setProperty(PROP_MORPHOLOGY_COLOR_SCHEME);
     pm.setProperty(PROP_MORPHOLOGY_QUALITY);
+    pm.setProperty(PROP_MITOCHONDRIA_DENSITY);
     return pm;
 }
 

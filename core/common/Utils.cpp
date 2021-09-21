@@ -49,7 +49,7 @@ bool inBox(const brayns::Vector3f& point, const brayns::Boxf& box)
             point.x <= max.x && point.y <= max.y && point.z <= max.z);
 }
 
-brayns::Vector3f getPointInSphere()
+brayns::Vector3f getPointInSphere(const float innerRadius)
 {
     float d, x, y, z;
     do
@@ -58,7 +58,7 @@ brayns::Vector3f getPointInSphere()
         y = (rand() % 1000 - 500) / 1000.f;
         z = (rand() % 1000 - 500) / 1000.f;
         d = sqrt(x * x + y * y + z * z);
-    } while (d > 1.f);
+    } while (d > 1.f && d < innerRadius);
     return brayns::Vector3f(x, y, z);
 }
 
@@ -73,5 +73,10 @@ brayns::Vector3f transformVector3f(const brayns::Vector3f& v,
     glm::decompose(transformation, scale, rotation, translation, skew,
                    perspective);
     return translation + rotation * v;
+}
+
+float sphereVolume(const float radius)
+{
+    return 4.f * M_PI * pow(radius, 3) / 3.f;
 }
 } // namespace circuitexplorer

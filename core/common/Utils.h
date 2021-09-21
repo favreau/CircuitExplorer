@@ -31,7 +31,8 @@ brayns::Vector3f get_translation(const brayns::Matrix4f& matrix);
 brain::Matrix4f glm_to_vmmlib(const brayns::Matrix4f& matrix);
 brayns::Matrix4f vmmlib_to_glm(const brain::Matrix4f& matrix);
 bool inBox(const brayns::Vector3f& point, const brayns::Boxf& box);
-brayns::Vector3f getPointInSphere();
+brayns::Vector3f getPointInSphere(const float innerRadius);
+float sphereVolume(const float radius);
 brayns::Vector3f transformVector3f(const brayns::Vector3f& v,
                                    const brayns::Matrix4f& transformation);
 } // namespace circuitexplorer

@@ -80,13 +80,12 @@ bool MorphologyLoader::isSupported(const std::string& /*filename*/,
 MorphologyInfo MorphologyLoader::importMorphology(
     const Gid& gid, const PropertyMap& properties, const servus::URI& source,
     Model& model, const uint64_t index, const SynapsesInfo& synapsesInfo,
-    const Matrix4f& transformation, CompartmentReportPtr compartmentReport,
-    const float mitochondriaDensity) const
+    const Matrix4f& transformation,
+    CompartmentReportPtr compartmentReport) const
 {
     ParallelModelContainer modelContainer;
     _importMorphology(gid, properties, source, index, transformation,
-                      modelContainer, compartmentReport, synapsesInfo,
-                      mitochondriaDensity);
+                      modelContainer, compartmentReport, synapsesInfo);
 
     // Apply transformation to everything except synapes
     modelContainer.applyTransformation(transformation);
@@ -115,8 +114,7 @@ void MorphologyLoader::_importMorphology(
         _createRealisticSoma(properties, source, model);
     else
         _importMorphologyFromURI(gid, properties, source, index, transformation,
-                                 compartmentReport, model, synapsesInfo,
-                                 mitochondriaDensity);
+                                 compartmentReport, model, synapsesInfo);
 }
 
 double MorphologyLoader::_getCorrectedRadius(const PropertyMap& properties,
@@ -544,7 +542,7 @@ void MorphologyLoader::_addSomaGeometry(const PropertyMap& properties,
         _getCorrectedRadius(properties, soma.getMeanRadius());
 
     if (mitochondriaDensity > 0.f)
-        _generateMitochondria(model, somaRadius, mitochondriaDensity);
+        _addMitochondria(model, materialId, somaRadius, mitochondriaDensity);
 
     const auto& children = soma.getChildren();
     const bool useSDFGeometry =
@@ -680,7 +678,7 @@ void MorphologyLoader::_importMorphologyFromURI(
     const Gid& gid, const PropertyMap& properties, const servus::URI& uri,
     const uint64_t index, const Matrix4f& transformation,
     CompartmentReportPtr compartmentReport, ParallelModelContainer& model,
-    const SynapsesInfo& synapsesInfo, const float mitochondriaDensity) const
+    const SynapsesInfo& synapsesInfo) const
 {
     SDFMorphologyData sdfMorphologyData;
 
@@ -700,6 +698,8 @@ void MorphologyLoader::_importMorphologyFromURI(
         PROP_DAMPEN_BRANCH_THICKNESS_CHANGERATE.name);
     const auto maxDistanceToSoma = properties.getProperty<double>(
         PROP_MORPHOLOGY_MAX_DISTANCE_TO_SOMA.name);
+    const auto mitochondriaDensity =
+        properties.getProperty<double>(PROP_MITOCHONDRIA_DENSITY.name);
 
     // If there is no compartment report, the offset in the simulation
     // buffer is the index of the morphology in the circuit
@@ -945,7 +945,7 @@ void MorphologyLoader::_addAfferentSynapse(
     position = transformVector3f(position, transformation);
 
     const auto sectionId = synapse.getPostsynapticSectionID();
-    const auto matId = materialId + 5;
+    const auto matId = materialId + MATERIAL_OFFSET_AFFERENT_SYNPASE;
     _addStepSphereGeometry(useSDFGeometry, true, position, radius, matId, -1,
                            model, sectionId, sdfMorphologyData);
 
@@ -974,7 +974,7 @@ void MorphologyLoader::_addEfferentSynapse(
     position = transformVector3f(position, transformation);
 
     const auto sectionId = synapse.getPresynapticSectionID();
-    const auto matId = materialId + 6;
+    const auto matId = materialId + MATERIAL_OFFSET_EFFERENT_SYNPASE;
     _addStepSphereGeometry(useSDFGeometry, true, position, radius, matId, -1,
                            model, sectionId, sdfMorphologyData);
 
@@ -982,6 +982,33 @@ void MorphologyLoader::_addEfferentSynapse(
         _addStepConeGeometry(useSDFGeometry, position, radius * 0.5f, target,
                              radius * 0.5f, matId, -1, model, sectionId,
                              sdfMorphologyData);
+}
+
+void MorphologyLoader::_addMitochondria(ParallelModelContainer& model,
+                                        const size_t materialId,
+                                        const float somaRadius,
+                                        const float mitochondriaDensity) const
+{
+    const float mitochondriaRadius = 0.5f;
+    const float mitochondriaVolume = sphereVolume(mitochondriaRadius);
+
+    const float somaInnerRadius = somaRadius * 0.5f;
+    const float somaVolume =
+        sphereVolume(somaRadius) - sphereVolume(somaInnerRadius);
+    const size_t nbMaxMitochondria = somaVolume / mitochondriaVolume;
+    const size_t nbMitochondria = nbMaxMitochondria * mitochondriaDensity;
+    PLUGIN_DEBUG("Adding mitochondrion: radius = " << somaRadius << ". Adding "
+                                                   << nbMitochondria
+                                                   << " mitochondria");
+    for (size_t i = 0; i < nbMitochondria; ++i)
+    {
+        const auto pointInSphere = getPointInSphere(somaInnerRadius);
+        const auto mitochondriaPosition =
+            somaRadius * pointInSphere +
+            Vector3f(model.morphologyInfo.somaPosition);
+        model.addSphere(materialId + MATERIAL_OFFSET_MITOCHONDRION,
+                        {mitochondriaPosition, mitochondriaRadius});
+    }
 }
 
 size_t MorphologyLoader::_getMaterialIdFromColorScheme(
@@ -1121,30 +1148,6 @@ void MorphologyLoader::createMissingMaterials(Model& model,
     if (simulationHandler)
         for (const auto& material : materials)
             simulationHandler->bind(material.second);
-}
-
-void MorphologyLoader::_generateMitochondria(
-    ParallelModelContainer& model, const float somaRadius,
-    const float mitochondriaDensity) const
-{
-    const float mitochondriaRadius = 0.5f;
-    const float mitochondriaVolume =
-        4.f * M_PI * pow(mitochondriaRadius, 3) / 3.f;
-    const float somaVolume = 4.f * M_PI * pow(somaRadius, 3) / 3.f;
-    const size_t nbMaxMitochondria = somaVolume / mitochondriaVolume;
-    const size_t nbMitochondria = nbMaxMitochondria * mitochondriaDensity;
-    PLUGIN_INFO("nbMaxMitochondria = " << nbMaxMitochondria
-                                       << ", nbMitochondria = "
-                                       << nbMitochondria);
-    for (size_t i = 0; i < nbMitochondria; ++i)
-    {
-        const auto pointInSphere = getPointInSphere();
-        const auto mitochondriaPosition =
-            somaRadius * pointInSphere +
-            Vector3f(model.morphologyInfo.somaPosition);
-        model.addSphere(MATERIAL_OFFSET_MITOCHONDRION,
-                        {mitochondriaPosition, mitochondriaRadius});
-    }
 }
 
 } // namespace circuitexplorer
