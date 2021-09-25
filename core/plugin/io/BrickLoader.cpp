@@ -508,6 +508,15 @@ ModelDescriptorPtr BrickLoader::importFromFile(
         bufferSize = nbElements * sizeof(SDFGeometry);
         file.read((char*)sdfData.geometries.data(), bufferSize);
 
+        if (version <= CACHE_VERSION_3)
+            // Update userParams (Displacement parameters)
+            for (uint64_t i = 0; i < nbElements; ++i)
+            {
+                const char* index = (char*)sdfData.geometries.data() +
+                                    i * sizeof(SDFGeometry) + sizeof(uint64_t);
+                memcpy((char*)index, &DISPLACEMENT_PARAMS, sizeof(Vector3f));
+            }
+
         // SDF Indices
         file.read((char*)&nbElements, sizeof(size_t));
         for (size_t i = 0; i < nbElements; ++i)

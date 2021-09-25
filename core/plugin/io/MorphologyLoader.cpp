@@ -33,7 +33,6 @@ namespace circuitexplorer
 {
 const std::string SUPPORTED_EXTENTION_H5 = "h5";
 const std::string SUPPORTED_EXTENTION_SWC = "swc";
-const Vector3f DISPLACEMENT_PARAMS = {0.05f, 2.f, 0.f}; // Amplitude & frequency
 
 // From http://en.cppreference.com/w/cpp/types/numeric_limits/epsilon
 template <class T>
