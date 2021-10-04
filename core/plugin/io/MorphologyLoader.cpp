@@ -988,10 +988,13 @@ void MorphologyLoader::_addMitochondria(ParallelModelContainer& model,
                                         const float somaRadius,
                                         const float mitochondriaDensity) const
 {
-    const float mitochondriaRadius = 0.5f;
-    const float mitochondriaVolume = sphereVolume(mitochondriaRadius);
+    const float nucleusRatio = 0.2f;
+    const float nucleusRadius = somaRadius * nucleusRatio;
+    const float mitochondriaRadius = 0.25f;
+    const float mitochondriaVolume =
+        4.f * sphereVolume(mitochondriaRadius); // 4 times a sphere?
 
-    const float somaInnerRadius = somaRadius * 0.5f;
+    const float somaInnerRadius = nucleusRadius + mitochondriaRadius;
     const float somaVolume =
         sphereVolume(somaRadius) - sphereVolume(somaInnerRadius);
     const size_t nbMaxMitochondria = somaVolume / mitochondriaVolume;
@@ -999,14 +1002,29 @@ void MorphologyLoader::_addMitochondria(ParallelModelContainer& model,
     PLUGIN_DEBUG("Adding mitochondrion: radius = " << somaRadius << ". Adding "
                                                    << nbMitochondria
                                                    << " mitochondria");
+    // Soma nucleus
+    const auto somaPosition = Vector3f(model.morphologyInfo.somaPosition);
+    model.addSphere(materialId + MATERIAL_OFFSET_SOMA,
+                    {somaPosition, nucleusRadius});
+    // Mitochondria
     for (size_t i = 0; i < nbMitochondria; ++i)
     {
-        const auto pointInSphere = getPointInSphere(somaInnerRadius);
-        const auto mitochondriaPosition =
-            somaRadius * pointInSphere +
-            Vector3f(model.morphologyInfo.somaPosition);
+        const auto pointInSphere = getPointInSphere(nucleusRatio * 2.f);
+        const auto mitochondriaCenter =
+            somaPosition + somaRadius * pointInSphere;
+        const auto upVector = Vector3f((rand() % 1000 - 500) / 1000.f,
+                                       (rand() % 1000 - 500) / 1000.f,
+                                       (rand() % 1000 - 500) / 1000.f);
+        const auto v =
+            cross(normalize(mitochondriaCenter - somaPosition), upVector);
+
         model.addSphere(materialId + MATERIAL_OFFSET_MITOCHONDRION,
-                        {mitochondriaPosition, mitochondriaRadius});
+                        {mitochondriaCenter + v, mitochondriaRadius});
+        model.addSphere(materialId + MATERIAL_OFFSET_MITOCHONDRION,
+                        {mitochondriaCenter - v, mitochondriaRadius});
+        model.addCylinder(materialId + MATERIAL_OFFSET_MITOCHONDRION,
+                          {mitochondriaCenter - v, mitochondriaCenter + v,
+                           mitochondriaRadius});
     }
 }
 

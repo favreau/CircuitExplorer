@@ -51,15 +51,16 @@ bool inBox(const brayns::Vector3f& point, const brayns::Boxf& box)
 
 brayns::Vector3f getPointInSphere(const float innerRadius)
 {
-    float d, x, y, z;
+    float d;
+    brayns::Vector3f v;
     do
     {
-        x = (rand() % 1000 - 500) / 1000.f;
-        y = (rand() % 1000 - 500) / 1000.f;
-        z = (rand() % 1000 - 500) / 1000.f;
-        d = sqrt(x * x + y * y + z * z);
-    } while (d > 1.f && d < innerRadius);
-    return brayns::Vector3f(x, y, z);
+        v = brayns::Vector3f((rand() % 1000 - 500) / 1000.f,
+                             (rand() % 1000 - 500) / 1000.f,
+                             (rand() % 1000 - 500) / 1000.f);
+        d = length(v);
+    } while (d < innerRadius || d > 1.f);
+    return v;
 }
 
 brayns::Vector3f transformVector3f(const brayns::Vector3f& v,
