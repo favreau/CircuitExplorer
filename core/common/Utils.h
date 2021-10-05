@@ -27,12 +27,21 @@
 
 namespace circuitexplorer
 {
+// Convertors
 brayns::Vector3f get_translation(const brayns::Matrix4f& matrix);
 brain::Matrix4f glm_to_vmmlib(const brayns::Matrix4f& matrix);
 brayns::Matrix4f vmmlib_to_glm(const brain::Matrix4f& matrix);
-bool inBox(const brayns::Vector3f& point, const brayns::Boxf& box);
-brayns::Vector3f getPointInSphere(const float innerRadius);
-float sphereVolume(const float radius);
 brayns::Vector3f transformVector3f(const brayns::Vector3f& v,
                                    const brayns::Matrix4f& transformation);
+
+// Containers
+bool inBox(const brayns::Vector3f& point, const brayns::Boxf& box);
+brayns::Vector3f getPointInSphere(const float innerRadius);
+
+// Volumes
+float sphereVolume(const float radius);
+float cylinderVolume(const float height, const float radius);
+float coneVolume(const float height, const float r1, const float r2);
+float capsuleVolume(const float height, const float radius);
+
 } // namespace circuitexplorer

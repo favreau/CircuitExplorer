@@ -80,4 +80,19 @@ float sphereVolume(const float radius)
 {
     return 4.f * M_PI * pow(radius, 3) / 3.f;
 }
+
+float cylinderVolume(const float height, const float radius)
+{
+    return height * M_PI * radius * radius;
+}
+
+float coneVolume(const float height, const float r1, const float r2)
+{
+    return M_PI * (r1 * r1 + r1 * r2 + r2 * r2) * height / 3.f;
+}
+
+float capsuleVolume(const float height, const float radius)
+{
+    return sphereVolume(radius) + cylinderVolume(height, radius);
+}
 } // namespace circuitexplorer

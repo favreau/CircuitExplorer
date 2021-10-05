@@ -79,12 +79,13 @@ bool MorphologyLoader::isSupported(const std::string& /*filename*/,
 MorphologyInfo MorphologyLoader::importMorphology(
     const Gid& gid, const PropertyMap& properties, const servus::URI& source,
     Model& model, const uint64_t index, const SynapsesInfo& synapsesInfo,
-    const Matrix4f& transformation,
-    CompartmentReportPtr compartmentReport) const
+    const Matrix4f& transformation, CompartmentReportPtr compartmentReport,
+    const float mitochondriaDensity) const
 {
     ParallelModelContainer modelContainer;
     _importMorphology(gid, properties, source, index, transformation,
-                      modelContainer, compartmentReport, synapsesInfo);
+                      modelContainer, compartmentReport, synapsesInfo,
+                      mitochondriaDensity);
 
     // Apply transformation to everything except synapes
     modelContainer.applyTransformation(transformation);
@@ -113,7 +114,8 @@ void MorphologyLoader::_importMorphology(
         _createRealisticSoma(properties, source, model);
     else
         _importMorphologyFromURI(gid, properties, source, index, transformation,
-                                 compartmentReport, model, synapsesInfo);
+                                 compartmentReport, model, synapsesInfo,
+                                 mitochondriaDensity);
 }
 
 double MorphologyLoader::_getCorrectedRadius(const PropertyMap& properties,
@@ -541,7 +543,7 @@ void MorphologyLoader::_addSomaGeometry(const PropertyMap& properties,
         _getCorrectedRadius(properties, soma.getMeanRadius());
 
     if (mitochondriaDensity > 0.f)
-        _addMitochondria(model, materialId, somaRadius, mitochondriaDensity);
+        _addSomaInternals(model, materialId, somaRadius, mitochondriaDensity);
 
     const auto& children = soma.getChildren();
     const bool useSDFGeometry =
@@ -677,7 +679,7 @@ void MorphologyLoader::_importMorphologyFromURI(
     const Gid& gid, const PropertyMap& properties, const servus::URI& uri,
     const uint64_t index, const Matrix4f& transformation,
     CompartmentReportPtr compartmentReport, ParallelModelContainer& model,
-    const SynapsesInfo& synapsesInfo) const
+    const SynapsesInfo& synapsesInfo, const float mitochondriaDensity) const
 {
     SDFMorphologyData sdfMorphologyData;
 
@@ -697,8 +699,11 @@ void MorphologyLoader::_importMorphologyFromURI(
         PROP_DAMPEN_BRANCH_THICKNESS_CHANGERATE.name);
     const auto maxDistanceToSoma = properties.getProperty<double>(
         PROP_MORPHOLOGY_MAX_DISTANCE_TO_SOMA.name);
-    const auto mitochondriaDensity =
-        properties.getProperty<double>(PROP_MITOCHONDRIA_DENSITY.name);
+
+    float mitoDensity = mitochondriaDensity;
+    if (mitochondriaDensity == 0.f)
+        mitoDensity =
+            properties.getProperty<double>(PROP_MITOCHONDRIA_DENSITY.name);
 
     // If there is no compartment report, the offset in the simulation
     // buffer is the index of the morphology in the circuit
@@ -712,7 +717,7 @@ void MorphologyLoader::_importMorphologyFromURI(
     {
         _addSomaGeometry(properties, morphology.getSoma(), userDataOffset,
                          model, sdfMorphologyData, compartmentReport != nullptr,
-                         mitochondriaDensity);
+                         mitoDensity);
     }
 
     // Only the first one or two axon sections are reported, so find the
@@ -787,6 +792,8 @@ void MorphologyLoader::_importMorphologyFromURI(
                                     : samples[0].w() * 0.5f);
 
         bool done = false;
+        float axonVolume = 0.f;
+        size_t mitocondriaIndex = 1;
         for (size_t i = step; !done && i < numSamples + step; i += step)
         {
             if (i >= (numSamples - 1))
@@ -871,6 +878,7 @@ void MorphologyLoader::_importMorphologyFromURI(
                     radius = previousRadius + radiusChange;
             }
 
+            // Add Geometry
             if (radius > 0.f)
             {
                 _addStepSphereGeometry(useSDFGeometry, done, position, radius,
@@ -882,7 +890,35 @@ void MorphologyLoader::_importMorphologyFromURI(
                                          target, previousRadius, materialId,
                                          userDataOffset, model, sectionI,
                                          sdfMorphologyData);
+                // Add mitochondria
+                if (mitoDensity != 0.f &&
+                    section.getType() == brain::neuron::SectionType::axon)
+                {
+                    const float mitocondrionRadius = radius * 0.5f;
+                    const float mitocondrionLength = mitocondrionRadius * 3.f;
+                    const float mitocondrionVolume =
+                        capsuleVolume(mitocondrionLength, mitocondrionRadius);
+
+                    const Vector3f direction = target - position;
+                    const float height = length(direction);
+                    axonVolume += coneVolume(height, previousRadius, radius);
+                    const size_t mitocondriaRatio =
+                        axonVolume / (mitocondrionVolume / mitoDensity);
+                    if (mitocondriaRatio == mitocondriaIndex)
+                    {
+                        ++mitocondriaIndex;
+                        PLUGIN_DEBUG("Adding mitochondrion to axon: "
+                                     << mitocondrionVolume / axonVolume);
+                        _addMitochondrion(model, materialId,
+                                          position + (rand() % 100 / 100.f) *
+                                                         direction,
+                                          normalize(direction) *
+                                              mitocondrionLength,
+                                          radius * 0.5f);
+                    }
+                }
             }
+
             previousSample = sample;
             previousRadius = radius;
         }
@@ -983,16 +1019,18 @@ void MorphologyLoader::_addEfferentSynapse(
                              sdfMorphologyData);
 }
 
-void MorphologyLoader::_addMitochondria(ParallelModelContainer& model,
-                                        const size_t materialId,
-                                        const float somaRadius,
-                                        const float mitochondriaDensity) const
+void MorphologyLoader::_addSomaInternals(ParallelModelContainer& model,
+                                         const size_t materialId,
+                                         const float somaRadius,
+                                         const float mitochondriaDensity) const
 {
-    const float nucleusRatio = 0.2f;
-    const float nucleusRadius = somaRadius * nucleusRatio;
-    const float mitochondriaRadius = 0.25f;
-    const float mitochondriaVolume =
-        4.f * sphereVolume(mitochondriaRadius); // 4 times a sphere?
+    const float nucleusRadius =
+        somaRadius * 0.2f; // 20% of the volume of the soma;
+    const float mitochondriaRadius =
+        somaRadius * (0.1f + rand() % 10 / 1000.f); // More of less 10% of the
+                                                    // volume of the soma
+    const float mitochondriaVolume = sphereVolume(mitochondriaRadius) *
+                                     4.f; // 4 times the volume of a sphere?
 
     const float somaInnerRadius = nucleusRadius + mitochondriaRadius;
     const float somaVolume =
@@ -1004,28 +1042,39 @@ void MorphologyLoader::_addMitochondria(ParallelModelContainer& model,
                                                    << " mitochondria");
     // Soma nucleus
     const auto somaPosition = Vector3f(model.morphologyInfo.somaPosition);
-    model.addSphere(materialId + MATERIAL_OFFSET_SOMA,
+    model.addSphere(materialId + MATERIAL_OFFSET_NUCLEUS,
                     {somaPosition, nucleusRadius});
     // Mitochondria
     for (size_t i = 0; i < nbMitochondria; ++i)
     {
-        const auto pointInSphere = getPointInSphere(nucleusRatio * 2.f);
+        const auto pointInSphere =
+            getPointInSphere(somaInnerRadius / somaRadius);
         const auto mitochondriaCenter =
             somaPosition + somaRadius * pointInSphere;
+
         const auto upVector = Vector3f((rand() % 1000 - 500) / 1000.f,
                                        (rand() % 1000 - 500) / 1000.f,
                                        (rand() % 1000 - 500) / 1000.f);
-        const auto v =
+        const auto direction =
             cross(normalize(mitochondriaCenter - somaPosition), upVector);
 
-        model.addSphere(materialId + MATERIAL_OFFSET_MITOCHONDRION,
-                        {mitochondriaCenter + v, mitochondriaRadius});
-        model.addSphere(materialId + MATERIAL_OFFSET_MITOCHONDRION,
-                        {mitochondriaCenter - v, mitochondriaRadius});
-        model.addCylinder(materialId + MATERIAL_OFFSET_MITOCHONDRION,
-                          {mitochondriaCenter - v, mitochondriaCenter + v,
-                           mitochondriaRadius});
+        _addMitochondrion(model, materialId, mitochondriaCenter, direction,
+                          mitochondriaRadius);
     }
+}
+
+void MorphologyLoader::_addMitochondrion(ParallelModelContainer& model,
+                                         const size_t materialId,
+                                         const Vector3f& position,
+                                         const Vector3f& direction,
+                                         const float radius) const
+{
+    model.addSphere(materialId + MATERIAL_OFFSET_MITOCHONDRION,
+                    {position + direction, radius});
+    model.addSphere(materialId + MATERIAL_OFFSET_MITOCHONDRION,
+                    {position - direction, radius});
+    model.addCylinder(materialId + MATERIAL_OFFSET_MITOCHONDRION,
+                      {position + direction, position - direction, radius});
 }
 
 size_t MorphologyLoader::_getMaterialIdFromColorScheme(

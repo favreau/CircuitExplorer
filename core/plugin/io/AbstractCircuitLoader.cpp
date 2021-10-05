@@ -46,6 +46,10 @@ const strings LOADER_EXTENSIONS{"BlueConfig",    "BlueConfig3",
 const std::string GID_PATTERN = "{gid}";
 const size_t NB_MATERIALS_PER_INSTANCE = 10;
 
+// Mitochondria density per layer
+const std::vector<float> MITOCHONDRIA_DENSITY = {0.0459f, 0.0522f, 0.064f,
+                                                 0.0774f, 0.0575f, 0.0403f};
+
 AbstractCircuitLoader::AbstractCircuitLoader(
     Scene &scene, const ApplicationParameters &applicationParameters,
     PropertyMap &&loaderParams)
@@ -911,11 +915,12 @@ float AbstractCircuitLoader::_importMorphologies(
                     std::unique_ptr<brain::Synapses>(new brain::Synapses(
                         circuit.getEfferentSynapses({*gid})));
 
+            const float mitochondriaDensity = MITOCHONDRIA_DENSITY[layerIds[i]];
             MorphologyInfo morphologyInfo;
             morphologyInfo =
                 loader.importMorphology(*gid, morphologyProps, uri, model, i,
                                         synapsesInfo, transformations[i],
-                                        compartmentReport);
+                                        compartmentReport, mitochondriaDensity);
 
             maxDistanceToSoma =
                 std::max(morphologyInfo.maxDistanceToSoma, maxDistanceToSoma);

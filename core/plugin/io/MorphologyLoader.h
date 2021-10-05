@@ -101,7 +101,8 @@ public:
         const servus::URI& source, Model& model, const uint64_t index,
         const SynapsesInfo& synapsesInfo,
         const Matrix4f& transformation = Matrix4f(),
-        CompartmentReportPtr compartmentReport = nullptr) const;
+        CompartmentReportPtr compartmentReport = nullptr,
+        const float mitochondriaDensity = 0.f) const;
 
     /**
      * @brief setDefaultMaterialId Set the default material for the morphology
@@ -171,7 +172,8 @@ private:
                                   const Matrix4f& transformation,
                                   CompartmentReportPtr compartmentReport,
                                   ParallelModelContainer& model,
-                                  const SynapsesInfo& synapsesInfo) const;
+                                  const SynapsesInfo& synapsesInfo,
+                                  const float mitochondriaDensity) const;
 
     /**
      * @brief _createRealisticSoma Creates a realistic soma using the metaballs
@@ -291,9 +293,13 @@ private:
                              ParallelModelContainer& model,
                              SDFMorphologyData& sdfMorphologyData) const;
 
-    void _addMitochondria(ParallelModelContainer& model,
-                          const size_t materialId, const float somaRadius,
-                          const float mitochondriaDensity) const;
+    void _addSomaInternals(ParallelModelContainer& model,
+                           const size_t materialId, const float somaRadius,
+                           const float mitochondriaDensity) const;
+
+    void _addMitochondrion(ParallelModelContainer& model,
+                           const size_t materialId, const Vector3f& position,
+                           const Vector3f& direction, const float radius) const;
 
     size_t _defaultMaterialId{NO_MATERIAL};
     PropertyMap _defaults;
