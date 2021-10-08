@@ -130,7 +130,7 @@ PropertyMap AstrocyteLoader::getCLIProperties()
     pm.setProperty(PROP_USE_SDF_GEOMETRY);
     pm.setProperty(PROP_MORPHOLOGY_COLOR_SCHEME);
     pm.setProperty(PROP_MORPHOLOGY_QUALITY);
-    pm.setProperty(PROP_MITOCHONDRIA_DENSITY);
+    pm.setProperty(PROP_INTERNALS);
     return pm;
 }
 

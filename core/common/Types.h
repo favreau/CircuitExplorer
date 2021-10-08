@@ -307,8 +307,8 @@ const brayns::Property PROP_LOAD_AFFERENT_SYNAPSES = {
     "111LoadAfferentSynapses", false, {"Loads afferent synapses"}};
 const brayns::Property PROP_LOAD_EFFERENT_SYNAPSES = {
     "112LoadEfferentSynapses", false, {"Loads efferent synapses"}};
-const brayns::Property PROP_MITOCHONDRIA_DENSITY = {
-    "120MitochondriaDensity", 0.0, 0.0, 1.0, {"Mitochondria density"}};
+const brayns::Property PROP_INTERNALS = {
+    "120Internals", false, {"Generate internals (mitochondria and nucleus)"}};
 // clang-format on
 
 struct MorphologyInfo

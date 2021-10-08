@@ -100,7 +100,7 @@ class CircuitExplorer:
                      morphology_quality=GEOMETRY_QUALITY_HIGH, max_distance_to_soma=1e6,
                      cell_clipping=False, load_afferent_synapses=False,
                      load_efferent_synapses=False,
-                     synapse_radius=0.0, mitochondria_density=0.0):
+                     synapse_radius=0.0, generate_internals=False):
         """
         Load a circuit from a give Blue/Circuit configuration file
 
@@ -153,7 +153,7 @@ class CircuitExplorer:
         :param bool load_afferent_synapses: Load afferent synapses
         :param bool load_efferent_synapses: Load efferent synapses
         :param float synapse_radius: Synapse radius
-        :param float mitochondria_density: Density of mitochondria in the soma and axon
+        :param bool generate_internals: Generate cell internals (mitochondria and nucleus)
         :return: Result of the request submission
         :rtype: str
         """
@@ -215,7 +215,7 @@ class CircuitExplorer:
         props['111LoadAfferentSynapses'] = load_afferent_synapses
         props['112LoadEfferentSynapses'] = load_efferent_synapses
 
-        props['120MitochondriaDensity'] = mitochondria_density
+        props['120Internals'] = generate_internals
 
         params = dict()
         params['name'] = name
@@ -301,7 +301,7 @@ class CircuitExplorer:
         props['111LoadAfferentSynapses'] = True
         props['112LoadEfferentSynapses'] = False
 
-        props['120MitochondriaDensity'] = 0.0
+        props['120Internals'] = False
 
         params = dict()
         params['name'] = 'Pair-symapses (%d, %d)' % (pre_synaptic_neuron, post_synaptic_neuron)

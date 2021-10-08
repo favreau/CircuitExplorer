@@ -235,6 +235,7 @@ private:
                           ParallelModelContainer& model,
                           SDFMorphologyData& sdfMorphologyData,
                           const bool useSimulationModel,
+                          const bool generateInternals,
                           const float mitochondriaDensity = 0.f) const;
 
     /**

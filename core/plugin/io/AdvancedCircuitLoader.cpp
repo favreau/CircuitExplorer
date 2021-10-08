@@ -90,7 +90,7 @@ PropertyMap AdvancedCircuitLoader::getCLIProperties()
     pm.setProperty(PROP_SYNAPSE_RADIUS);
     pm.setProperty(PROP_LOAD_AFFERENT_SYNAPSES);
     pm.setProperty(PROP_LOAD_EFFERENT_SYNAPSES);
-    pm.setProperty(PROP_MITOCHONDRIA_DENSITY);
+    pm.setProperty(PROP_INTERNALS);
     return pm;
 }
 } // namespace circuitexplorer

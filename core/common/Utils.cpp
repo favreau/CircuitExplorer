@@ -82,20 +82,6 @@ brayns::Vector3fs getPointsInSphere(const size_t nbPoints,
     return points;
 }
 
-brayns::Vector3fs getPointsInCylinder(const size_t nbPoints,
-                                      const brayns::Vector3f& direction,
-                                      const float amplitude)
-{
-    brayns::Vector3fs points;
-    for (size_t i = 0; i < nbPoints; ++i)
-        points.push_back(direction * i +
-                         amplitude *
-                             brayns::Vector3f((rand() % 1000) / 1000.f,
-                                              (rand() % 1000) / 1000.f,
-                                              (rand() % 1000) / 1000.f));
-    return points;
-}
-
 brayns::Vector3f transformVector3f(const brayns::Vector3f& v,
                                    const brayns::Matrix4f& transformation)
 {

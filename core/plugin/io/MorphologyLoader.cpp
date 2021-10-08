@@ -530,7 +530,8 @@ void MorphologyLoader::_addSomaGeometry(
     const uint64_t index, const PropertyMap& properties,
     const brain::neuron::Soma& soma, uint64_t offset,
     ParallelModelContainer& model, SDFMorphologyData& sdfMorphologyData,
-    const bool /*useSimulationModel*/, const float mitochondriaDensity) const
+    const bool /*useSimulationModel*/, const bool generateInternals,
+    const float mitochondriaDensity) const
 {
     const size_t materialId =
         _getMaterialIdFromColorScheme(properties,
@@ -540,7 +541,7 @@ void MorphologyLoader::_addSomaGeometry(
     const double somaRadius =
         _getCorrectedRadius(properties, soma.getMeanRadius());
 
-    if (mitochondriaDensity > 0.f)
+    if (generateInternals && mitochondriaDensity > 0.f)
         _addSomaInternals(index, model, materialId, somaRadius,
                           mitochondriaDensity);
 
@@ -698,11 +699,8 @@ void MorphologyLoader::_importMorphologyFromURI(
         PROP_DAMPEN_BRANCH_THICKNESS_CHANGERATE.name);
     const auto maxDistanceToSoma = properties.getProperty<double>(
         PROP_MORPHOLOGY_MAX_DISTANCE_TO_SOMA.name);
-
-    float mitoDensity = mitochondriaDensity;
-    if (mitochondriaDensity == 0.f)
-        mitoDensity =
-            properties.getProperty<double>(PROP_MITOCHONDRIA_DENSITY.name);
+    const auto generateInternals =
+        properties.getProperty<bool>(PROP_INTERNALS.name);
 
     // If there is no compartment report, the offset in the simulation
     // buffer is the index of the morphology in the circuit
@@ -716,7 +714,8 @@ void MorphologyLoader::_importMorphologyFromURI(
     {
         _addSomaGeometry(index, properties, morphology.getSoma(),
                          userDataOffset, model, sdfMorphologyData,
-                         compartmentReport != nullptr, mitoDensity);
+                         compartmentReport != nullptr, generateInternals,
+                         mitochondriaDensity);
     }
 
     // Only the first one or two axon sections are reported, so find the
@@ -899,11 +898,12 @@ void MorphologyLoader::_importMorphologyFromURI(
             previousRadius = radius;
         }
 
-        if (mitoDensity > 0.f &&
+        if (generateInternals &&
             section.getType() == brain::neuron::SectionType::axon)
         {
             _addSectionInternals(properties, sectionLength, sectionVolume,
-                                 samples, mitoDensity, materialId, model);
+                                 samples, mitochondriaDensity, materialId,
+                                 model);
         }
     }
 

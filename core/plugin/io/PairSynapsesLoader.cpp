@@ -61,7 +61,7 @@ PairSynapsesLoader::PairSynapsesLoader(
     _fixedDefaults.setProperty({PROP_AREAS_OF_INTEREST.name, 0});
     _fixedDefaults.setProperty({PROP_LOAD_AFFERENT_SYNAPSES.name, true});
     _fixedDefaults.setProperty({PROP_LOAD_EFFERENT_SYNAPSES.name, true});
-    _fixedDefaults.setProperty({PROP_MITOCHONDRIA_DENSITY.name, 0.0});
+    _fixedDefaults.setProperty({PROP_INTERNALS.name, false});
 }
 
 ModelDescriptorPtr PairSynapsesLoader::importFromFile(

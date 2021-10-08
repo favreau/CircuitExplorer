@@ -66,7 +66,7 @@ MeshCircuitLoader::MeshCircuitLoader(
     _fixedDefaults.setProperty({PROP_SYNAPSE_RADIUS.name, 1.0});
     _fixedDefaults.setProperty({PROP_LOAD_AFFERENT_SYNAPSES.name, false});
     _fixedDefaults.setProperty({PROP_LOAD_EFFERENT_SYNAPSES.name, false});
-    _fixedDefaults.setProperty({PROP_MITOCHONDRIA_DENSITY.name, 0.0});
+    _fixedDefaults.setProperty({PROP_INTERNALS.name, false});
 }
 
 ModelDescriptorPtr MeshCircuitLoader::importFromFile(
