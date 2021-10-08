@@ -380,26 +380,26 @@ ModelDescriptorPtr AbstractCircuitLoader::importCircuit(
 
     callback.updateProgress("Attaching to simulation data...", 0);
 
-    // Attach simulation handler
+    PLUGIN_INFO("Attach simulation handler");
     const auto compartmentReport =
         _attachSimulationHandler(properties, blueConfiguration, *model,
                                  reportType, allGids);
 
-    // Cell transformations
+    PLUGIN_INFO("Apply cell transformations");
     Matrix4fs allTransformations;
     for (const auto &transformation : circuit.getTransforms(allGids))
         allTransformations.push_back(vmmlib_to_glm(transformation));
 
-    // Filter out guids according to clipping planes
+    PLUGIN_INFO("Filter out guids according to clipping planes");
     if (cellClipping)
         _filterGIDsWithClippingPlanes(allGids, allTransformations);
 
-    // Filter out guids according to aeras of interest
+    PLUGIN_INFO("Filter out guids according to aeras of interest");
     if (areasOfInterest != 0)
         _filterGIDsWithAreasOfInterest(areasOfInterest, allGids,
                                        allTransformations);
 
-    // Import meshes and morphologies
+    PLUGIN_INFO("Identify layer ids");
     callback.updateProgress("Identifying layer ids...", 0);
     const auto layerIds =
         _populateLayerIds(properties, blueConfiguration,
@@ -408,15 +408,18 @@ ModelDescriptorPtr AbstractCircuitLoader::importCircuit(
                               : brain::GIDSet());
 
     callback.updateProgress("Identifying electro-physiology types...", 0);
+    PLUGIN_INFO("Identify electro-physiology types");
     const auto &electrophysiologyTypes = circuit.getElectrophysiologyTypes(
         colorScheme == CircuitColorScheme::by_etype ? allGids
                                                     : brain::GIDSet());
     callback.updateProgress("Getting morphology types...", 0);
+    PLUGIN_INFO("Get morphology types");
     size_ts morphologyTypes;
     if (colorScheme == CircuitColorScheme::by_mtype)
         morphologyTypes = circuit.getMorphologyTypes(allGids);
 
     callback.updateProgress("Importing morphologies...", 0);
+    PLUGIN_INFO("Import morphologies");
     float maxMorphologyLength = 0.f;
     if (meshFolder.empty())
         maxMorphologyLength =
@@ -426,6 +429,7 @@ ModelDescriptorPtr AbstractCircuitLoader::importCircuit(
                                 electrophysiologyTypes, callback);
     else
     {
+        PLUGIN_INFO("Import meshes");
         _importMeshes(properties, *model, allGids, allTransformations,
                       targetGIDOffsets, layerIds, morphologyTypes,
                       electrophysiologyTypes, callback);
@@ -443,14 +447,14 @@ ModelDescriptorPtr AbstractCircuitLoader::importCircuit(
 
     if (userDataType == UserDataType::distance_to_soma)
     {
-        // Update cell growth information
+        PLUGIN_INFO("Update cell growth information");
         model->getTransferFunction().setValuesRange({0.f, maxMorphologyLength});
         const auto frameSize = uint64_t(maxMorphologyLength) + 1;
         model->getSimulationHandler()->setFrameSize(frameSize);
         model->getSimulationHandler()->setNbFrames(frameSize);
     }
 
-    // Create custom materials
+    PLUGIN_INFO("Create custom materials");
     PropertyMap materialProps;
     materialProps.setProperty(
         {MATERIAL_PROPERTY_CAST_USER_DATA,
@@ -463,16 +467,16 @@ ModelDescriptorPtr AbstractCircuitLoader::importCircuit(
          static_cast<int>(MaterialClippingMode::no_clipping)});
     MorphologyLoader::createMissingMaterials(*model, materialProps);
 
-    // Apply default colotmap
+    PLUGIN_INFO("Apply default colormap");
     _setDefaultCircuitColorMap(*model);
 
-    // Compute circuit center according to soma positions
+    PLUGIN_INFO("Compute circuit center according to soma positions");
     callback.updateProgress("Computing circuit center...", 1);
     Boxf circuitCenter;
     for (const auto &transformation : allTransformations)
         circuitCenter.merge(get_translation(transformation));
 
-    // Create model
+    PLUGIN_INFO("Create model");
     ModelMetadata metadata = {
         {"Report", properties.getProperty<std::string>(PROP_REPORT.name)},
         {"Report type",
@@ -561,22 +565,29 @@ size_ts AbstractCircuitLoader::_populateLayerIds(
     const brain::GIDSet &gids) const
 {
     size_ts layerIds;
+    const auto circuitSource = blueConfig.getCircuitSource();
     try
     {
-        brion::Circuit brionCircuit(blueConfig.getCircuitSource());
-        for (const auto &a : brionCircuit.get(gids, brion::NEURON_LAYER))
-            layerIds.push_back(std::stoi(a[0]));
+        PLUGIN_INFO("Open Brion circuit from " << circuitSource);
+        const brion::Circuit brionCircuit(circuitSource);
+        for (const auto &values : brionCircuit.get(gids, brion::NEURON_LAYER))
+            layerIds.push_back(values.size() > 0 ? std::stoi(values[0]) : 0);
     }
     catch (...)
     {
+        PLUGIN_INFO("Failed to open Brion circuit from " << circuitSource);
         const auto colorScheme = stringToEnum<CircuitColorScheme>(
             properties.getProperty<std::string>(
                 PROP_CIRCUIT_COLOR_SCHEME.name));
         if (colorScheme == CircuitColorScheme::by_layer)
+        {
             PLUGIN_ERROR(
                 "Only MVD2 format is currently supported by Brion "
                 "circuits. Color scheme by layer not available for "
                 "this circuit");
+        }
+        else
+            PLUGIN_INFO("No layer Id could be identified");
     }
     return layerIds;
 }
@@ -855,28 +866,12 @@ float AbstractCircuitLoader::_importMorphologies(
     const size_ts &electrophysiologyTypes, const LoaderProgress &callback,
     const size_t materialId) const
 {
-    float maxDistanceToSoma = 0.f;
-    Timer chrono;
-    const auto sectionTypes =
-        MorphologyLoader::getSectionTypesFromProperties(_defaults);
-    const bool somasOnly =
-        (sectionTypes.size() == 1 &&
-         sectionTypes[0] == brain::neuron::SectionType::soma);
-    brain::URIs uris;
-    if (!somasOnly)
-        uris = circuit.getMorphologyURIs(gids);
-
-    PropertyMap morphologyProps(properties);
-    MorphologyLoader loader(_scene, std::move(morphologyProps));
-    auto gid = gids.begin();
-
     const auto preSynapticNeuron =
         properties.getProperty<std::string>(PROP_PRESYNAPTIC_NEURON_GID.name);
     const auto postSynapticNeuron =
         properties.getProperty<std::string>(PROP_POSTSYNAPTIC_NEURON_GID.name);
     const bool prePostSynapticUsecase =
         (!preSynapticNeuron.empty() && !postSynapticNeuron.empty());
-
     const bool loadAfferentSynapses =
         properties.getProperty<bool>(PROP_LOAD_AFFERENT_SYNAPSES.name);
     const bool loadEfferentSynapses =
@@ -884,9 +879,30 @@ float AbstractCircuitLoader::_importMorphologies(
     const double synapseRadius =
         properties.getProperty<double>(PROP_SYNAPSE_RADIUS.name);
 
+    Timer chrono;
+    const auto sectionTypes =
+        MorphologyLoader::getSectionTypesFromProperties(_defaults);
+    const bool somasOnly =
+        (sectionTypes.size() == 1 &&
+         sectionTypes[0] == brain::neuron::SectionType::soma);
+
+    brain::URIs uris;
+    if (!somasOnly)
+    {
+        PLUGIN_INFO("Get morphology URIs");
+        uris = circuit.getMorphologyURIs(gids);
+    }
+
+    PLUGIN_INFO("Create morphology loader");
+    PropertyMap morphologyProps(properties);
+    MorphologyLoader loader(_scene, std::move(morphologyProps));
+    auto gid = gids.begin();
+
+    float maxDistanceToSoma = 0.f;
     for (uint64_t i = 0; i < gids.size(); ++i)
     {
         const auto uri = somasOnly ? brain::URI() : uris[i];
+        PLUGIN_INFO("Load " << uri);
         const auto id =
             _getMaterialFromCircuitAttributes(properties, i, materialId,
                                               targetGIDOffsets, layerIds,
@@ -915,7 +931,11 @@ float AbstractCircuitLoader::_importMorphologies(
                     std::unique_ptr<brain::Synapses>(new brain::Synapses(
                         circuit.getEfferentSynapses({*gid})));
 
-            const float mitochondriaDensity = MITOCHONDRIA_DENSITY[layerIds[i]];
+            const size_t layerId = layerIds[i];
+            const float mitochondriaDensity =
+                (layerId < MITOCHONDRIA_DENSITY.size()
+                     ? MITOCHONDRIA_DENSITY[layerId]
+                     : 0.f);
             MorphologyInfo morphologyInfo;
             morphologyInfo =
                 loader.importMorphology(*gid, morphologyProps, uri, model, i,
