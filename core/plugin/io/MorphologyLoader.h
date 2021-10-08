@@ -230,7 +230,7 @@ private:
     /**
      * Adds a Soma geometry to the model
      */
-    void _addSomaGeometry(const PropertyMap& properties,
+    void _addSomaGeometry(const uint64_t index, const PropertyMap& properties,
                           const brain::neuron::Soma& soma, uint64_t offset,
                           ParallelModelContainer& model,
                           SDFMorphologyData& sdfMorphologyData,
@@ -293,13 +293,19 @@ private:
                              ParallelModelContainer& model,
                              SDFMorphologyData& sdfMorphologyData) const;
 
-    void _addSomaInternals(ParallelModelContainer& model,
+    void _addSomaInternals(const uint64_t index, ParallelModelContainer& model,
                            const size_t materialId, const float somaRadius,
                            const float mitochondriaDensity) const;
 
-    void _addMitochondrion(ParallelModelContainer& model,
-                           const size_t materialId, const Vector3f& position,
-                           const Vector3f& direction, const float radius) const;
+    void _addSectionInternals(const PropertyMap& properties,
+                              const float sectionLength,
+                              const float sectionVolume,
+                              const brion::Vector4fs& samples,
+                              const float mitochondriaDensity,
+                              const size_t materialId,
+                              ParallelModelContainer& model) const;
+
+    size_t _getNbMitochondrionSegments() const;
 
     size_t _defaultMaterialId{NO_MATERIAL};
     PropertyMap _defaults;

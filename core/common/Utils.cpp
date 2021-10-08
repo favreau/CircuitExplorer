@@ -51,16 +51,49 @@ bool inBox(const brayns::Vector3f& point, const brayns::Boxf& box)
 
 brayns::Vector3f getPointInSphere(const float innerRadius)
 {
-    float d;
+    const float radius =
+        innerRadius + (rand() % 1000 / 1000.f) * (1.f - innerRadius);
+    const float phi = M_PI * ((rand() % 2000 - 1000) / 1000.f);
+    const float theta = M_PI * ((rand() % 2000 - 1000) / 1000.f);
     brayns::Vector3f v;
-    do
-    {
-        v = brayns::Vector3f((rand() % 1000 - 500) / 1000.f,
-                             (rand() % 1000 - 500) / 1000.f,
-                             (rand() % 1000 - 500) / 1000.f);
-        d = length(v);
-    } while (d < innerRadius || d > 1.f);
+    v.x = radius * sin(phi) * cos(theta);
+    v.y = radius * sin(phi) * sin(theta);
+    v.z = radius * cos(phi);
     return v;
+}
+
+brayns::Vector3fs getPointsInSphere(const size_t nbPoints,
+                                    const float innerRadius)
+{
+    const float radius =
+        innerRadius + (rand() % 1000 / 1000.f) * (1.f - innerRadius);
+    float phi = M_PI * ((rand() % 2000 - 1000) / 1000.f);
+    float theta = M_PI * ((rand() % 2000 - 1000) / 1000.f);
+    brayns::Vector3fs points;
+    for (size_t i = 0; i < nbPoints; ++i)
+    {
+        brayns::Vector3f point = {radius * sin(phi) * cos(theta),
+                                  radius * sin(phi) * sin(theta),
+                                  radius * cos(phi)};
+        points.push_back(point);
+        phi += ((rand() % 1000) / 5000.f);
+        theta += ((rand() % 1000) / 5000.f);
+    }
+    return points;
+}
+
+brayns::Vector3fs getPointsInCylinder(const size_t nbPoints,
+                                      const brayns::Vector3f& direction,
+                                      const float amplitude)
+{
+    brayns::Vector3fs points;
+    for (size_t i = 0; i < nbPoints; ++i)
+        points.push_back(direction * i +
+                         amplitude *
+                             brayns::Vector3f((rand() % 1000) / 1000.f,
+                                              (rand() % 1000) / 1000.f,
+                                              (rand() % 1000) / 1000.f));
+    return points;
 }
 
 brayns::Vector3f transformVector3f(const brayns::Vector3f& v,

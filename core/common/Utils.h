@@ -37,6 +37,11 @@ brayns::Vector3f transformVector3f(const brayns::Vector3f& v,
 // Containers
 bool inBox(const brayns::Vector3f& point, const brayns::Boxf& box);
 brayns::Vector3f getPointInSphere(const float innerRadius);
+brayns::Vector3fs getPointsInSphere(const size_t nbPoints,
+                                    const float innerRadius);
+brayns::Vector3fs getPointsInCylinder(const size_t nbPoints,
+                                      const brayns::Vector3f& direction,
+                                      const float amplitude);
 
 // Volumes
 float sphereVolume(const float radius);

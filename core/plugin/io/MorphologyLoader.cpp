@@ -526,13 +526,11 @@ MorphologyTreeStructure MorphologyLoader::_calculateMorphologyTreeStructure(
     return mts;
 }
 
-void MorphologyLoader::_addSomaGeometry(const PropertyMap& properties,
-                                        const brain::neuron::Soma& soma,
-                                        uint64_t offset,
-                                        ParallelModelContainer& model,
-                                        SDFMorphologyData& sdfMorphologyData,
-                                        const bool /*useSimulationModel*/,
-                                        const float mitochondriaDensity) const
+void MorphologyLoader::_addSomaGeometry(
+    const uint64_t index, const PropertyMap& properties,
+    const brain::neuron::Soma& soma, uint64_t offset,
+    ParallelModelContainer& model, SDFMorphologyData& sdfMorphologyData,
+    const bool /*useSimulationModel*/, const float mitochondriaDensity) const
 {
     const size_t materialId =
         _getMaterialIdFromColorScheme(properties,
@@ -543,7 +541,8 @@ void MorphologyLoader::_addSomaGeometry(const PropertyMap& properties,
         _getCorrectedRadius(properties, soma.getMeanRadius());
 
     if (mitochondriaDensity > 0.f)
-        _addSomaInternals(model, materialId, somaRadius, mitochondriaDensity);
+        _addSomaInternals(index, model, materialId, somaRadius,
+                          mitochondriaDensity);
 
     const auto& children = soma.getChildren();
     const bool useSDFGeometry =
@@ -715,9 +714,9 @@ void MorphologyLoader::_importMorphologyFromURI(
         std::find(sectionTypes.begin(), sectionTypes.end(),
                   brain::neuron::SectionType::soma) != sectionTypes.end())
     {
-        _addSomaGeometry(properties, morphology.getSoma(), userDataOffset,
-                         model, sdfMorphologyData, compartmentReport != nullptr,
-                         mitoDensity);
+        _addSomaGeometry(index, properties, morphology.getSoma(),
+                         userDataOffset, model, sdfMorphologyData,
+                         compartmentReport != nullptr, mitoDensity);
     }
 
     // Only the first one or two axon sections are reported, so find the
@@ -755,21 +754,21 @@ void MorphologyLoader::_importMorphologyFromURI(
 
         const auto materialId =
             _getMaterialIdFromColorScheme(properties, section.getType());
-        const auto& samples = section.getSamples();
+        const brion::Vector4fs& samples = section.getSamples();
         if (samples.empty())
             continue;
 
-        const size_t numSamples = samples.size();
+        const size_t nbSamples = samples.size();
 
         auto previousSample = samples[0];
         size_t step = 1;
         switch (morphologyQuality)
         {
         case MorphologyQuality::low:
-            step = numSamples - 1;
+            step = nbSamples - 1;
             break;
         case MorphologyQuality::medium:
-            step = numSamples / 2;
+            step = nbSamples / 2;
             step = (step == 0) ? 1 : step;
             break;
         default:
@@ -782,7 +781,7 @@ void MorphologyLoader::_importMorphologyFromURI(
             const auto& counts =
                 compartmentReport->getCompartmentCounts()[index];
             // Number of compartments usually differs from number of samples
-            segmentStep = counts[section.getID()] / double(numSamples);
+            segmentStep = counts[section.getID()] / double(nbSamples);
         }
 
         auto previousRadius =
@@ -792,17 +791,19 @@ void MorphologyLoader::_importMorphologyFromURI(
                                     : samples[0].w() * 0.5f);
 
         bool done = false;
-        float axonVolume = 0.f;
-        size_t mitocondriaIndex = 1;
-        for (size_t i = step; !done && i < numSamples + step; i += step)
+        float sectionVolume = 0.f;
+        float sectionLength = 0.f;
+
+        // Axon and dendrites
+        for (size_t s = step; !done && s < nbSamples + step; s += step)
         {
-            if (i >= (numSamples - 1))
+            if (s >= (nbSamples - 1))
             {
-                i = numSamples - 1;
+                s = nbSamples - 1;
                 done = true;
             }
 
-            const auto distanceToSoma = _distanceToSoma(section, i);
+            const auto distanceToSoma = _distanceToSoma(section, s);
             if (distanceToSoma > maxDistanceToSoma)
                 continue;
 
@@ -832,7 +833,7 @@ void MorphologyLoader::_importMorphologyFromURI(
                     {
                         if (counts[section.getID()] > 0)
                             userDataOffset = offsets[section.getID()] +
-                                             double(i - step) * segmentStep;
+                                             double(s - step) * segmentStep;
                         else
                         {
                             if (section.getType() ==
@@ -853,20 +854,20 @@ void MorphologyLoader::_importMorphologyFromURI(
                 break;
             }
 
-            const auto sample = samples[i];
+            const auto sample = samples[s];
             Vector3f position(sample.x(), sample.y(), sample.z());
             Vector3f target(previousSample.x(), previousSample.y(),
                             previousSample.z());
+            sectionLength += length(position - target);
 
             model.morphologyInfo.bounds.merge(position);
             model.morphologyInfo.bounds.merge(target);
 
-            auto radius =
-                _getCorrectedRadius(properties, samples[i].w() * 0.5f);
+            auto radius = _getCorrectedRadius(properties, sample.w() * 0.5f);
             const double maxRadiusChange = 0.1f;
 
             const double dist = glm::length(target - position);
-            if (dist > 0.0001f && i != samples.size() - 1 &&
+            if (dist > 0.0001f && s != samples.size() - 1 &&
                 dampenBranchThicknessChangerate)
             {
                 const double radiusChange =
@@ -890,37 +891,19 @@ void MorphologyLoader::_importMorphologyFromURI(
                                          target, previousRadius, materialId,
                                          userDataOffset, model, sectionI,
                                          sdfMorphologyData);
-                // Add mitochondria
-                if (mitoDensity != 0.f &&
-                    section.getType() == brain::neuron::SectionType::axon)
-                {
-                    const float mitocondrionRadius = radius * 0.5f;
-                    const float mitocondrionLength = mitocondrionRadius * 3.f;
-                    const float mitocondrionVolume =
-                        capsuleVolume(mitocondrionLength, mitocondrionRadius);
-
-                    const Vector3f direction = target - position;
-                    const float height = length(direction);
-                    axonVolume += coneVolume(height, previousRadius, radius);
-                    const size_t mitocondriaRatio =
-                        axonVolume / (mitocondrionVolume / mitoDensity);
-                    if (mitocondriaRatio == mitocondriaIndex)
-                    {
-                        ++mitocondriaIndex;
-                        PLUGIN_DEBUG("Adding mitochondrion to axon: "
-                                     << mitocondrionVolume / axonVolume);
-                        _addMitochondrion(model, materialId,
-                                          position + (rand() % 100 / 100.f) *
-                                                         direction,
-                                          normalize(direction) *
-                                              mitocondrionLength,
-                                          radius * 0.5f);
-                    }
-                }
+                sectionVolume += coneVolume(length(position - target),
+                                            previousRadius, radius);
             }
 
             previousSample = sample;
             previousRadius = radius;
+        }
+
+        if (mitoDensity > 0.f &&
+            section.getType() == brain::neuron::SectionType::axon)
+        {
+            _addSectionInternals(properties, sectionLength, sectionVolume,
+                                 samples, mitoDensity, materialId, model);
         }
     }
 
@@ -1019,62 +1002,142 @@ void MorphologyLoader::_addEfferentSynapse(
                              sdfMorphologyData);
 }
 
-void MorphologyLoader::_addSomaInternals(ParallelModelContainer& model,
+void MorphologyLoader::_addSomaInternals(const uint64_t index,
+                                         ParallelModelContainer& model,
                                          const size_t materialId,
                                          const float somaRadius,
                                          const float mitochondriaDensity) const
 {
     const float nucleusRadius =
-        somaRadius * 0.2f; // 20% of the volume of the soma;
+        somaRadius * 0.8f; // 80% of the volume of the soma;
     const float mitochondriaRadius =
-        somaRadius * (0.1f + rand() % 10 / 1000.f); // More of less 10% of the
-                                                    // volume of the soma
-    const float mitochondriaVolume = sphereVolume(mitochondriaRadius) *
-                                     4.f; // 4 times the volume of a sphere?
+        somaRadius * 0.025f; // 5% of the volume of the soma
 
     const float somaInnerRadius = nucleusRadius + mitochondriaRadius;
-    const float somaVolume =
-        sphereVolume(somaRadius) - sphereVolume(somaInnerRadius);
-    const size_t nbMaxMitochondria = somaVolume / mitochondriaVolume;
-    const size_t nbMitochondria = nbMaxMitochondria * mitochondriaDensity;
-    PLUGIN_DEBUG("Adding mitochondrion: radius = " << somaRadius << ". Adding "
-                                                   << nbMitochondria
-                                                   << " mitochondria");
+    const float availableVolumeForMitochondria =
+        sphereVolume(somaRadius) * mitochondriaDensity;
+
     // Soma nucleus
     const auto somaPosition = Vector3f(model.morphologyInfo.somaPosition);
     model.addSphere(materialId + MATERIAL_OFFSET_NUCLEUS,
                     {somaPosition, nucleusRadius});
+
     // Mitochondria
-    for (size_t i = 0; i < nbMitochondria; ++i)
+    srand(index);
+    float mitochondriaVolume = 0.f;
+    while (mitochondriaVolume < availableVolumeForMitochondria)
     {
-        const auto pointInSphere =
-            getPointInSphere(somaInnerRadius / somaRadius);
-        const auto mitochondriaCenter =
-            somaPosition + somaRadius * pointInSphere;
-
-        const auto upVector = Vector3f((rand() % 1000 - 500) / 1000.f,
-                                       (rand() % 1000 - 500) / 1000.f,
-                                       (rand() % 1000 - 500) / 1000.f);
-        const auto direction =
-            cross(normalize(mitochondriaCenter - somaPosition), upVector);
-
-        _addMitochondrion(model, materialId, mitochondriaCenter, direction,
-                          mitochondriaRadius);
+        const size_t nbSegments = _getNbMitochondrionSegments();
+        const auto pointsInSphere =
+            getPointsInSphere(nbSegments, somaInnerRadius / somaRadius);
+        float previousRadius = mitochondriaRadius;
+        for (size_t i = 0; i < nbSegments; ++i)
+        {
+            const float radius =
+                (1.f + (rand() % 500 / 1000.f)) * mitochondriaRadius;
+            const auto p2 = somaPosition + somaRadius * pointsInSphere[i];
+            model.addSphere(materialId + MATERIAL_OFFSET_MITOCHONDRION,
+                            {p2, radius});
+            mitochondriaVolume += sphereVolume(radius);
+            if (i > 0)
+            {
+                const auto p1 =
+                    somaPosition + somaRadius * pointsInSphere[i - 1];
+                model.addCone(materialId + MATERIAL_OFFSET_MITOCHONDRION,
+                              {p1, p2, previousRadius, radius});
+                mitochondriaVolume +=
+                    coneVolume(length(p2 - p1), previousRadius, radius);
+            }
+            previousRadius = radius;
+        }
     }
 }
 
-void MorphologyLoader::_addMitochondrion(ParallelModelContainer& model,
-                                         const size_t materialId,
-                                         const Vector3f& position,
-                                         const Vector3f& direction,
-                                         const float radius) const
+size_t MorphologyLoader::_getNbMitochondrionSegments() const
 {
-    model.addSphere(materialId + MATERIAL_OFFSET_MITOCHONDRION,
-                    {position + direction, radius});
-    model.addSphere(materialId + MATERIAL_OFFSET_MITOCHONDRION,
-                    {position - direction, radius});
-    model.addCylinder(materialId + MATERIAL_OFFSET_MITOCHONDRION,
-                      {position + direction, position - direction, radius});
+    return 2 + rand() % 18;
+}
+
+void MorphologyLoader::_addSectionInternals(const PropertyMap& properties,
+                                            const float sectionLength,
+                                            const float sectionVolume,
+                                            const brion::Vector4fs& samples,
+                                            const float mitochondriaDensity,
+                                            const size_t materialId,
+                                            ParallelModelContainer& model) const
+{
+    // Add mitochondria (density is per section, not for the full axon)
+    const float mitochondrionSegmentSize = 0.25f;
+    const size_t nbMaxMitochondrionSegments =
+        sectionLength / mitochondrionSegmentSize;
+    const float indexRatio =
+        float(samples.size()) / float(nbMaxMitochondrionSegments);
+
+    float mitochondriaVolume = 0.f;
+
+    size_t nbSegments = _getNbMitochondrionSegments();
+    int mitochondrionSegment =
+        -(rand() % (1 + nbMaxMitochondrionSegments / 10));
+    float previousRadius;
+    Vector3f previousPosition;
+
+    for (size_t step = 0; step < nbMaxMitochondrionSegments; ++step)
+    {
+        if (mitochondriaVolume < sectionVolume * mitochondriaDensity &&
+            mitochondrionSegment >= 0 && mitochondrionSegment < nbSegments)
+        {
+            const size_t srcIndex = size_t(step * indexRatio);
+            const size_t dstIndex = size_t(step * indexRatio) + 1;
+            if (dstIndex < samples.size())
+            {
+                const auto& srcSample = samples[srcIndex];
+                const auto& dstSample = samples[dstIndex];
+                const float srcRadius =
+                    _getCorrectedRadius(properties, srcSample.w() * 0.5f);
+                const Vector3f srcPosition{
+                    srcSample.x() + srcRadius * (rand() % 100 - 50) / 500.f,
+                    srcSample.y() + srcRadius * (rand() % 100 - 50) / 500.f,
+                    srcSample.z() + srcRadius * (rand() % 100 - 50) / 500.f};
+                const float dstRadius =
+                    _getCorrectedRadius(properties, dstSample.w() * 0.5f);
+                const Vector3f dstPosition{
+                    dstSample.x() + dstRadius * (rand() % 100 - 50) / 500.f,
+                    dstSample.y() + dstRadius * (rand() % 100 - 50) / 500.f,
+                    dstSample.z() + dstRadius * (rand() % 100 - 50) / 500.f};
+
+                const Vector3f direction = dstPosition - srcPosition;
+                const Vector3f position =
+                    srcPosition + direction * (step * indexRatio - srcIndex);
+                const float mitocondrionRadius = srcRadius * 0.25f;
+                const float radius =
+                    (1.f + ((rand() % 500) / 1000.f)) * mitocondrionRadius;
+                model.addSphere(materialId + MATERIAL_OFFSET_MITOCHONDRION,
+                                {position, radius});
+                mitochondriaVolume += sphereVolume(radius);
+
+                if (mitochondrionSegment > 0)
+                {
+                    model.addCone(materialId + MATERIAL_OFFSET_MITOCHONDRION,
+                                  {position, previousPosition, radius,
+                                   previousRadius});
+                    mitochondriaVolume +=
+                        coneVolume(length(position - previousPosition), radius,
+                                   previousRadius);
+                }
+
+                previousPosition = position;
+                previousRadius = radius;
+            }
+        }
+        ++mitochondrionSegment;
+
+        if (mitochondrionSegment == nbSegments)
+        {
+            mitochondrionSegment =
+                -(rand() % (1 + nbMaxMitochondrionSegments / 10));
+            nbSegments = _getNbMitochondrionSegments();
+        }
+    }
 }
 
 size_t MorphologyLoader::_getMaterialIdFromColorScheme(
