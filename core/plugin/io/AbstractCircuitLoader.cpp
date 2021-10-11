@@ -569,8 +569,8 @@ size_ts AbstractCircuitLoader::_populateLayerIds(
     try
     {
         PLUGIN_INFO("Open Brion circuit from " << circuitSource);
-        const brion::Circuit brionCircuit(circuitSource);
-        for (const auto &values : brionCircuit.get(gids, brion::NEURON_LAYER))
+        const brion::Circuit circuit(circuitSource);
+        for (const auto &values : circuit.get(gids, brion::NEURON_LAYER))
             layerIds.push_back(values.size() > 0 ? std::stoi(values[0]) : 0);
     }
     catch (...)
@@ -902,7 +902,7 @@ float AbstractCircuitLoader::_importMorphologies(
     for (uint64_t i = 0; i < gids.size(); ++i)
     {
         const auto uri = somasOnly ? brain::URI() : uris[i];
-        PLUGIN_INFO("Load " << uri);
+        PLUGIN_INFO("Loading " << uri);
         const auto id =
             _getMaterialFromCircuitAttributes(properties, i, materialId,
                                               targetGIDOffsets, layerIds,

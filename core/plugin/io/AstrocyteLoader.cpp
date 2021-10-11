@@ -29,6 +29,8 @@ namespace circuitexplorer
 {
 const std::string LOADER_NAME = "Astrocyte batch loader";
 const std::string SUPPORTED_EXTENTION_ASTROCYTES = "astrocytes";
+const float DEFAULT_ASTROCYTE_MITOCHONDRIA_DENSITY = 0.05f;
+const size_t NB_MATERIALS_PER_INSTANCE = 10;
 
 AstrocyteLoader::AstrocyteLoader(
     Scene &scene, const ApplicationParameters &applicationParameters,
@@ -48,8 +50,6 @@ AstrocyteLoader::AstrocyteLoader(
         {PROP_REPORT_TYPE.name, enumToString(ReportType::undefined)});
     _fixedDefaults.setProperty({PROP_RADIUS_MULTIPLIER.name, 1.0});
     _fixedDefaults.setProperty({PROP_RADIUS_CORRECTION.name, 0.0});
-    _fixedDefaults.setProperty({PROP_CIRCUIT_COLOR_SCHEME.name,
-                                enumToString(CircuitColorScheme::by_id)});
     _fixedDefaults.setProperty(
         {PROP_DAMPEN_BRANCH_THICKNESS_CHANGERATE.name, true});
     _fixedDefaults.setProperty({PROP_USE_REALISTIC_SOMA.name, false});
@@ -91,8 +91,6 @@ ModelDescriptorPtr AstrocyteLoader::importFromFile(
     const std::string &filename, const LoaderProgress &callback,
     const PropertyMap &properties) const
 {
-    PLUGIN_INFO("Loading astrocyte from " << filename);
-    callback.updateProgress("Loading astrocyte ...", 0);
     PropertyMap props = _defaults;
     props.merge(_fixedDefaults);
     props.merge(properties);
@@ -107,7 +105,10 @@ ModelDescriptorPtr AstrocyteLoader::importFromFile(
         file.close();
     }
 
+    PLUGIN_INFO("Loading " << uris.size() << " astrocytes from " << filename);
+    callback.updateProgress("Loading astrocytes ...", 0);
     auto model = _scene.createModel();
+
     ModelDescriptorPtr modelDescriptor;
     _importMorphologiesFromURIs(props, uris, callback, *model);
     modelDescriptor =
@@ -128,6 +129,7 @@ PropertyMap AstrocyteLoader::getCLIProperties()
     pm.setProperty(PROP_SECTION_TYPE_DENDRITE);
     pm.setProperty(PROP_SECTION_TYPE_APICAL_DENDRITE);
     pm.setProperty(PROP_USE_SDF_GEOMETRY);
+    pm.setProperty(PROP_CIRCUIT_COLOR_SCHEME);
     pm.setProperty(PROP_MORPHOLOGY_COLOR_SCHEME);
     pm.setProperty(PROP_MORPHOLOGY_QUALITY);
     pm.setProperty(PROP_INTERNALS);
@@ -141,21 +143,29 @@ void AstrocyteLoader::_importMorphologiesFromURIs(
     PropertyMap morphologyProps(properties);
     MorphologyLoader loader(_scene, std::move(morphologyProps));
 
-    const auto colorScheme = stringToEnum<MorphologyColorScheme>(
-        properties.getProperty<std::string>(PROP_MORPHOLOGY_COLOR_SCHEME.name));
+    const auto colorScheme = stringToEnum<CircuitColorScheme>(
+        properties.getProperty<std::string>(PROP_CIRCUIT_COLOR_SCHEME.name));
+    const auto generateInternals =
+        properties.getProperty<bool>(PROP_INTERNALS.name);
+
+    const float mitochondriaDensity =
+        generateInternals ? DEFAULT_ASTROCYTE_MITOCHONDRIA_DENSITY : 0.f;
 
     for (uint64_t i = 0; i < uris.size(); ++i)
     {
         const auto uri = servus::URI(uris[i]);
-        const auto materialId =
-            (colorScheme == MorphologyColorScheme::none ? i : NO_MATERIAL);
+        PLUGIN_DEBUG("Loading astrocyte from " << uri);
+        const auto materialId = (colorScheme == CircuitColorScheme::by_id
+                                     ? i * NB_MATERIALS_PER_INSTANCE
+                                     : NO_MATERIAL);
 
         loader.setDefaultMaterialId(materialId);
 
         MorphologyInfo morphologyInfo;
         morphologyInfo = loader.importMorphology(i, morphologyProps, uri, model,
-                                                 i, SynapsesInfo());
-        callback.updateProgress("Loading morphologies...",
+                                                 i, SynapsesInfo(), Matrix4f(),
+                                                 nullptr, mitochondriaDensity);
+        callback.updateProgress("Loading astrocytes...",
                                 (float)i / (float)uris.size());
     }
     PropertyMap materialProps;

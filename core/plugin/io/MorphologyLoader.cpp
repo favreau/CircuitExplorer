@@ -557,27 +557,24 @@ void MorphologyLoader::_addSomaGeometry(
     {
         model.addSphere(materialId, {model.morphologyInfo.somaPosition,
                                      static_cast<float>(somaRadius), offset});
-        //        if (useSimulationModel)
+        // When using a simulation model, parametric geometries
+        // must occupy as much space as possible in the mesh.
+        // This code inserts a Cone between the soma and the
+        // beginning of each branch.
+        for (const auto& child : children)
         {
-            // When using a simulation model, parametric geometries
-            // must occupy as much space as possible in the mesh.
-            // This code inserts a Cone between the soma and the
-            // beginning of each branch.
-            for (const auto& child : children)
-            {
-                const auto& samples = child.getSamples();
-                const Vector3f sample{samples[0].x(), samples[0].y(),
-                                      samples[0].z()};
+            const auto& samples = child.getSamples();
+            const Vector3f sample{samples[0].x(), samples[0].y(),
+                                  samples[0].z()};
 
-                model.morphologyInfo.bounds.merge(sample);
-                const double sampleRadius =
-                    _getCorrectedRadius(properties, samples[0].w() * 0.5f);
+            model.morphologyInfo.bounds.merge(sample);
+            const double sampleRadius =
+                _getCorrectedRadius(properties, samples[0].w() * 0.5f);
 
-                model.addCone(materialId,
-                              {model.morphologyInfo.somaPosition, sample,
-                               static_cast<float>(somaRadius),
-                               static_cast<float>(sampleRadius), offset});
-            }
+            model.addCone(materialId,
+                          {model.morphologyInfo.somaPosition, sample,
+                           static_cast<float>(somaRadius),
+                           static_cast<float>(sampleRadius), offset});
         }
     }
 }

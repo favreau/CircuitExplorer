@@ -21,9 +21,9 @@
 #include <iostream>
 #include <thread>
 
-#define PLUGIN_PREFIX "CIRCUITEXPLORER"
+#define PLUGIN_PREFIX "CIRCUIT_EXPLORER"
 
-namespace circuittodb
+namespace circuitexplorer
 {
 #define PLUGIN_ERROR(message)                                       \
     std::cerr << "[" << std::this_thread::get_id() << "] [ERROR] [" \
@@ -51,4 +51,4 @@ namespace circuittodb
         PLUGIN_ERROR(message);             \
         throw std::runtime_error(message); \
     }
-} // namespace circuittodb
+} // namespace circuitexplorer
