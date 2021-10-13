@@ -29,6 +29,10 @@
 
 namespace circuitexplorer
 {
+namespace io
+{
+namespace loader
+{
 using namespace brayns;
 
 namespace servus
@@ -70,4 +74,6 @@ private:
     std::string _readString(std::ifstream& f) const;
     PropertyMap _defaults;
 };
+} // namespace loader
+} // namespace io
 } // namespace circuitexplorer

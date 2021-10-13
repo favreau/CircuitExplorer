@@ -27,7 +27,11 @@
 
 namespace circuitexplorer
 {
-const std::string LOADER_NAME = "Astrocyte batch loader";
+namespace io
+{
+namespace loader
+{
+const std::string LOADER_NAME = "Astrocytes";
 const std::string SUPPORTED_EXTENTION_ASTROCYTES = "astrocytes";
 const float DEFAULT_ASTROCYTE_MITOCHONDRIA_DENSITY = 0.05f;
 const size_t NB_MATERIALS_PER_INSTANCE = 10;
@@ -123,7 +127,7 @@ std::string AstrocyteLoader::getName() const
 
 PropertyMap AstrocyteLoader::getCLIProperties()
 {
-    PropertyMap pm("AstrocyteLoader");
+    PropertyMap pm(LOADER_NAME);
     pm.setProperty(PROP_SECTION_TYPE_SOMA);
     pm.setProperty(PROP_SECTION_TYPE_AXON);
     pm.setProperty(PROP_SECTION_TYPE_DENDRITE);
@@ -177,4 +181,6 @@ void AstrocyteLoader::_importMorphologiesFromURIs(
          static_cast<int>(MaterialClippingMode::no_clipping)});
     MorphologyLoader::createMissingMaterials(model, materialProps);
 }
+} // namespace loader
+} // namespace io
 } // namespace circuitexplorer

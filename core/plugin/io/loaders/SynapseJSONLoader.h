@@ -32,6 +32,10 @@
 
 namespace circuitexplorer
 {
+namespace io
+{
+namespace loader
+{
 using namespace brayns;
 
 /**
@@ -71,4 +75,6 @@ public:
 private:
     const SynapseAttributes& _synapseAttributes;
 };
+} // namespace loader
+} // namespace io
 } // namespace circuitexplorer

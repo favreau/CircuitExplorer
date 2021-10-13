@@ -23,6 +23,10 @@
 
 namespace circuitexplorer
 {
+namespace io
+{
+namespace handler
+{
 const float DEFAULT_REST_VALUE = -80.f;
 const float DEFAULT_SPIKING_VALUE = -1.f;
 const float DEFAULT_TIME_INTERVAL = 0.01f;
@@ -102,4 +106,6 @@ AbstractSimulationHandlerPtr SpikeSimulationHandler::clone() const
 {
     return std::make_shared<SpikeSimulationHandler>(*this);
 }
+} // namespace handler
+} // namespace io
 } // namespace circuitexplorer

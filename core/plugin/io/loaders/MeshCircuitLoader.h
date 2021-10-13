@@ -22,12 +22,16 @@
 
 namespace circuitexplorer
 {
-class AdvancedCircuitLoader : public AbstractCircuitLoader
+namespace io
+{
+namespace loader
+{
+class MeshCircuitLoader : public AbstractCircuitLoader
 {
 public:
-    AdvancedCircuitLoader(Scene &scene,
-                          const ApplicationParameters &applicationParameters,
-                          PropertyMap &&loaderParams);
+    MeshCircuitLoader(Scene &scene,
+                      const ApplicationParameters &applicationParameters,
+                      PropertyMap &&loaderParams);
 
     std::string getName() const final;
 
@@ -37,4 +41,6 @@ public:
         const std::string &filename, const LoaderProgress &callback,
         const PropertyMap &properties) const final;
 };
+} // namespace loader
+} // namespace io
 } // namespace circuitexplorer

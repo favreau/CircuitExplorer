@@ -30,6 +30,10 @@
 
 namespace circuitexplorer
 {
+namespace io
+{
+namespace loader
+{
 using namespace brayns;
 
 class AdvancedCircuitLoader;
@@ -311,4 +315,128 @@ private:
     size_t _defaultMaterialId{NO_MATERIAL};
     PropertyMap _defaults;
 };
+
+struct ParallelModelContainer
+{
+    void addSphere(const size_t materialId, const brayns::Sphere& sphere)
+    {
+        spheres[materialId].push_back(sphere);
+    }
+
+    void addCylinder(const size_t materialId, const brayns::Cylinder& cylinder)
+    {
+        cylinders[materialId].push_back(cylinder);
+    }
+
+    void addCone(const size_t materialId, const brayns::Cone& cone)
+    {
+        cones[materialId].push_back(cone);
+    }
+
+    void addSDFGeometry(const size_t materialId,
+                        const brayns::SDFGeometry& geom,
+                        const std::vector<size_t> neighbours)
+    {
+        sdfMaterials.push_back(materialId);
+        sdfGeometries.push_back(geom);
+        sdfNeighbours.push_back(neighbours);
+    }
+
+    void addSpheresToModel(brayns::Model& model) const
+    {
+        for (const auto& sphere : spheres)
+        {
+            const auto index = sphere.first;
+            model.getSpheres()[index].insert(model.getSpheres()[index].end(),
+                                             sphere.second.begin(),
+                                             sphere.second.end());
+        }
+    }
+
+    void addCylindersToModel(brayns::Model& model) const
+    {
+        for (const auto& cylinder : cylinders)
+        {
+            const auto index = cylinder.first;
+            model.getCylinders()[index].insert(
+                model.getCylinders()[index].end(), cylinder.second.begin(),
+                cylinder.second.end());
+        }
+    }
+
+    void addConesToModel(brayns::Model& model) const
+    {
+        for (const auto& cone : cones)
+        {
+            const auto index = cone.first;
+            model.getCones()[index].insert(model.getCones()[index].end(),
+                                           cone.second.begin(),
+                                           cone.second.end());
+        }
+    }
+
+    void addSDFGeometriesToModel(brayns::Model& model) const
+    {
+        const size_t numGeoms = sdfGeometries.size();
+        std::vector<size_t> localToGlobalIndex(numGeoms, 0);
+
+        // Add geometries to Model. We do not know the indices of the neighbours
+        // yet so we leave them empty.
+        for (size_t i = 0; i < numGeoms; i++)
+            localToGlobalIndex[i] =
+                model.addSDFGeometry(sdfMaterials[i], sdfGeometries[i], {});
+
+        // Write the neighbours using global indices
+        uint64_ts neighboursTmp;
+        for (uint64_t i = 0; i < numGeoms; i++)
+        {
+            const uint64_t globalIndex = localToGlobalIndex[i];
+            neighboursTmp.clear();
+
+            for (auto localNeighbourIndex : sdfNeighbours[i])
+                neighboursTmp.push_back(
+                    localToGlobalIndex[localNeighbourIndex]);
+
+            model.updateSDFGeometryNeighbours(globalIndex, neighboursTmp);
+        }
+    }
+
+    void applyTransformation(const brayns::Matrix4f& transformation)
+    {
+        for (auto& s : spheres)
+            for (auto& sphere : s.second)
+                sphere.center =
+                    transformVector3f(sphere.center, transformation);
+        for (auto& c : cylinders)
+            for (auto& cylinder : c.second)
+            {
+                cylinder.center =
+                    transformVector3f(cylinder.center, transformation);
+                cylinder.up = transformVector3f(cylinder.up, transformation);
+            }
+        for (auto& c : cones)
+            for (auto& cone : c.second)
+            {
+                cone.center = transformVector3f(cone.center, transformation);
+                cone.up = transformVector3f(cone.up, transformation);
+            }
+        for (auto& s : sdfGeometries)
+        {
+            s.p0 = transformVector3f(s.p0, transformation);
+            s.p1 = transformVector3f(s.p1, transformation);
+        }
+    }
+
+    brayns::SpheresMap spheres;
+    brayns::CylindersMap cylinders;
+    brayns::ConesMap cones;
+    brayns::TriangleMeshMap trianglesMeshes;
+    MorphologyInfo morphologyInfo;
+    std::vector<brayns::SDFGeometry> sdfGeometries;
+    std::vector<std::vector<size_t>> sdfNeighbours;
+    std::vector<size_t> sdfMaterials;
+};
+
+} // namespace loader
+} // namespace io
 } // namespace circuitexplorer

@@ -26,6 +26,10 @@
 
 namespace circuitexplorer
 {
+namespace io
+{
+namespace handler
+{
 VoltageSimulationHandler::VoltageSimulationHandler(
     const std::string& reportPath, const brion::GIDSet& gids,
     const bool synchronousMode)
@@ -131,4 +135,6 @@ bool VoltageSimulationHandler::_makeFrameReady(const uint32_t frame)
     }
     return true;
 }
+} // namespace handler
+} // namespace io
 } // namespace circuitexplorer

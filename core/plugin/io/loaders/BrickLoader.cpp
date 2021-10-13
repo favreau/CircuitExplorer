@@ -18,8 +18,10 @@
 
 #include "BrickLoader.h"
 #include "MorphologyLoader.h"
-#include "SpikeSimulationHandler.h"
-#include "VoltageSimulationHandler.h"
+
+#include <plugin/io/handlers/SpikeSimulationHandler.h>
+#include <plugin/io/handlers/VoltageSimulationHandler.h>
+
 #include <common/CommonTypes.h>
 #include <common/Logs.h>
 #include <common/Types.h>
@@ -35,12 +37,16 @@
 
 namespace circuitexplorer
 {
+namespace io
+{
+namespace loader
+{
 const size_t CACHE_VERSION_1 = 1;
 const size_t CACHE_VERSION_2 = 2;
 const size_t CACHE_VERSION_3 = 3;
 const size_t CACHE_VERSION_4 = 4;
 
-const std::string LOADER_NAME = "Pre-computed brick loader";
+const std::string LOADER_NAME = "Cache";
 const std::string SUPPORTED_EXTENTION_BRAYNS = "brayns";
 const std::string SUPPORTED_EXTENTION_BIN = "bin";
 
@@ -603,8 +609,8 @@ ModelDescriptorPtr BrickLoader::importFromFile(
 
             // Handler
             auto handler =
-                std::make_shared<VoltageSimulationHandler>(reportPath, gids,
-                                                           synchronized);
+                std::make_shared<io::handler::VoltageSimulationHandler>(
+                    reportPath, gids, synchronized);
             model->setSimulationHandler(handler);
             break;
         }
@@ -625,7 +631,8 @@ ModelDescriptorPtr BrickLoader::importFromFile(
 
             // Handler
             auto handler =
-                std::make_shared<SpikeSimulationHandler>(reportPath, gids);
+                std::make_shared<io::handler::SpikeSimulationHandler>(
+                    reportPath, gids);
             model->setSimulationHandler(handler);
             break;
         }
@@ -931,10 +938,10 @@ void BrickLoader::exportToFile(const ModelDescriptorPtr modelDescriptor,
     const AbstractSimulationHandlerPtr handler = model.getSimulationHandler();
     if (handler)
     {
-        VoltageSimulationHandler* vsh =
-            dynamic_cast<VoltageSimulationHandler*>(handler.get());
-        SpikeSimulationHandler* ssh =
-            dynamic_cast<SpikeSimulationHandler*>(handler.get());
+        io::handler::VoltageSimulationHandler* vsh =
+            dynamic_cast<io::handler::VoltageSimulationHandler*>(handler.get());
+        io::handler::SpikeSimulationHandler* ssh =
+            dynamic_cast<io::handler::SpikeSimulationHandler*>(handler.get());
         if (vsh)
         {
             const size_t reportType{
@@ -1027,7 +1034,7 @@ PropertyMap BrickLoader::getProperties() const
 
 PropertyMap BrickLoader::getCLIProperties()
 {
-    PropertyMap pm("CircuitExplorer");
+    PropertyMap pm(LOADER_NAME);
     pm.setProperty(PROP_LOAD_SPHERES);
     pm.setProperty(PROP_LOAD_CYLINDERS);
     pm.setProperty(PROP_LOAD_CONES);
@@ -1037,4 +1044,6 @@ PropertyMap BrickLoader::getCLIProperties()
     pm.setProperty(PROP_LOAD_SIMULATION);
     return pm;
 }
+} // namespace loader
+} // namespace io
 } // namespace circuitexplorer

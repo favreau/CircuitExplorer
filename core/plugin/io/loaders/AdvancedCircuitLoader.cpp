@@ -22,7 +22,11 @@
 
 namespace circuitexplorer
 {
-const std::string LOADER_NAME = "Advanced circuit loader (Experimental)";
+namespace io
+{
+namespace loader
+{
+const std::string LOADER_NAME = "Advanced circuit (Experimental)";
 
 AdvancedCircuitLoader::AdvancedCircuitLoader(
     Scene &scene, const ApplicationParameters &applicationParameters,
@@ -56,7 +60,7 @@ std::string AdvancedCircuitLoader::getName() const
 
 PropertyMap AdvancedCircuitLoader::getCLIProperties()
 {
-    PropertyMap pm("AdvancedCircuitLoader");
+    PropertyMap pm(LOADER_NAME);
     pm.setProperty(PROP_DB_CONNECTION_STRING);
     pm.setProperty(PROP_DENSITY);
     pm.setProperty(PROP_REPORT);
@@ -93,4 +97,6 @@ PropertyMap AdvancedCircuitLoader::getCLIProperties()
     pm.setProperty(PROP_INTERNALS);
     return pm;
 }
+} // namespace loader
+} // namespace io
 } // namespace circuitexplorer

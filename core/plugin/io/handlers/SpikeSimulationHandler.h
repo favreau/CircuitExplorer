@@ -26,6 +26,10 @@
 
 namespace circuitexplorer
 {
+namespace io
+{
+namespace handler
+{
 using namespace brayns;
 
 typedef std::shared_ptr<brain::SpikeReportReader> SpikeReportReaderPtr;
@@ -51,4 +55,6 @@ private:
 
     std::map<uint64_t, uint64_t> _gidMap;
 };
+} // namespace handler
+} // namespace io
 } // namespace circuitexplorer

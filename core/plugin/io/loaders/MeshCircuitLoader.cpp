@@ -16,15 +16,20 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#include "PairSynapsesLoader.h"
+#include "MeshCircuitLoader.h"
 
 #include <common/Logs.h>
 
 namespace circuitexplorer
 {
-const std::string LOADER_NAME = "Pair synapses use-case";
+namespace io
+{
+namespace loader
+{
+const std::string LOADER_NAME = "Circuit with meshes";
+const double DEFAULT_RADIUS_MULTIPLIER = 2.0;
 
-PairSynapsesLoader::PairSynapsesLoader(
+MeshCircuitLoader::MeshCircuitLoader(
     Scene &scene, const ApplicationParameters &applicationParameters,
     PropertyMap &&loaderParams)
     : AbstractCircuitLoader(scene, applicationParameters,
@@ -33,38 +38,42 @@ PairSynapsesLoader::PairSynapsesLoader(
     PLUGIN_INFO("Registering " << LOADER_NAME);
     _fixedDefaults.setProperty(
         {PROP_DB_CONNECTION_STRING.name, std::string("")});
-    _fixedDefaults.setProperty({PROP_DENSITY.name, 1.0});
-    _fixedDefaults.setProperty({PROP_RANDOM_SEED.name, 0.0});
-    _fixedDefaults.setProperty({PROP_REPORT.name, std::string("")});
-    _fixedDefaults.setProperty({PROP_TARGETS.name, std::string("")});
-    _fixedDefaults.setProperty({PROP_GIDS.name, std::string("")});
+    _fixedDefaults.setProperty({PROP_USE_SDF_GEOMETRY.name, false});
     _fixedDefaults.setProperty(
-        {PROP_REPORT_TYPE.name, enumToString(ReportType::undefined)});
-    _fixedDefaults.setProperty({PROP_RADIUS_CORRECTION.name, 0.0});
+        {PROP_PRESYNAPTIC_NEURON_GID.name, std::string("")});
+    _fixedDefaults.setProperty(
+        {PROP_POSTSYNAPTIC_NEURON_GID.name, std::string("")});
+    _fixedDefaults.setProperty(
+        {PROP_REPORT_TYPE.name, enumToString(ReportType::voltages_from_file)});
     _fixedDefaults.setProperty({PROP_CIRCUIT_COLOR_SCHEME.name,
                                 enumToString(CircuitColorScheme::by_id)});
     _fixedDefaults.setProperty(
-        {PROP_DAMPEN_BRANCH_THICKNESS_CHANGERATE.name, true});
+        {PROP_RADIUS_MULTIPLIER.name, DEFAULT_RADIUS_MULTIPLIER});
+    _fixedDefaults.setProperty({PROP_RADIUS_CORRECTION.name, 0.0});
+    _fixedDefaults.setProperty({PROP_USE_SDF_GEOMETRY.name, false});
+    _fixedDefaults.setProperty(
+        {PROP_DAMPEN_BRANCH_THICKNESS_CHANGERATE.name, false});
     _fixedDefaults.setProperty({PROP_USE_REALISTIC_SOMA.name, false});
     _fixedDefaults.setProperty({PROP_METABALLS_SAMPLES_FROM_SOMA.name, 0});
     _fixedDefaults.setProperty({PROP_METABALLS_GRID_SIZE.name, 0});
     _fixedDefaults.setProperty({PROP_METABALLS_THRESHOLD.name, 0.0});
+    _fixedDefaults.setProperty({PROP_USER_DATA_TYPE.name,
+                                enumToString(UserDataType::simulation_offset)});
+    _fixedDefaults.setProperty({PROP_MORPHOLOGY_COLOR_SCHEME.name,
+                                enumToString(MorphologyColorScheme::none)});
     _fixedDefaults.setProperty(
-        {PROP_USER_DATA_TYPE.name, enumToString(UserDataType::undefined)});
+        {PROP_MORPHOLOGY_QUALITY.name, enumToString(MorphologyQuality::high)});
     _fixedDefaults.setProperty({PROP_MORPHOLOGY_MAX_DISTANCE_TO_SOMA.name,
                                 std::numeric_limits<double>::max()});
-    _fixedDefaults.setProperty({PROP_MESH_FOLDER.name, std::string("")});
-    _fixedDefaults.setProperty(
-        {PROP_MESH_FILENAME_PATTERN.name, std::string("")});
-    _fixedDefaults.setProperty({PROP_MESH_TRANSFORMATION.name, false});
     _fixedDefaults.setProperty({PROP_CELL_CLIPPING.name, false});
     _fixedDefaults.setProperty({PROP_AREAS_OF_INTEREST.name, 0});
-    _fixedDefaults.setProperty({PROP_LOAD_AFFERENT_SYNAPSES.name, true});
-    _fixedDefaults.setProperty({PROP_LOAD_EFFERENT_SYNAPSES.name, true});
+    _fixedDefaults.setProperty({PROP_SYNAPSE_RADIUS.name, 1.0});
+    _fixedDefaults.setProperty({PROP_LOAD_AFFERENT_SYNAPSES.name, false});
+    _fixedDefaults.setProperty({PROP_LOAD_EFFERENT_SYNAPSES.name, false});
     _fixedDefaults.setProperty({PROP_INTERNALS.name, false});
 }
 
-ModelDescriptorPtr PairSynapsesLoader::importFromFile(
+ModelDescriptorPtr MeshCircuitLoader::importFromFile(
     const std::string &filename, const LoaderProgress &callback,
     const PropertyMap &properties) const
 {
@@ -76,25 +85,29 @@ ModelDescriptorPtr PairSynapsesLoader::importFromFile(
     return importCircuit(filename, props, callback);
 }
 
-std::string PairSynapsesLoader::getName() const
+std::string MeshCircuitLoader::getName() const
 {
     return LOADER_NAME;
 }
 
-PropertyMap PairSynapsesLoader::getCLIProperties()
+PropertyMap MeshCircuitLoader::getCLIProperties()
 {
-    PropertyMap pm("Pair-Synapses Loader");
-    pm.setProperty(PROP_PRESYNAPTIC_NEURON_GID);
-    pm.setProperty(PROP_POSTSYNAPTIC_NEURON_GID);
-    pm.setProperty(PROP_RADIUS_MULTIPLIER);
+    PropertyMap pm(LOADER_NAME);
+    pm.setProperty(PROP_DENSITY);
+    pm.setProperty(PROP_REPORT);
+    pm.setProperty(PROP_SYNCHRONOUS_MODE);
+    pm.setProperty(PROP_TARGETS);
+    pm.setProperty(PROP_GIDS);
+    pm.setProperty(PROP_RANDOM_SEED);
+    pm.setProperty(PROP_MESH_FOLDER);
+    pm.setProperty(PROP_MESH_FILENAME_PATTERN);
+    pm.setProperty(PROP_MESH_TRANSFORMATION);
     pm.setProperty(PROP_SECTION_TYPE_SOMA);
     pm.setProperty(PROP_SECTION_TYPE_AXON);
     pm.setProperty(PROP_SECTION_TYPE_DENDRITE);
     pm.setProperty(PROP_SECTION_TYPE_APICAL_DENDRITE);
-    pm.setProperty(PROP_USE_SDF_GEOMETRY);
-    pm.setProperty(PROP_MORPHOLOGY_COLOR_SCHEME);
-    pm.setProperty(PROP_MORPHOLOGY_QUALITY);
-    pm.setProperty(PROP_SYNAPSE_RADIUS);
     return pm;
 }
+} // namespace loader
+} // namespace io
 } // namespace circuitexplorer

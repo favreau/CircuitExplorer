@@ -20,17 +20,19 @@
 #include <common/CommonTypes.h>
 #include <common/Logs.h>
 
-#include <plugin/io/AdvancedCircuitLoader.h>
-#include <plugin/io/AstrocyteLoader.h>
-#include <plugin/io/BrickLoader.h>
-#include <plugin/io/CellGrowthHandler.h>
-#include <plugin/io/MeshCircuitLoader.h>
-#include <plugin/io/MorphologyCollageLoader.h>
-#include <plugin/io/MorphologyLoader.h>
-#include <plugin/io/PairSynapsesLoader.h>
-#include <plugin/io/SynapseCircuitLoader.h>
-#include <plugin/io/SynapseJSONLoader.h>
-#include <plugin/io/VoltageSimulationHandler.h>
+#include <plugin/io/loaders/AdvancedCircuitLoader.h>
+#include <plugin/io/loaders/AstrocyteLoader.h>
+#include <plugin/io/loaders/BrickLoader.h>
+#include <plugin/io/loaders/MeshCircuitLoader.h>
+#include <plugin/io/loaders/MorphologyCollageLoader.h>
+#include <plugin/io/loaders/MorphologyLoader.h>
+#include <plugin/io/loaders/PairSynapsesLoader.h>
+#include <plugin/io/loaders/SynapseCircuitLoader.h>
+#include <plugin/io/loaders/SynapseJSONLoader.h>
+
+#include <plugin/io/handlers/CellGrowthHandler.h>
+#include <plugin/io/handlers/VoltageSimulationHandler.h>
+
 #include <plugin/meshing/PointCloudMesher.h>
 
 #ifdef USE_PQXX
@@ -313,39 +315,39 @@ void CircuitExplorerPlugin::init()
     auto& pm = _api->getParametersManager();
 
     // Loaders
-    registry.registerLoader(
-        std::make_unique<BrickLoader>(scene, BrickLoader::getCLIProperties()));
+    registry.registerLoader(std::make_unique<io::loader::BrickLoader>(
+        scene, io::loader::BrickLoader::getCLIProperties()));
 
-    registry.registerLoader(
-        std::make_unique<SynapseJSONLoader>(scene,
-                                            std::move(_synapseAttributes)));
+    registry.registerLoader(std::make_unique<io::loader::SynapseJSONLoader>(
+        scene, std::move(_synapseAttributes)));
 
-    registry.registerLoader(std::make_unique<SynapseCircuitLoader>(
+    registry.registerLoader(std::make_unique<io::loader::SynapseCircuitLoader>(
         scene, pm.getApplicationParameters(),
-        SynapseCircuitLoader::getCLIProperties()));
+        io::loader::SynapseCircuitLoader::getCLIProperties()));
 
-    registry.registerLoader(std::make_unique<MorphologyLoader>(
-        scene, MorphologyLoader::getCLIProperties()));
+    registry.registerLoader(std::make_unique<io::loader::MorphologyLoader>(
+        scene, io::loader::MorphologyLoader::getCLIProperties()));
 
-    registry.registerLoader(std::make_unique<AdvancedCircuitLoader>(
+    registry.registerLoader(std::make_unique<io::loader::AdvancedCircuitLoader>(
         scene, pm.getApplicationParameters(),
-        AdvancedCircuitLoader::getCLIProperties()));
-
-    registry.registerLoader(std::make_unique<MorphologyCollageLoader>(
-        scene, pm.getApplicationParameters(),
-        MorphologyCollageLoader::getCLIProperties()));
-
-    registry.registerLoader(std::make_unique<MeshCircuitLoader>(
-        scene, pm.getApplicationParameters(),
-        MeshCircuitLoader::getCLIProperties()));
-
-    registry.registerLoader(std::make_unique<PairSynapsesLoader>(
-        scene, pm.getApplicationParameters(),
-        PairSynapsesLoader::getCLIProperties()));
+        io::loader::AdvancedCircuitLoader::getCLIProperties()));
 
     registry.registerLoader(
-        std::make_unique<AstrocyteLoader>(scene, pm.getApplicationParameters(),
-                                          AstrocyteLoader::getCLIProperties()));
+        std::make_unique<io::loader::MorphologyCollageLoader>(
+            scene, pm.getApplicationParameters(),
+            io::loader::MorphologyCollageLoader::getCLIProperties()));
+
+    registry.registerLoader(std::make_unique<io::loader::MeshCircuitLoader>(
+        scene, pm.getApplicationParameters(),
+        io::loader::MeshCircuitLoader::getCLIProperties()));
+
+    registry.registerLoader(std::make_unique<io::loader::PairSynapsesLoader>(
+        scene, pm.getApplicationParameters(),
+        io::loader::PairSynapsesLoader::getCLIProperties()));
+
+    registry.registerLoader(std::make_unique<io::loader::AstrocyteLoader>(
+        scene, pm.getApplicationParameters(),
+        io::loader::AstrocyteLoader::getCLIProperties()));
 
     // Renderers
     auto& engine = _api->getEngine();
@@ -814,7 +816,8 @@ void CircuitExplorerPlugin::_setSynapseAttributes(
     try
     {
         _synapseAttributes = param;
-        SynapseJSONLoader loader(_api->getScene(), _synapseAttributes);
+        io::loader::SynapseJSONLoader loader(_api->getScene(),
+                                             _synapseAttributes);
         Vector3fs colors;
         for (const auto& htmlColor : _synapseAttributes.htmlColors)
         {
@@ -856,7 +859,7 @@ void CircuitExplorerPlugin::_exportModelToFile(
     auto modelDescriptor = _api->getScene().getModel(saveModel.modelId);
     if (modelDescriptor)
     {
-        BrickLoader brickLoader(_api->getScene());
+        io::loader::BrickLoader brickLoader(_api->getScene());
         brickLoader.exportToFile(modelDescriptor, saveModel.path);
     }
     else
@@ -1083,7 +1086,8 @@ void CircuitExplorerPlugin::_attachCellGrowthHandler(
     auto modelDescriptor = _api->getScene().getModel(payload.modelId);
     if (modelDescriptor)
     {
-        auto handler = std::make_shared<CellGrowthHandler>(payload.nbFrames);
+        auto handler =
+            std::make_shared<io::handler::CellGrowthHandler>(payload.nbFrames);
         modelDescriptor->getModel().setSimulationHandler(handler);
     }
 }
@@ -1099,12 +1103,12 @@ void CircuitExplorerPlugin::_attachCircuitSimulationHandler(
         const brion::BlueConfig blueConfiguration(payload.circuitConfiguration);
         const brain::Circuit circuit(blueConfiguration);
         auto gids = circuit.getGIDs();
-        auto handler = std::make_shared<VoltageSimulationHandler>(
+        auto handler = std::make_shared<io::handler::VoltageSimulationHandler>(
             blueConfiguration.getReportSource(payload.reportName).getPath(),
             gids, payload.synchronousMode);
         auto& model = modelDescriptor->getModel();
         model.setSimulationHandler(handler);
-        AdvancedCircuitLoader::setSimulationTransferFunction(
+        io::loader::AdvancedCircuitLoader::setSimulationTransferFunction(
             model.getTransferFunction());
     }
     else
@@ -1779,7 +1783,7 @@ Response CircuitExplorerPlugin::_importMorphology(
     Response response;
     try
     {
-        DBConnector connector(payload.connectionString, payload.schema);
+        db::DBConnector connector(payload.connectionString, payload.schema);
         connector.importMorphology(_api->getScene(), payload.guid,
                                    payload.filename);
         response.status = true;
@@ -1798,7 +1802,7 @@ Response CircuitExplorerPlugin::_importMorphologyAsSDF(
     Response response;
     try
     {
-        DBConnector connector(payload.connectionString, payload.schema);
+        db::DBConnector connector(payload.connectionString, payload.schema);
         connector.importMorphologyAsSDF(_api->getScene(), payload.guid,
                                         payload.filename);
         response.status = true;
@@ -1816,7 +1820,7 @@ Response CircuitExplorerPlugin::_importVolume(const ImportVolume& payload)
     Response response;
     try
     {
-        DBConnector connector(payload.connectionString, payload.schema);
+        db::DBConnector connector(payload.connectionString, payload.schema);
         const auto& d{payload.dimensions};
         const auto& s{payload.spacing};
         connector.importVolume(payload.guid, {d[0], d[1], d[2]},
@@ -1834,7 +1838,7 @@ Response CircuitExplorerPlugin::_importCompartmentSimulation(
     const ImportCompartmentSimulation& payload)
 {
     Response response;
-    DBConnector connector(payload.connectionString, payload.schema);
+    db::DBConnector connector(payload.connectionString, payload.schema);
     try
     {
         connector.importCompartmentSimulation(payload.blueConfig,

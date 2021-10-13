@@ -22,6 +22,10 @@
 
 namespace circuitexplorer
 {
+namespace io
+{
+namespace loader
+{
 using namespace brayns;
 
 class AstrocyteLoader : public AbstractCircuitLoader
@@ -50,4 +54,6 @@ private:
                                      const LoaderProgress &callback,
                                      Model &model) const;
 };
+} // namespace loader
+} // namespace io
 } // namespace circuitexplorer

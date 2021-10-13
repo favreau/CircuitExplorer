@@ -18,14 +18,15 @@
 
 #include "AbstractCircuitLoader.h"
 #include "MorphologyLoader.h"
-#include "SpikeSimulationHandler.h"
-#include "VoltageSimulationHandler.h"
+
+#include <plugin/io/handlers/CellGrowthHandler.h>
+#include <plugin/io/handlers/SpikeSimulationHandler.h>
+#include <plugin/io/handlers/VoltageSimulationHandler.h>
 
 #include <common/CommonTypes.h>
 #include <common/Logs.h>
 #include <common/Types.h>
 #include <common/Utils.h>
-#include <plugin/io/CellGrowthHandler.h>
 
 #include <brayns/common/Timer.h>
 #include <brayns/common/scene/ClipPlane.h>
@@ -38,6 +39,10 @@
 #endif
 
 namespace circuitexplorer
+{
+namespace io
+{
+namespace loader
 {
 const strings LOADER_KEYWORDS{"BlueConfig", "CircuitConfig"};
 const strings LOADER_EXTENSIONS{"BlueConfig",    "BlueConfig3",
@@ -224,9 +229,8 @@ CompartmentReportPtr AbstractCircuitLoader::_attachSimulationHandler(
                     << (synchronousMode ? "a" : "") << "synchronous mode");
         const auto &voltageReport = blueConfiguration.getReportSource(report);
         PLUGIN_INFO("Voltage report: " << voltageReport);
-        auto handler =
-            std::make_shared<VoltageSimulationHandler>(voltageReport.getPath(),
-                                                       gids, synchronousMode);
+        auto handler = std::make_shared<io::handler::VoltageSimulationHandler>(
+            voltageReport.getPath(), gids, synchronousMode);
         compartmentReport = handler->getReport();
 
         // Only keep simulated GIDs
@@ -244,9 +248,8 @@ CompartmentReportPtr AbstractCircuitLoader::_attachSimulationHandler(
     {
         const auto &spikeReport = blueConfiguration.getSpikeSource();
         PLUGIN_INFO("Spike report: " << spikeReport);
-        auto handler =
-            std::make_shared<SpikeSimulationHandler>(spikeReport.getPath(),
-                                                     gids);
+        auto handler = std::make_shared<io::handler::SpikeSimulationHandler>(
+            spikeReport.getPath(), gids);
         model.setSimulationHandler(handler);
         simulationHandler = handler;
         setSimulationTransferFunction(model.getTransferFunction());
@@ -255,7 +258,8 @@ CompartmentReportPtr AbstractCircuitLoader::_attachSimulationHandler(
     default:
         if (userDataType == UserDataType::distance_to_soma)
         {
-            auto handler = std::make_shared<CellGrowthHandler>(100);
+            auto handler =
+                std::make_shared<io::handler::CellGrowthHandler>(100);
             model.setSimulationHandler(handler);
             setSimulationTransferFunction(model.getTransferFunction(), 0.f);
         }
@@ -971,4 +975,6 @@ PropertyMap AbstractCircuitLoader::getProperties() const
 {
     return _defaults;
 }
+} // namespace loader
+} // namespace io
 } // namespace circuitexplorer

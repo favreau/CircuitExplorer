@@ -22,12 +22,16 @@
 
 namespace circuitexplorer
 {
-class SynapseCircuitLoader : public AbstractCircuitLoader
+namespace io
+{
+namespace loader
+{
+class AdvancedCircuitLoader : public AbstractCircuitLoader
 {
 public:
-    SynapseCircuitLoader(Scene &scene,
-                         const ApplicationParameters &applicationParameters,
-                         PropertyMap &&loaderParams);
+    AdvancedCircuitLoader(Scene &scene,
+                          const ApplicationParameters &applicationParameters,
+                          PropertyMap &&loaderParams);
 
     std::string getName() const final;
 
@@ -37,4 +41,6 @@ public:
         const std::string &filename, const LoaderProgress &callback,
         const PropertyMap &properties) const final;
 };
+} // namespace loader
+} // namespace io
 } // namespace circuitexplorer

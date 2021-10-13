@@ -18,28 +18,29 @@
 
 #pragma once
 
-#include <brayns/common/simulation/AbstractSimulationHandler.h>
+#include "AbstractCircuitLoader.h"
 
-#include <brayns/api.h>
-#include <brayns/common/types.h>
-
-/**
- * @brief The CellGrowthHandler class handles distance to the soma
- */
-class CellGrowthHandler : public brayns::AbstractSimulationHandler
+namespace circuitexplorer
+{
+namespace io
+{
+namespace loader
+{
+class SynapseCircuitLoader : public AbstractCircuitLoader
 {
 public:
-    /**
-     * @brief Default constructor
-     */
-    CellGrowthHandler(const uint32_t nbFrames);
-    CellGrowthHandler(const CellGrowthHandler& rhs);
-    ~CellGrowthHandler();
+    SynapseCircuitLoader(Scene &scene,
+                         const ApplicationParameters &applicationParameters,
+                         PropertyMap &&loaderParams);
 
-    void* getFrameData(const uint32_t) final;
+    std::string getName() const final;
 
-    bool isReady() const final { return true; }
+    static PropertyMap getCLIProperties();
 
-    brayns::AbstractSimulationHandlerPtr clone() const final;
+    ModelDescriptorPtr importFromFile(
+        const std::string &filename, const LoaderProgress &callback,
+        const PropertyMap &properties) const final;
 };
-typedef std::shared_ptr<CellGrowthHandler> CellGrowthHandlerPtr;
+} // namespace loader
+} // namespace io
+} // namespace circuitexplorer

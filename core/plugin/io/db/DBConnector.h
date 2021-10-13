@@ -24,6 +24,8 @@
 
 namespace circuitexplorer
 {
+namespace db
+{
 class DBConnector
 {
 public:
@@ -55,5 +57,5 @@ private:
 };
 
 typedef std::shared_ptr<DBConnector> DBConnectorPtr;
-
+} // namespace db
 } // namespace circuitexplorer

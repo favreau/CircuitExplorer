@@ -19,7 +19,7 @@
 #include "DBConnector.h"
 
 #include <common/Logs.h>
-#include <plugin/io/MorphologyLoader.h>
+#include <plugin/io/loaders/MorphologyLoader.h>
 
 #include <brayns/engineapi/Model.h>
 #include <brayns/engineapi/Scene.h>
@@ -27,6 +27,8 @@
 #include <fstream>
 
 namespace circuitexplorer
+{
+namespace db
 {
 using namespace brayns;
 
@@ -138,7 +140,7 @@ void DBConnector::importMorphology(Scene& scene, const uint64_t guid,
             props.setProperty({"054SectionTypeDendrite", section == 1});
             props.setProperty({"055SectionTypeApicalDendrite", section == 2});
 
-            MorphologyLoader loader(scene, std::move(props));
+            io::loader::MorphologyLoader loader(scene, std::move(props));
             auto modelDescriptor =
                 loader.importFromFile(filename, LoaderProgress(), props);
 
@@ -224,7 +226,7 @@ void DBConnector::importMorphologyAsSDF(Scene& scene, const uint64_t guid,
         props.setProperty({"054SectionTypeDendrite", true});
         props.setProperty({"055SectionTypeApicalDendrite", true});
 
-        MorphologyLoader loader(scene, std::move(props));
+        io::loader::MorphologyLoader loader(scene, std::move(props));
         auto modelDescriptor =
             loader.importFromFile(filename, LoaderProgress(), props);
 
@@ -432,5 +434,5 @@ void DBConnector::insertCompartments(const uint64_t guid,
     }
 }
 #endif
-
+} // namespace db
 } // namespace circuitexplorer

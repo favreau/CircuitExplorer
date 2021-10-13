@@ -30,7 +30,11 @@
 
 namespace circuitexplorer
 {
-const std::string LOADER_NAME = "Synapse loader";
+namespace io
+{
+namespace loader
+{
+const std::string LOADER_NAME = "Synapses (JSON)";
 const std::string SUPPORTED_EXTENTION_JSON = "json";
 
 SynapseJSONLoader::SynapseJSONLoader(Scene& scene,
@@ -126,4 +130,6 @@ ModelDescriptorPtr SynapseJSONLoader::importSynapsesFromGIDs(
     modelDescriptor->setTransformation(transformation);
     return modelDescriptor;
 }
+} // namespace loader
+} // namespace io
 } // namespace circuitexplorer

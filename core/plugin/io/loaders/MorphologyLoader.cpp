@@ -31,6 +31,11 @@
 
 namespace circuitexplorer
 {
+namespace io
+{
+namespace loader
+{
+const std::string LOADER_NAME = "Morphology";
 const std::string SUPPORTED_EXTENTION_H5 = "h5";
 const std::string SUPPORTED_EXTENTION_SWC = "swc";
 
@@ -60,7 +65,7 @@ MorphologyLoader::MorphologyLoader(Scene& scene, PropertyMap&& loaderParams)
 
 std::string MorphologyLoader::getName() const
 {
-    return "Morphology loader";
+    return LOADER_NAME;
 }
 
 std::vector<std::string> MorphologyLoader::getSupportedExtensions() const
@@ -1210,7 +1215,7 @@ PropertyMap MorphologyLoader::getProperties() const
 
 PropertyMap MorphologyLoader::getCLIProperties()
 {
-    PropertyMap pm("MorphologyLoader");
+    PropertyMap pm(LOADER_NAME);
     pm.setProperty(PROP_RADIUS_MULTIPLIER);
     pm.setProperty(PROP_RADIUS_CORRECTION);
     pm.setProperty(PROP_SECTION_TYPE_SOMA);
@@ -1275,5 +1280,6 @@ void MorphologyLoader::createMissingMaterials(Model& model,
         for (const auto& material : materials)
             simulationHandler->bind(material.second);
 }
-
+} // namespace loader
+} // namespace io
 } // namespace circuitexplorer

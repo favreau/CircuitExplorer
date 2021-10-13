@@ -16,15 +16,19 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#include "MorphologyCollageLoader.h"
+#include "SynapseCircuitLoader.h"
 
 #include <common/Logs.h>
 
 namespace circuitexplorer
 {
-const std::string LOADER_NAME = "Morphology collage use-case";
+namespace io
+{
+namespace loader
+{
+const std::string LOADER_NAME = "Synapses";
 
-MorphologyCollageLoader::MorphologyCollageLoader(
+SynapseCircuitLoader::SynapseCircuitLoader(
     Scene &scene, const ApplicationParameters &applicationParameters,
     PropertyMap &&loaderParams)
     : AbstractCircuitLoader(scene, applicationParameters,
@@ -33,16 +37,13 @@ MorphologyCollageLoader::MorphologyCollageLoader(
     PLUGIN_INFO("Registering " << LOADER_NAME);
     _fixedDefaults.setProperty(
         {PROP_DB_CONNECTION_STRING.name, std::string("")});
+    _fixedDefaults.setProperty({PROP_REPORT.name, std::string("")});
     _fixedDefaults.setProperty(
         {PROP_PRESYNAPTIC_NEURON_GID.name, std::string("")});
     _fixedDefaults.setProperty(
         {PROP_POSTSYNAPTIC_NEURON_GID.name, std::string("")});
-    _fixedDefaults.setProperty({PROP_GIDS.name, std::string("")});
-    _fixedDefaults.setProperty({PROP_REPORT.name, std::string("")});
     _fixedDefaults.setProperty(
         {PROP_REPORT_TYPE.name, enumToString(ReportType::undefined)});
-    _fixedDefaults.setProperty({PROP_CIRCUIT_COLOR_SCHEME.name,
-                                enumToString(CircuitColorScheme::none)});
     _fixedDefaults.setProperty({PROP_RADIUS_CORRECTION.name, 0.0});
     _fixedDefaults.setProperty(
         {PROP_DAMPEN_BRANCH_THICKNESS_CHANGERATE.name, true});
@@ -58,13 +59,11 @@ MorphologyCollageLoader::MorphologyCollageLoader(
     _fixedDefaults.setProperty(
         {PROP_MESH_FILENAME_PATTERN.name, std::string("")});
     _fixedDefaults.setProperty({PROP_MESH_TRANSFORMATION.name, false});
-    _fixedDefaults.setProperty({PROP_SYNAPSE_RADIUS.name, 1.0});
-    _fixedDefaults.setProperty({PROP_LOAD_AFFERENT_SYNAPSES.name, false});
-    _fixedDefaults.setProperty({PROP_LOAD_EFFERENT_SYNAPSES.name, false});
-    _fixedDefaults.setProperty({PROP_INTERNALS.name, false});
+    _fixedDefaults.setProperty({PROP_CELL_CLIPPING.name, false});
+    _fixedDefaults.setProperty({PROP_AREAS_OF_INTEREST.name, 0});
 }
 
-ModelDescriptorPtr MorphologyCollageLoader::importFromFile(
+ModelDescriptorPtr SynapseCircuitLoader::importFromFile(
     const std::string &filename, const LoaderProgress &callback,
     const PropertyMap &properties) const
 {
@@ -76,18 +75,20 @@ ModelDescriptorPtr MorphologyCollageLoader::importFromFile(
     return importCircuit(filename, props, callback);
 }
 
-std::string MorphologyCollageLoader::getName() const
+std::string SynapseCircuitLoader::getName() const
 {
     return LOADER_NAME;
 }
 
-PropertyMap MorphologyCollageLoader::getCLIProperties()
+PropertyMap SynapseCircuitLoader::getCLIProperties()
 {
-    PropertyMap pm("MorphologyCollage");
+    PropertyMap pm(LOADER_NAME);
     pm.setProperty(PROP_DENSITY);
     pm.setProperty(PROP_TARGETS);
+    pm.setProperty(PROP_GIDS);
     pm.setProperty(PROP_RADIUS_MULTIPLIER);
     pm.setProperty(PROP_RANDOM_SEED);
+    pm.setProperty(PROP_CIRCUIT_COLOR_SCHEME);
     pm.setProperty(PROP_SECTION_TYPE_SOMA);
     pm.setProperty(PROP_SECTION_TYPE_AXON);
     pm.setProperty(PROP_SECTION_TYPE_DENDRITE);
@@ -95,8 +96,12 @@ PropertyMap MorphologyCollageLoader::getCLIProperties()
     pm.setProperty(PROP_USE_SDF_GEOMETRY);
     pm.setProperty(PROP_MORPHOLOGY_COLOR_SCHEME);
     pm.setProperty(PROP_MORPHOLOGY_QUALITY);
-    pm.setProperty(PROP_CELL_CLIPPING);
-    pm.setProperty(PROP_AREAS_OF_INTEREST);
+    pm.setProperty(PROP_SYNAPSE_RADIUS);
+    pm.setProperty(PROP_LOAD_AFFERENT_SYNAPSES);
+    pm.setProperty(PROP_LOAD_EFFERENT_SYNAPSES);
+    pm.setProperty(PROP_INTERNALS);
     return pm;
 }
+} // namespace loader
+} // namespace io
 } // namespace circuitexplorer

@@ -38,6 +38,10 @@ class URI;
 
 namespace circuitexplorer
 {
+namespace io
+{
+namespace loader
+{
 using namespace brayns;
 using Matrix4fs = std::vector<Matrix4f>;
 
@@ -161,4 +165,6 @@ private:
                            const float synapseRadius, Model &model) const;
 #endif
 };
+} // namespace loader
+} // namespace io
 } // namespace circuitexplorer

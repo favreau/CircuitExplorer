@@ -22,12 +22,16 @@
 
 namespace circuitexplorer
 {
-class MorphologyCollageLoader : public AbstractCircuitLoader
+namespace io
+{
+namespace loader
+{
+class PairSynapsesLoader : public AbstractCircuitLoader
 {
 public:
-    MorphologyCollageLoader(Scene &scene,
-                            const ApplicationParameters &applicationParameters,
-                            PropertyMap &&loaderParams);
+    PairSynapsesLoader(Scene &scene,
+                       const ApplicationParameters &applicationParameters,
+                       PropertyMap &&loaderParams);
 
     std::string getName() const final;
 
@@ -37,4 +41,6 @@ public:
         const std::string &filename, const LoaderProgress &callback,
         const PropertyMap &properties) const final;
 };
+} // namespace loader
+} // namespace io
 } // namespace circuitexplorer

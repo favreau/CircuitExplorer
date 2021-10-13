@@ -18,6 +18,12 @@
 
 #include "CellGrowthHandler.h"
 
+namespace circuitexplorer
+{
+namespace io
+{
+namespace handler
+{
 CellGrowthHandler::CellGrowthHandler(const uint32_t nbFrames)
     : brayns::AbstractSimulationHandler()
 {
@@ -51,3 +57,6 @@ brayns::AbstractSimulationHandlerPtr CellGrowthHandler::clone() const
 {
     return std::make_shared<CellGrowthHandler>(*this);
 }
+} // namespace handler
+} // namespace io
+} // namespace circuitexplorer

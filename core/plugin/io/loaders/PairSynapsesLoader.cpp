@@ -16,15 +16,19 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#include "SynapseCircuitLoader.h"
+#include "PairSynapsesLoader.h"
 
 #include <common/Logs.h>
 
 namespace circuitexplorer
 {
-const std::string LOADER_NAME = "Synapse loader use-case";
+namespace io
+{
+namespace loader
+{
+const std::string LOADER_NAME = "Pair synapses";
 
-SynapseCircuitLoader::SynapseCircuitLoader(
+PairSynapsesLoader::PairSynapsesLoader(
     Scene &scene, const ApplicationParameters &applicationParameters,
     PropertyMap &&loaderParams)
     : AbstractCircuitLoader(scene, applicationParameters,
@@ -33,14 +37,16 @@ SynapseCircuitLoader::SynapseCircuitLoader(
     PLUGIN_INFO("Registering " << LOADER_NAME);
     _fixedDefaults.setProperty(
         {PROP_DB_CONNECTION_STRING.name, std::string("")});
+    _fixedDefaults.setProperty({PROP_DENSITY.name, 1.0});
+    _fixedDefaults.setProperty({PROP_RANDOM_SEED.name, 0.0});
     _fixedDefaults.setProperty({PROP_REPORT.name, std::string("")});
-    _fixedDefaults.setProperty(
-        {PROP_PRESYNAPTIC_NEURON_GID.name, std::string("")});
-    _fixedDefaults.setProperty(
-        {PROP_POSTSYNAPTIC_NEURON_GID.name, std::string("")});
+    _fixedDefaults.setProperty({PROP_TARGETS.name, std::string("")});
+    _fixedDefaults.setProperty({PROP_GIDS.name, std::string("")});
     _fixedDefaults.setProperty(
         {PROP_REPORT_TYPE.name, enumToString(ReportType::undefined)});
     _fixedDefaults.setProperty({PROP_RADIUS_CORRECTION.name, 0.0});
+    _fixedDefaults.setProperty({PROP_CIRCUIT_COLOR_SCHEME.name,
+                                enumToString(CircuitColorScheme::by_id)});
     _fixedDefaults.setProperty(
         {PROP_DAMPEN_BRANCH_THICKNESS_CHANGERATE.name, true});
     _fixedDefaults.setProperty({PROP_USE_REALISTIC_SOMA.name, false});
@@ -57,9 +63,12 @@ SynapseCircuitLoader::SynapseCircuitLoader(
     _fixedDefaults.setProperty({PROP_MESH_TRANSFORMATION.name, false});
     _fixedDefaults.setProperty({PROP_CELL_CLIPPING.name, false});
     _fixedDefaults.setProperty({PROP_AREAS_OF_INTEREST.name, 0});
+    _fixedDefaults.setProperty({PROP_LOAD_AFFERENT_SYNAPSES.name, true});
+    _fixedDefaults.setProperty({PROP_LOAD_EFFERENT_SYNAPSES.name, true});
+    _fixedDefaults.setProperty({PROP_INTERNALS.name, false});
 }
 
-ModelDescriptorPtr SynapseCircuitLoader::importFromFile(
+ModelDescriptorPtr PairSynapsesLoader::importFromFile(
     const std::string &filename, const LoaderProgress &callback,
     const PropertyMap &properties) const
 {
@@ -71,20 +80,17 @@ ModelDescriptorPtr SynapseCircuitLoader::importFromFile(
     return importCircuit(filename, props, callback);
 }
 
-std::string SynapseCircuitLoader::getName() const
+std::string PairSynapsesLoader::getName() const
 {
     return LOADER_NAME;
 }
 
-PropertyMap SynapseCircuitLoader::getCLIProperties()
+PropertyMap PairSynapsesLoader::getCLIProperties()
 {
-    PropertyMap pm("Synapse Circuit Loader");
-    pm.setProperty(PROP_DENSITY);
-    pm.setProperty(PROP_TARGETS);
-    pm.setProperty(PROP_GIDS);
+    PropertyMap pm(LOADER_NAME);
+    pm.setProperty(PROP_PRESYNAPTIC_NEURON_GID);
+    pm.setProperty(PROP_POSTSYNAPTIC_NEURON_GID);
     pm.setProperty(PROP_RADIUS_MULTIPLIER);
-    pm.setProperty(PROP_RANDOM_SEED);
-    pm.setProperty(PROP_CIRCUIT_COLOR_SCHEME);
     pm.setProperty(PROP_SECTION_TYPE_SOMA);
     pm.setProperty(PROP_SECTION_TYPE_AXON);
     pm.setProperty(PROP_SECTION_TYPE_DENDRITE);
@@ -93,9 +99,8 @@ PropertyMap SynapseCircuitLoader::getCLIProperties()
     pm.setProperty(PROP_MORPHOLOGY_COLOR_SCHEME);
     pm.setProperty(PROP_MORPHOLOGY_QUALITY);
     pm.setProperty(PROP_SYNAPSE_RADIUS);
-    pm.setProperty(PROP_LOAD_AFFERENT_SYNAPSES);
-    pm.setProperty(PROP_LOAD_EFFERENT_SYNAPSES);
-    pm.setProperty(PROP_INTERNALS);
     return pm;
 }
+} // namespace loader
+} // namespace io
 } // namespace circuitexplorer

@@ -19,7 +19,6 @@
 #pragma once
 
 #include <plugin/api/CircuitExplorerParams.h>
-#include <plugin/io/AbstractCircuitLoader.h>
 
 #include <array>
 #include <brayns/common/types.h>

@@ -28,6 +28,10 @@
 
 namespace circuitexplorer
 {
+namespace io
+{
+namespace handler
+{
 using namespace brayns;
 typedef std::shared_ptr<brion::CompartmentReport> CompartmentReportPtr;
 
@@ -73,4 +77,6 @@ private:
     std::map<uint64_t, std::vector<float>> _frames;
     bool _ready{false};
 };
+} // namespace handler
+} // namespace io
 } // namespace circuitexplorer

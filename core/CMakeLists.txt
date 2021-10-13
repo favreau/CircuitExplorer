@@ -62,19 +62,19 @@ set(CIRCUITEXPLORER_SOURCES
     plugin/api/CircuitExplorerParams.cpp
     plugin/meshing/MetaballsGenerator.cpp
     plugin/CircuitExplorerPlugin.cpp
-    plugin/io/VoltageSimulationHandler.cpp
-    plugin/io/CellGrowthHandler.cpp
-    plugin/io/SpikeSimulationHandler.cpp
-    plugin/io/MorphologyCollageLoader.cpp
-    plugin/io/PairSynapsesLoader.cpp
-    plugin/io/AbstractCircuitLoader.cpp
-    plugin/io/MeshCircuitLoader.cpp
-    plugin/io/AdvancedCircuitLoader.cpp
-    plugin/io/AstrocyteLoader.cpp
-    plugin/io/SynapseCircuitLoader.cpp
-    plugin/io/BrickLoader.cpp
-    plugin/io/MorphologyLoader.cpp
-    plugin/io/SynapseJSONLoader.cpp
+    plugin/io/handlers/VoltageSimulationHandler.cpp
+    plugin/io/handlers/CellGrowthHandler.cpp
+    plugin/io/handlers/SpikeSimulationHandler.cpp
+    plugin/io/loaders/MorphologyCollageLoader.cpp
+    plugin/io/loaders/PairSynapsesLoader.cpp
+    plugin/io/loaders/AbstractCircuitLoader.cpp
+    plugin/io/loaders/MeshCircuitLoader.cpp
+    plugin/io/loaders/AdvancedCircuitLoader.cpp
+    plugin/io/loaders/AstrocyteLoader.cpp
+    plugin/io/loaders/SynapseCircuitLoader.cpp
+    plugin/io/loaders/BrickLoader.cpp
+    plugin/io/loaders/MorphologyLoader.cpp
+    plugin/io/loaders/SynapseJSONLoader.cpp
     common/Utils.cpp
 )
 
@@ -82,19 +82,19 @@ set(CIRCUITEXPLORER_PUBLIC_HEADERS
     plugin/api/CircuitExplorerParams.h
     plugin/meshing/MetaballsGenerator.h
     plugin/CircuitExplorerPlugin.h
-    plugin/io/CellGrowthHandler.h
-    plugin/io/VoltageSimulationHandler.h
-    plugin/io/SpikeSimulationHandler.h
-    plugin/io/BrickLoader.h
-    plugin/io/AbstractCircuitLoader.h
-    plugin/io/PairSynapsesLoader.h
-    plugin/io/MeshCircuitLoader.h
-    plugin/io/MorphologyCollageLoader.h
-    plugin/io/AdvancedCircuitLoader.h
-    plugin/io/AstrocyteLoader.h
-    plugin/io/SynapseCircuitLoader.h
-    plugin/io/MorphologyLoader.h
-    plugin/io/SynapseJSONLoader.h
+    plugin/io/handlers/CellGrowthHandler.h
+    plugin/io/handlers/VoltageSimulationHandler.h
+    plugin/io/handlers/SpikeSimulationHandler.h
+    plugin/io/loaders/BrickLoader.h
+    plugin/io/loaders/AbstractCircuitLoader.h
+    plugin/io/loaders/PairSynapsesLoader.h
+    plugin/io/loaders/MeshCircuitLoader.h
+    plugin/io/loaders/MorphologyCollageLoader.h
+    plugin/io/loaders/AdvancedCircuitLoader.h
+    plugin/io/loaders/AstrocyteLoader.h
+    plugin/io/loaders/SynapseCircuitLoader.h
+    plugin/io/loaders/MorphologyLoader.h
+    plugin/io/loaders/SynapseJSONLoader.h
     plugin/io/Utils.h
 )
 
