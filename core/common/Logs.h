@@ -21,29 +21,29 @@
 #include <iostream>
 #include <thread>
 
-#define PLUGIN_PREFIX "CIRCUIT_EXPLORER"
-
 namespace circuitexplorer
 {
-#define PLUGIN_ERROR(message)                                       \
-    std::cerr << "[" << std::this_thread::get_id() << "] [ERROR] [" \
+#define PLUGIN_PREFIX "CE"
+
+#define PLUGIN_ERROR(message)                                             \
+    std::cerr << "[" << std::hex << std::this_thread::get_id() << "] E [" \
               << PLUGIN_PREFIX << "] " << message << std::endl;
-#define PLUGIN_WARN(message)                                        \
-    std::cerr << "[" << std::this_thread::get_id() << "] [WARN ] [" \
+#define PLUGIN_WARN(message)                                              \
+    std::cerr << "[" << std::hex << std::this_thread::get_id() << "] W [" \
               << PLUGIN_PREFIX << "] " << message << std::endl;
-#define PLUGIN_INFO(message)                                        \
-    std::cout << "[" << std::this_thread::get_id() << "] [INFO ] [" \
+#define PLUGIN_INFO(message)                                              \
+    std::cout << "[" << std::hex << std::this_thread::get_id() << "] I [" \
               << PLUGIN_PREFIX << "] " << message << std::endl;
 #ifdef NDEBUG
 #define PLUGIN_DEBUG(message) ;
 #else
-#define PLUGIN_DEBUG(message)                                       \
-    std::cout << "[" << std::this_thread::get_id() << "] [DEBUG] [" \
+#define PLUGIN_DEBUG(message)                                             \
+    std::cout << "[" << std::hex << std::this_thread::get_id() << "] D [" \
               << PLUGIN_PREFIX << "] " << message << std::endl;
 #endif
-#define PLUGIN_TIMER(__time, __msg)                                 \
-    std::cout << "[" << std::this_thread::get_id() << "] [TIMER] [" \
-              << PLUGIN_PREFIX << "] [" << __time << "] " << __msg  \
+#define PLUGIN_TIMER(__time, __msg)                                       \
+    std::cout << "[" << std::hex << std::this_thread::get_id() << "] T [" \
+              << PLUGIN_PREFIX << "] [" << __time << "] " << __msg        \
               << std::endl;
 
 #define PLUGIN_THROW(message)              \
