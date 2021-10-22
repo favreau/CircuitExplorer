@@ -107,9 +107,10 @@ bool isClipped(const uniform CircuitExplorerAdvancedRenderer* uniform self,
 inline bool launchRandomRay(
     const uniform CircuitExplorerAdvancedRenderer* uniform self,
     varying ScreenSample& sample, const varying vec3f& intersection,
-    const varying vec3f& normal, DifferentialGeometry& geometry,
-    varying vec3f& backgroundColor, varying float& distanceToIntersection,
-    varying vec3f& randomDirection, const uint32 iteration)
+    const varying vec3f& normal, varying vec3f& backgroundColor,
+    varying float& distanceToIntersection, varying vec3f& randomDirection,
+    varying vec3f& color, varying float& emission, const uint32 iteration,
+    const float epsilon)
 {
     randomDirection =
         getRandomVector(self->super.super.useHardwareRandomizer,
@@ -125,38 +126,78 @@ inline bool launchRandomRay(
     Ray randomRay;
     randomRay.org = intersection;
     randomRay.dir = randomDirection;
-    randomRay.t0 = max(0.f, geometry.epsilon);
+    randomRay.t0 = self->epsilonFactor * epsilon;
     randomRay.t = self->giDistance;
     randomRay.time = inf;
     randomRay.primID = -1;
     randomRay.geomID = -1;
     randomRay.instID = -1;
 
-    traceRay(self->super.super.super.model, randomRay);
-
-    if (randomRay.geomID < 0)
+    bool moreRebounds = true;
+    bool hit = false;
+    while (moreRebounds)
     {
-        // No intersection
-        backgroundColor = make_vec3f(
-            skyboxMapping((Renderer*)self, randomRay,
-                          (DefaultMaterial*)self->super.super.bgMaterial));
-        return false;
+        traceRay(self->super.super.super.model, randomRay);
+
+        if (randomRay.geomID < 0)
+        {
+            // No intersection
+            backgroundColor = make_vec3f(
+                skyboxMapping((Renderer*)self, randomRay,
+                              (DefaultMaterial*)self->super.super.bgMaterial));
+            return false;
+        }
+
+        DifferentialGeometry dg;
+        postIntersect(self->super.super.super.model, dg, randomRay,
+                      DG_NG | DG_NS | DG_NORMALIZE | DG_TANGENTS |
+                          DG_FACEFORWARD | DG_MATERIALID | DG_COLOR |
+                          DG_TEXCOORD);
+
+        uniform DefaultMaterial* objMaterial =
+            (uniform DefaultMaterial*)dg.material;
+        if (objMaterial)
+            foreach_unique(mat in objMaterial)
+            {
+                hit = true;
+                moreRebounds = false;
+
+                // Random ray hits a primitive
+                distanceToIntersection = randomRay.t * randomRay.t;
+
+                // Kd
+                if (valid(mat->map_Kd))
+                    color = color + get3f(mat->map_Kd, dg);
+                else
+                    color = color + mat->Kd;
+
+                // Emission
+                if (valid(mat->map_a))
+                {
+                    vec3f Ka = get3f(mat->map_a, dg);
+                    emission += reduce_max(Ka);
+                }
+                else
+                    emission += mat->a;
+            }
+        else
+            moreRebounds = false;
+
+        randomRay.t0 = randomRay.t + self->epsilonFactor * epsilon;
+        randomRay.t = inf;
+        randomRay.primID = -1;
+        randomRay.geomID = -1;
+        randomRay.instID = -1;
     }
 
-    // Random ray hits a primitive
-    distanceToIntersection = randomRay.t * randomRay.t;
-
-    postIntersect(self->super.super.super.model, geometry, randomRay,
-                  DG_NG | DG_NS | DG_NORMALIZE | DG_MATERIALID | DG_COLOR |
-                      DG_TEXCOORD);
-    return true;
+    return hit;
 }
 
 inline void indirectShading(
     const uniform CircuitExplorerAdvancedRenderer* uniform self,
     varying ScreenSample& sample, const varying vec3f& intersection,
     const varying vec3f& normal, varying vec3f& indirectColor,
-    varying float& indirectIntensity)
+    varying float& indirectIntensity, const float epsilon)
 {
     if (self->giSamples == 0)
         return;
@@ -166,55 +207,32 @@ inline void indirectShading(
 
     float shadingPower = 0.f;
     vec3f shadingColor = make_vec3f(0.f);
-    uint32 counter = 1;
 
     for (uint32 i = 0; i < self->giSamples; ++i)
     {
         // Launch a random ray
         vec3f randomDirection;
-        DifferentialGeometry geometry;
-        if (launchRandomRay(self, sample, intersection, normal, geometry,
-                            backgroundColor, distanceToIntersection,
-                            randomDirection, i))
+        vec3f color = make_vec3f(0.f);
+        float emission = 0.f;
+        if (launchRandomRay(self, sample, intersection, normal, backgroundColor,
+                            distanceToIntersection, randomDirection, color,
+                            emission, i, epsilon))
         {
-            // Determine material of intersected geometry
-            const uniform Material* material = geometry.material;
-            const uniform CircuitExplorerMaterial* objMaterial =
-                (const uniform CircuitExplorerMaterial*)material;
-            if (objMaterial)
-                foreach_unique(mat in objMaterial)
-                {
-                    if (mat->a > 0.f)
-                    {
-                        if (valid(mat->map_Kd))
-                            shadingColor =
-                                shadingColor + get3f(mat->map_Kd, geometry);
-                        else
-                            shadingColor = shadingColor + mat->Kd;
+            // Kd
+            shadingColor = shadingColor + color;
 
-                        // Emission
-                        if (valid(mat->map_a))
-                        {
-                            vec3f Ka = get3f(mat->map_a, geometry);
-                            shadingPower = shadingPower + reduce_max(Ka);
-                        }
-                        else
-                            shadingPower = shadingPower + mat->a;
-
-                        ++counter;
-                    }
-                }
+            // Emission
+            shadingPower += 1.f + emission;
         }
         else
         {
             shadingColor = shadingColor + backgroundColor;
             shadingPower = shadingPower + DEFAULT_SKY_POWER;
-            ++counter;
         }
     }
 
-    indirectColor = indirectColor + shadingColor / (float)(counter);
-    indirectIntensity = indirectIntensity + shadingPower / (float)(counter);
+    indirectColor = indirectColor + shadingColor / self->giSamples;
+    indirectIntensity = indirectIntensity + shadingPower / self->giSamples;
 }
 
 inline float getVolumeShadowContribution(
@@ -405,7 +423,7 @@ inline vec4f getVolumeContribution(
             vec3f indirectColor;
             float indirectIntensity = 1.f;
             indirectShading(self, sample, point, gradient, indirectColor,
-                            indirectIntensity);
+                            indirectIntensity, dg.epsilon);
             volumeSampleColor = volumeSampleColor + sampleOpacity *
                                                         indirectColor *
                                                         indirectIntensity;
@@ -801,7 +819,7 @@ inline void computeIndirectShading(DifferentialGeometry& dg,
 
     indirectShading(attributes.self, sample, attributes.origin,
                     attributes.normal, attributes.indirectColor,
-                    attributes.indirectIntensity);
+                    attributes.indirectIntensity, dg.epsilon);
 }
 
 inline void processShadows(DifferentialGeometry& dg,
@@ -1028,14 +1046,19 @@ inline vec3f CircuitExplorerAdvancedRenderer_shadeRay(
     varying ScreenSample& sample)
 {
     varying Ray ray = sample.ray;
+    float maxt = self->super.fogStart + self->super.fogThickness;
+
     vec4f color = make_vec4f(0.f);
-    vec3f bgColor = make_vec3f(0.f);
+    vec3f bgColor = make_vec3f(
+        skyboxMapping((Renderer*)self, ray,
+                      (DefaultMaterial*)self->super.super.bgMaterial));
 
     uint32 depth = 0;
     float oldlocalRefraction = 1.f;
     bool moreRebounds = true;
 
-    sample.z = inf;
+    ray.t = maxt;
+    sample.z = maxt;
 
     ShadingAttributes bgAttr;
     bgAttr.self = self;
@@ -1171,7 +1194,8 @@ inline vec3f CircuitExplorerAdvancedRenderer_shadeRay(
                 ++depth;
             }
 
-            ray.t = inf;
+            maxt -= ray.t;
+            ray.t = maxt;
             ray.primID = -1;
             ray.geomID = -1;
             ray.instID = -1;
@@ -1185,16 +1209,15 @@ inline vec3f CircuitExplorerAdvancedRenderer_shadeRay(
     }
 
     // Fog attenuation
-    const float distance = sample.z;
-    const float fogAttenuation = distance > self->super.fogStart
-                                     ? clamp((distance - self->super.fogStart) /
+    const float fogAttenuation = sample.z > self->super.fogStart
+                                     ? clamp((sample.z - self->super.fogStart) /
                                                  self->super.fogThickness,
                                              0.f, 1.f)
                                      : 0.f;
     const float fog = 1.f - color.w * (1.f - fogAttenuation);
-    const vec3f finalColor = make_vec3f(color) * (1.f - fog) + fog * bgColor;
 
     // Final color
+    const vec3f finalColor = make_vec3f(color) * (1.f - fog) + fog * bgColor;
     sample.alpha = min(1.f, color.w);
     return make_vec3f(finalColor * self->super.super.exposure);
 }

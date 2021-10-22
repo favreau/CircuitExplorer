@@ -904,7 +904,7 @@ float AbstractCircuitLoader::_importMorphologies(
     for (uint64_t i = 0; i < gids.size(); ++i)
     {
         const auto uri = somasOnly ? brain::URI() : uris[i];
-        PLUGIN_INFO("Loading " << uri);
+        PLUGIN_INFO("[" << i + 1 << "/" << gids.size() << "] Loading " << uri);
         const auto baseMaterialId =
             _getMaterialFromCircuitAttributes(properties, i, materialId,
                                               targetGIDOffsets, layerIds,
