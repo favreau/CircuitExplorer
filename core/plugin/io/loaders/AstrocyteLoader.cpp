@@ -70,7 +70,6 @@ AstrocyteLoader::AstrocyteLoader(
     _fixedDefaults.setProperty({PROP_MESH_TRANSFORMATION.name, false});
     _fixedDefaults.setProperty({PROP_CELL_CLIPPING.name, false});
     _fixedDefaults.setProperty({PROP_AREAS_OF_INTEREST.name, 0});
-    _fixedDefaults.setProperty({PROP_SYNAPSE_RADIUS.name, 1.0});
     _fixedDefaults.setProperty({PROP_LOAD_AFFERENT_SYNAPSES.name, true});
     _fixedDefaults.setProperty({PROP_LOAD_EFFERENT_SYNAPSES.name, true});
     _fixedDefaults.setProperty(
@@ -163,7 +162,7 @@ void AstrocyteLoader::_importMorphologiesFromURIs(
                                      ? i * NB_MATERIALS_PER_INSTANCE
                                      : NO_MATERIAL);
 
-        loader.setDefaultMaterialId(materialId);
+        loader.setBaseMaterialId(materialId);
 
         MorphologyInfo morphologyInfo;
         morphologyInfo = loader.importMorphology(i, morphologyProps, uri, model,

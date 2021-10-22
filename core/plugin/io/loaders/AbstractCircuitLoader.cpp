@@ -525,7 +525,7 @@ size_t AbstractCircuitLoader::_getMaterialFromCircuitAttributes(
     const auto colorScheme = stringToEnum<CircuitColorScheme>(
         properties.getProperty<std::string>(PROP_CIRCUIT_COLOR_SCHEME.name));
 
-    size_t materialId = 0;
+    size_t materialId;
     switch (colorScheme)
     {
     case CircuitColorScheme::by_id:
@@ -559,7 +559,7 @@ size_t AbstractCircuitLoader::_getMaterialFromCircuitAttributes(
             PLUGIN_DEBUG("Failed to get neuron layer");
         break;
     default:
-        materialId = NO_MATERIAL;
+        materialId = 0;
     }
     return materialId;
 }
@@ -880,8 +880,6 @@ float AbstractCircuitLoader::_importMorphologies(
         properties.getProperty<bool>(PROP_LOAD_AFFERENT_SYNAPSES.name);
     const bool loadEfferentSynapses =
         properties.getProperty<bool>(PROP_LOAD_EFFERENT_SYNAPSES.name);
-    const double synapseRadius =
-        properties.getProperty<double>(PROP_SYNAPSE_RADIUS.name);
 
     Timer chrono;
     const auto sectionTypes =
@@ -907,17 +905,16 @@ float AbstractCircuitLoader::_importMorphologies(
     {
         const auto uri = somasOnly ? brain::URI() : uris[i];
         PLUGIN_INFO("Loading " << uri);
-        const auto id =
+        const auto baseMaterialId =
             _getMaterialFromCircuitAttributes(properties, i, materialId,
                                               targetGIDOffsets, layerIds,
                                               morphologyTypes,
                                               electrophysiologyTypes, false);
-        loader.setDefaultMaterialId(id);
+        loader.setBaseMaterialId(baseMaterialId);
 
         try
         {
             SynapsesInfo synapsesInfo;
-            synapsesInfo.radius = synapseRadius;
             synapsesInfo.prePostSynapticUsecase = prePostSynapticUsecase;
             if (prePostSynapticUsecase)
             {

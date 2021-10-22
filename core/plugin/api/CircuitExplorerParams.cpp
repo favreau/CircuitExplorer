@@ -23,6 +23,8 @@
 
 namespace circuitexplorer
 {
+namespace api
+{
 #ifndef BRAYNS_DEBUG_JSON_ENABLED
 #define FROM_JSON(PARAM, JSON, NAME) \
     PARAM.NAME = JSON[#NAME].get<decltype(PARAM.NAME)>()
@@ -705,4 +707,5 @@ bool from_json(ImportCompartmentSimulation& param, const std::string& payload)
     return true;
 }
 #endif
+} // namespace api
 } // namespace circuitexplorer

@@ -89,6 +89,10 @@ typedef CGAL::Union_of_balls_3<Traits> Union_of_balls_3;
 namespace circuitexplorer
 {
 using namespace brayns;
+using namespace io;
+using namespace loader;
+using namespace handler;
+using namespace api;
 
 #define REGISTER_LOADER(LOADER, FUNC) \
     registry.registerLoader({std::bind(&LOADER::getSupportedDataTypes), FUNC});
@@ -315,39 +319,39 @@ void CircuitExplorerPlugin::init()
     auto& pm = _api->getParametersManager();
 
     // Loaders
-    registry.registerLoader(std::make_unique<io::loader::BrickLoader>(
-        scene, io::loader::BrickLoader::getCLIProperties()));
-
-    registry.registerLoader(std::make_unique<io::loader::SynapseJSONLoader>(
-        scene, std::move(_synapseAttributes)));
-
-    registry.registerLoader(std::make_unique<io::loader::SynapseCircuitLoader>(
-        scene, pm.getApplicationParameters(),
-        io::loader::SynapseCircuitLoader::getCLIProperties()));
-
-    registry.registerLoader(std::make_unique<io::loader::MorphologyLoader>(
-        scene, io::loader::MorphologyLoader::getCLIProperties()));
-
-    registry.registerLoader(std::make_unique<io::loader::AdvancedCircuitLoader>(
-        scene, pm.getApplicationParameters(),
-        io::loader::AdvancedCircuitLoader::getCLIProperties()));
+    registry.registerLoader(
+        std::make_unique<BrickLoader>(scene, BrickLoader::getCLIProperties()));
 
     registry.registerLoader(
-        std::make_unique<io::loader::MorphologyCollageLoader>(
-            scene, pm.getApplicationParameters(),
-            io::loader::MorphologyCollageLoader::getCLIProperties()));
+        std::make_unique<SynapseJSONLoader>(scene,
+                                            std::move(_synapseAttributes)));
 
-    registry.registerLoader(std::make_unique<io::loader::MeshCircuitLoader>(
+    registry.registerLoader(std::make_unique<SynapseCircuitLoader>(
         scene, pm.getApplicationParameters(),
-        io::loader::MeshCircuitLoader::getCLIProperties()));
+        SynapseCircuitLoader::getCLIProperties()));
 
-    registry.registerLoader(std::make_unique<io::loader::PairSynapsesLoader>(
-        scene, pm.getApplicationParameters(),
-        io::loader::PairSynapsesLoader::getCLIProperties()));
+    registry.registerLoader(std::make_unique<MorphologyLoader>(
+        scene, MorphologyLoader::getCLIProperties()));
 
-    registry.registerLoader(std::make_unique<io::loader::AstrocyteLoader>(
+    registry.registerLoader(std::make_unique<AdvancedCircuitLoader>(
         scene, pm.getApplicationParameters(),
-        io::loader::AstrocyteLoader::getCLIProperties()));
+        AdvancedCircuitLoader::getCLIProperties()));
+
+    registry.registerLoader(std::make_unique<MorphologyCollageLoader>(
+        scene, pm.getApplicationParameters(),
+        MorphologyCollageLoader::getCLIProperties()));
+
+    registry.registerLoader(std::make_unique<MeshCircuitLoader>(
+        scene, pm.getApplicationParameters(),
+        MeshCircuitLoader::getCLIProperties()));
+
+    registry.registerLoader(std::make_unique<PairSynapsesLoader>(
+        scene, pm.getApplicationParameters(),
+        PairSynapsesLoader::getCLIProperties()));
+
+    registry.registerLoader(
+        std::make_unique<AstrocyteLoader>(scene, pm.getApplicationParameters(),
+                                          AstrocyteLoader::getCLIProperties()));
 
     // Renderers
     auto& engine = _api->getEngine();
@@ -816,8 +820,7 @@ void CircuitExplorerPlugin::_setSynapseAttributes(
     try
     {
         _synapseAttributes = param;
-        io::loader::SynapseJSONLoader loader(_api->getScene(),
-                                             _synapseAttributes);
+        SynapseJSONLoader loader(_api->getScene(), _synapseAttributes);
         Vector3fs colors;
         for (const auto& htmlColor : _synapseAttributes.htmlColors)
         {
@@ -859,7 +862,7 @@ void CircuitExplorerPlugin::_exportModelToFile(
     auto modelDescriptor = _api->getScene().getModel(saveModel.modelId);
     if (modelDescriptor)
     {
-        io::loader::BrickLoader brickLoader(_api->getScene());
+        BrickLoader brickLoader(_api->getScene());
         brickLoader.exportToFile(modelDescriptor, saveModel.path);
     }
     else
@@ -1086,8 +1089,7 @@ void CircuitExplorerPlugin::_attachCellGrowthHandler(
     auto modelDescriptor = _api->getScene().getModel(payload.modelId);
     if (modelDescriptor)
     {
-        auto handler =
-            std::make_shared<io::handler::CellGrowthHandler>(payload.nbFrames);
+        auto handler = std::make_shared<CellGrowthHandler>(payload.nbFrames);
         modelDescriptor->getModel().setSimulationHandler(handler);
     }
 }
@@ -1108,7 +1110,7 @@ void CircuitExplorerPlugin::_attachCircuitSimulationHandler(
             gids, payload.synchronousMode);
         auto& model = modelDescriptor->getModel();
         model.setSimulationHandler(handler);
-        io::loader::AdvancedCircuitLoader::setSimulationTransferFunction(
+        AdvancedCircuitLoader::setSimulationTransferFunction(
             model.getTransferFunction());
     }
     else

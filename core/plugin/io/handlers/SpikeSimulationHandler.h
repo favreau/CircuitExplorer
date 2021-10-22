@@ -55,6 +55,7 @@ private:
 
     std::map<uint64_t, uint64_t> _gidMap;
 };
+using SpikeSimulationHandlerPtr = std::shared_ptr<SpikeSimulationHandler>;
 } // namespace handler
 } // namespace io
 } // namespace circuitexplorer

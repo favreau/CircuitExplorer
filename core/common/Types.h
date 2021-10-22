@@ -47,18 +47,6 @@ const std::string MATERIAL_PROPERTY_SHADING_MODE = "shading_mode";
 const std::string MATERIAL_PROPERTY_CLIPPING_MODE = "clipping_mode";
 const std::string MATERIAL_PROPERTY_USER_PARAMETER = "user_parameter";
 
-/** Voltage Simulation handlers */
-class AbstractUserDataHandler;
-using AbstractUserDataHandlerPtr = std::shared_ptr<AbstractUserDataHandler>;
-
-/** Voltage Simulation handlers */
-class VoltageSimulationHandler;
-using VoltageSimulationHandlerPtr = std::shared_ptr<VoltageSimulationHandler>;
-
-/** Spike Simulation handlers */
-class SpikeSimulationHandler;
-using SpikeSimulationHandlerPtr = std::shared_ptr<SpikeSimulationHandler>;
-
 /** */
 typedef uint32_t Gid;
 
@@ -301,12 +289,10 @@ const brayns::Property PROP_CELL_CLIPPING = {
 const brayns::Property PROP_AREAS_OF_INTEREST = {
     "101AreasOfInterest", 0,
     {"Loads only one cell per area of interest"}};
-const brayns::Property PROP_SYNAPSE_RADIUS = {
-    "110SynapseRadius", 1.0, 0.1, 5.0, {"Synapse radius"}};
 const brayns::Property PROP_LOAD_AFFERENT_SYNAPSES = {
-    "111LoadAfferentSynapses", false, {"Loads afferent synapses"}};
+    "110LoadAfferentSynapses", false, {"Loads afferent synapses"}};
 const brayns::Property PROP_LOAD_EFFERENT_SYNAPSES = {
-    "112LoadEfferentSynapses", false, {"Loads efferent synapses"}};
+    "111LoadEfferentSynapses", false, {"Loads efferent synapses"}};
 const brayns::Property PROP_INTERNALS = {
     "120Internals", false, {"Generate internals (mitochondria and nucleus)"}};
 // clang-format on
@@ -318,14 +304,20 @@ struct MorphologyInfo
     float maxDistanceToSoma;
 };
 
+// Synapses
 struct SynapsesInfo
 {
     std::unique_ptr<brain::Synapses> afferentSynapses{nullptr};
     std::unique_ptr<brain::Synapses> efferentSynapses{nullptr};
-    float radius{1.f};
     bool prePostSynapticUsecase{false};
     Gid preGid;
     Gid postGid;
+};
+
+enum class SynapseType
+{
+    afferent,
+    efferent
 };
 
 } // namespace circuitexplorer

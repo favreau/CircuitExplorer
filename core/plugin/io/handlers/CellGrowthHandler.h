@@ -48,7 +48,7 @@ public:
 
     brayns::AbstractSimulationHandlerPtr clone() const final;
 };
-typedef std::shared_ptr<CellGrowthHandler> CellGrowthHandlerPtr;
+using CellGrowthHandlerPtr = std::shared_ptr<CellGrowthHandler>;
 } // namespace handler
 } // namespace io
 } // namespace circuitexplorer

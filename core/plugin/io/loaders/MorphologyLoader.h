@@ -109,12 +109,12 @@ public:
         const float mitochondriaDensity = 0.f) const;
 
     /**
-     * @brief setDefaultMaterialId Set the default material for the morphology
-     * @param materialId Id of the default material for the morphology
+     * @brief setBaseMaterialId Set the base material ID for the morphology
+     * @param materialId Id of the base material ID for the morphology
      */
-    void setDefaultMaterialId(const size_t materialId)
+    void setBaseMaterialId(const size_t materialId)
     {
-        _defaultMaterialId = materialId;
+        _baseMaterialId = materialId;
     }
 
     /**
@@ -282,21 +282,13 @@ private:
     float _distanceToSoma(const brain::neuron::Section& section,
                           const size_t sampleId) const;
 
-    void _addAfferentSynapse(const bool useSDF, const brain::Synapse& synapse,
-                             const Vector3f& somaPosition,
-                             const float somaRadius,
-                             const Matrix4f& transformation,
-                             const size_t materialId, const float radius,
-                             ParallelModelContainer& model,
-                             SDFMorphologyData& sdfMorphologyData) const;
-
-    void _addEfferentSynapse(const bool useSDF, const brain::Synapse& synapse,
-                             const Vector3f& somaPosition,
-                             const float somaRadius,
-                             const Matrix4f& transformation,
-                             const size_t materialId, const float radius,
-                             ParallelModelContainer& model,
-                             SDFMorphologyData& sdfMorphologyData) const;
+    void _addSynapse(const bool useSDF, const brain::Synapse& synapse,
+                     const SynapseType synapseType,
+                     const brain::neuron::Sections& sections,
+                     const Vector3f& somaPosition, const float somaRadius,
+                     const Matrix4f& transformation, const size_t materialId,
+                     ParallelModelContainer& model,
+                     SDFMorphologyData& sdfMorphologyData) const;
 
     void _addSomaInternals(const uint64_t index, ParallelModelContainer& model,
                            const size_t materialId, const float somaRadius,
@@ -312,7 +304,7 @@ private:
 
     size_t _getNbMitochondrionSegments() const;
 
-    size_t _defaultMaterialId{NO_MATERIAL};
+    size_t _baseMaterialId{NO_MATERIAL};
     PropertyMap _defaults;
 };
 

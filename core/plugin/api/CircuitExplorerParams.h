@@ -23,6 +23,8 @@
 
 namespace circuitexplorer
 {
+namespace api
+{
 struct Response
 {
     bool status{true};
@@ -404,5 +406,5 @@ struct ImportCompartmentSimulation
 };
 bool from_json(ImportCompartmentSimulation& param, const std::string& payload);
 #endif
-
+} // namespace api
 } // namespace circuitexplorer

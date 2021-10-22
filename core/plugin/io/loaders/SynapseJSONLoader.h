@@ -37,6 +37,7 @@ namespace io
 namespace loader
 {
 using namespace brayns;
+using namespace api;
 
 /**
  * Load circuit from BlueConfig or CircuitConfig file, including simulation.

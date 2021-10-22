@@ -77,6 +77,7 @@ private:
     std::map<uint64_t, std::vector<float>> _frames;
     bool _ready{false};
 };
+using VoltageSimulationHandlerPtr = std::shared_ptr<VoltageSimulationHandler>;
 } // namespace handler
 } // namespace io
 } // namespace circuitexplorer

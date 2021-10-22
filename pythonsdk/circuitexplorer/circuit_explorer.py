@@ -99,8 +99,7 @@ class CircuitExplorer:
                      morphology_color_scheme=MORPHOLOGY_COLOR_SCHEME_NONE,
                      morphology_quality=GEOMETRY_QUALITY_HIGH, max_distance_to_soma=1e6,
                      cell_clipping=False, load_afferent_synapses=False,
-                     load_efferent_synapses=False,
-                     synapse_radius=0.0, generate_internals=False):
+                     load_efferent_synapses=False, generate_internals=False):
         """
         Load a circuit from a give Blue/Circuit configuration file
 
@@ -152,7 +151,6 @@ class CircuitExplorer:
         scene level
         :param bool load_afferent_synapses: Load afferent synapses
         :param bool load_efferent_synapses: Load efferent synapses
-        :param float synapse_radius: Synapse radius
         :param bool generate_internals: Generate cell internals (mitochondria and nucleus)
         :return: Result of the request submission
         :rtype: str
@@ -211,9 +209,8 @@ class CircuitExplorer:
         props['100CellClipping'] = cell_clipping
         props['101AreasOfInterest'] = 0
 
-        props['110SynapseRadius'] = synapse_radius
-        props['111LoadAfferentSynapses'] = load_afferent_synapses
-        props['112LoadEfferentSynapses'] = load_efferent_synapses
+        props['110LoadAfferentSynapses'] = load_afferent_synapses
+        props['111LoadEfferentSynapses'] = load_efferent_synapses
 
         props['120Internals'] = generate_internals
 
@@ -230,8 +227,7 @@ class CircuitExplorer:
                                    load_apical_dendrite=True, use_sdf=False,
                                    dampen_branch_thickness_changerate=True,
                                    morphology_color_scheme=MORPHOLOGY_COLOR_SCHEME_NONE,
-                                   morphology_quality=GEOMETRY_QUALITY_HIGH,
-                                   synapse_radius=0.0):
+                                   morphology_quality=GEOMETRY_QUALITY_HIGH):
         """
         Load a circuit from a give Blue/Circuit configuration file
 
@@ -250,7 +246,6 @@ class CircuitExplorer:
         MORPHOLOGY_COLOR_SCHEME_NONE, MORPHOLOGY_COLOR_SCHEME_BY_SECTION_TYPE)
         :param int morphology_quality: Defines the level of quality for each geometry (
         GEOMETRY_QUALITY_LOW, GEOMETRY_QUALITY_MEDIUM, GEOMETRY_QUALITY_HIGH)
-        :param float synapse_radius: Synapse radius
         :return: Result of the request submission
         :rtype: str
         """
@@ -297,9 +292,8 @@ class CircuitExplorer:
         props['100CellClipping'] = False
         props['101AreasOfInterest'] = 0
 
-        props['110SynapseRadius'] = synapse_radius
-        props['111LoadAfferentSynapses'] = True
-        props['112LoadEfferentSynapses'] = False
+        props['110LoadAfferentSynapses'] = True
+        props['111LoadEfferentSynapses'] = False
 
         props['120Internals'] = False
 
@@ -332,7 +326,6 @@ class CircuitExplorer:
         MORPHOLOGY_COLOR_SCHEME_NONE, MORPHOLOGY_COLOR_SCHEME_BY_SECTION_TYPE)
         :param int morphology_quality: Defines the level of quality for each geometry (
         GEOMETRY_QUALITY_LOW, GEOMETRY_QUALITY_MEDIUM, GEOMETRY_QUALITY_HIGH)
-        :param bool synapse_radius: Synapse radius
         :return: Result of the request submission
         :rtype: str
         """

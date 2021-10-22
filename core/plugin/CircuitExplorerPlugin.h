@@ -28,6 +28,7 @@
 namespace circuitexplorer
 {
 using namespace brayns;
+using namespace api;
 
 /**
  * @brief The CircuitExplorerPlugin class manages the loading and visualization

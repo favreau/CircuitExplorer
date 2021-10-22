@@ -91,7 +91,6 @@ PropertyMap AdvancedCircuitLoader::getCLIProperties()
     pm.setProperty(PROP_MORPHOLOGY_MAX_DISTANCE_TO_SOMA);
     pm.setProperty(PROP_CELL_CLIPPING);
     pm.setProperty(PROP_AREAS_OF_INTEREST);
-    pm.setProperty(PROP_SYNAPSE_RADIUS);
     pm.setProperty(PROP_LOAD_AFFERENT_SYNAPSES);
     pm.setProperty(PROP_LOAD_EFFERENT_SYNAPSES);
     pm.setProperty(PROP_INTERNALS);
