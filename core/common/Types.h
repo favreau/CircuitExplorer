@@ -71,8 +71,8 @@ const size_t MATERIAL_OFFSET_EFFERENT_SYNPASE = 6;
 const size_t MATERIAL_OFFSET_MITOCHONDRION = 7;
 const size_t MATERIAL_OFFSET_NUCLEUS = 8;
 
-const brayns::Vector3f DISPLACEMENT_PARAMS = {0.05f, 2.f,
-                                              0.f}; // Amplitude & frequency
+// Empirical amplitude & frequency
+const brayns::Vector3f DISPLACEMENT_PARAMS = {0.05f, 2.0f, 0.f};
 
 /** Morphology color scheme */
 enum class MorphologyColorScheme

@@ -537,7 +537,7 @@ void MorphologyLoader::_addSomaGeometry(
     const brain::neuron::Soma& soma, uint64_t offset,
     ParallelModelContainer& model, SDFMorphologyData& sdfMorphologyData,
     const bool /*useSimulationModel*/, const bool generateInternals,
-    const float mitochondriaDensity) const
+    const float mitochondriaDensity, uint32_t& sdfGroupId) const
 {
     const size_t materialId =
         _getMaterialIdFromColorScheme(properties,
@@ -546,14 +546,15 @@ void MorphologyLoader::_addSomaGeometry(
         glm::make_vec3(soma.getCentroid().array);
     const double somaRadius =
         _getCorrectedRadius(properties, soma.getMeanRadius());
+    const bool useSDFGeometry =
+        properties.getProperty<bool>(PROP_USE_SDF_GEOMETRY.name);
 
     if (generateInternals && mitochondriaDensity > 0.f)
         _addSomaInternals(index, model, materialId, somaRadius,
-                          mitochondriaDensity);
+                          mitochondriaDensity, useSDFGeometry,
+                          sdfMorphologyData, sdfGroupId);
 
     const auto& children = soma.getChildren();
-    const bool useSDFGeometry =
-        properties.getProperty<bool>(PROP_USE_SDF_GEOMETRY.name);
 
     if (useSDFGeometry)
         _connectSDFSomaChildren(properties, model.morphologyInfo.somaPosition,
@@ -586,26 +587,28 @@ void MorphologyLoader::_addSomaGeometry(
 }
 
 void MorphologyLoader::_addStepSphereGeometry(
-    const bool useSDFGeometries, const bool isDone, const Vector3f& position,
+    const bool useSDFGeometry, const bool isDone, const Vector3f& position,
     const double radius, const size_t materialId,
     const uint64_t& userDataOffset, ParallelModelContainer& model,
-    const size_t section, SDFMorphologyData& sdfMorphologyData) const
+    SDFMorphologyData& sdfMorphologyData, const uint32_t sdfGroupId,
+    const float displacementRatio) const
 {
     model.morphologyInfo.bounds.merge(position);
-    if (useSDFGeometries)
+    if (useSDFGeometry)
     {
         if (isDone)
         {
             // Since our cone pills already give us a sphere at the end
             // points we don't need to add any sphere between segments
             // except at the bifurcation
-
+            const auto displacementParams =
+                DISPLACEMENT_PARAMS * displacementRatio;
             const size_t idx =
                 _addSDFGeometry(sdfMorphologyData,
                                 createSDFSphere(position, radius,
                                                 userDataOffset,
-                                                DISPLACEMENT_PARAMS),
-                                {}, materialId, section);
+                                                displacementParams),
+                                {}, materialId, sdfGroupId);
 
             sdfMorphologyData.bifurcationIndices.push_back(idx);
         }
@@ -616,23 +619,24 @@ void MorphologyLoader::_addStepSphereGeometry(
 }
 
 void MorphologyLoader::_addStepConeGeometry(
-    const bool useSDFGeometries, const Vector3f& position, const double radius,
+    const bool useSDFGeometry, const Vector3f& position, const double radius,
     const Vector3f& target, const double previousRadius,
     const size_t materialId, const uint64_t& userDataOffset,
-    ParallelModelContainer& model, const size_t section,
-    SDFMorphologyData& sdfMorphologyData) const
+    ParallelModelContainer& model, SDFMorphologyData& sdfMorphologyData,
+    const uint32_t sdfGroupId, const float displacementRatio) const
 {
     model.morphologyInfo.bounds.merge(position);
     model.morphologyInfo.bounds.merge(target);
-    if (useSDFGeometries)
+    if (useSDFGeometry)
     {
+        const auto displacementParams = DISPLACEMENT_PARAMS * displacementRatio;
         const auto geom =
             (almost_equal(radius, previousRadius, 100000))
                 ? createSDFPill(position, target, radius, userDataOffset,
-                                DISPLACEMENT_PARAMS)
+                                displacementParams)
                 : createSDFConePill(position, target, radius, previousRadius,
-                                    userDataOffset, DISPLACEMENT_PARAMS);
-        _addSDFGeometry(sdfMorphologyData, geom, {}, materialId, section);
+                                    userDataOffset, displacementParams);
+        _addSDFGeometry(sdfMorphologyData, geom, {}, materialId, sdfGroupId);
     }
     else if (almost_equal(radius, previousRadius, 100000))
         model.addCylinder(materialId,
@@ -711,6 +715,9 @@ void MorphologyLoader::_importMorphologyFromURI(
     if (compartmentReport)
         userDataOffset = compartmentReport->getOffsets()[index][0];
 
+    const auto& sections = morphology.getSections(sectionTypes);
+
+    uint32_t sdfGroupId = 0;
     if (!useRealisticSoma &&
         std::find(sectionTypes.begin(), sectionTypes.end(),
                   brain::neuron::SectionType::soma) != sectionTypes.end())
@@ -718,7 +725,7 @@ void MorphologyLoader::_importMorphologyFromURI(
         _addSomaGeometry(index, properties, morphology.getSoma(),
                          userDataOffset, model, sdfMorphologyData,
                          compartmentReport != nullptr, generateInternals,
-                         mitochondriaDensity);
+                         mitochondriaDensity, sdfGroupId);
     }
 
     // Only the first one or two axon sections are reported, so find the
@@ -742,14 +749,13 @@ void MorphologyLoader::_importMorphologyFromURI(
         }
     }
 
-    const auto& sections = morphology.getSections(sectionTypes);
     const auto morphologyTree =
         _calculateMorphologyTreeStructure(properties, sections);
 
     // Dendrites and axon
-    for (const size_t sectionI : morphologyTree.sectionTraverseOrder)
+    for (const size_t sectionId : morphologyTree.sectionTraverseOrder)
     {
-        const auto& section = sections[sectionI];
+        const auto& section = sections[sectionId];
 
         if (section.getType() == brain::neuron::SectionType::soma)
             continue;
@@ -886,13 +892,15 @@ void MorphologyLoader::_importMorphologyFromURI(
             {
                 _addStepSphereGeometry(useSDFGeometry, done, position, radius,
                                        materialId, userDataOffset, model,
-                                       sectionI, sdfMorphologyData);
+                                       sdfMorphologyData,
+                                       sectionId + sdfGroupId);
 
                 if (position != target && previousRadius > 0.f)
                     _addStepConeGeometry(useSDFGeometry, position, radius,
                                          target, previousRadius, materialId,
-                                         userDataOffset, model, sectionI,
-                                         sdfMorphologyData);
+                                         userDataOffset, model,
+                                         sdfMorphologyData,
+                                         sectionId + sdfGroupId);
                 sectionVolume += coneVolume(length(position - target),
                                             previousRadius, radius);
             }
@@ -901,12 +909,15 @@ void MorphologyLoader::_importMorphologyFromURI(
             previousRadius = radius;
         }
 
+        // Generate axon internals (Mitochondria)
         if (generateInternals &&
             section.getType() == brain::neuron::SectionType::axon)
         {
-            _addSectionInternals(properties, sectionLength, sectionVolume,
-                                 samples, mitochondriaDensity, materialId,
-                                 model);
+            uint32_t groupId = sectionId + sdfGroupId;
+            _addSectionInternals(properties, useSDFGeometry, sectionLength,
+                                 sectionVolume, samples, mitochondriaDensity,
+                                 materialId, sdfMorphologyData, groupId, model);
+            sdfGroupId = groupId;
         }
     }
 
@@ -931,14 +942,14 @@ void MorphologyLoader::_importMorphologyFromURI(
             _addSynapse(useSDFGeometry, synapse, SynapseType::afferent,
                         sections, somaPosition, somaRadius,
                         inverseTransformation, materialId, model,
-                        sdfMorphologyData);
+                        sdfMorphologyData, sdfGroupId);
         }
     if (synapsesInfo.efferentSynapses && !synapsesInfo.prePostSynapticUsecase)
         for (const auto& synapse : *synapsesInfo.efferentSynapses)
             _addSynapse(useSDFGeometry, synapse, SynapseType::efferent,
                         sections, somaPosition, somaRadius,
                         inverseTransformation, materialId, model,
-                        sdfMorphologyData);
+                        sdfMorphologyData, sdfGroupId);
 
     // Finalization
     if (useSDFGeometry)
@@ -953,7 +964,8 @@ void MorphologyLoader::_addSynapse(
     const SynapseType synapseType, const brain::neuron::Sections& sections,
     const Vector3f& somaPosition, const float somaRadius,
     const Matrix4f& transformation, const size_t materialId,
-    ParallelModelContainer& model, SDFMorphologyData& sdfMorphologyData) const
+    ParallelModelContainer& model, SDFMorphologyData& sdfMorphologyData,
+    uint32_t& sdfGroupId) const
 {
     uint32_t sectionId;
     uint32_t segmentId;
@@ -1012,67 +1024,113 @@ void MorphologyLoader::_addSynapse(
         radius = segment.w() * 0.1f;
     }
 
-    // Geometry
-    _addStepSphereGeometry(useSDFGeometry, true, origin, radius,
-                           synapseMaterialId, -1, model, sectionId,
-                           sdfMorphologyData);
-    if (origin != target)
+    // Spine geometry
+    const float spineRadiusRatio = 0.9f;
+    const Vector3f direction = target - origin;
+    const Vector3f surfaceTarget = origin + direction * 0.5f;
+    const float spineSmallRadius = radius * 0.15f;
+    const float spineBaseRadius = radius * 0.25f;
+    const float spineLargeRadius = radius * spineRadiusRatio;
+    if (useSDFGeometry)
     {
-        Vector3f direction = target - origin;
-        _addStepConeGeometry(useSDFGeometry, origin, radius * 0.5f,
-                             origin + direction * 0.5f, radius * 0.75f,
-                             synapseMaterialId, -1, model, sectionId,
-                             sdfMorphologyData);
+        const float spineDisplacementRatio = 5.f;
+        _addStepSphereGeometry(useSDFGeometry, true, origin, spineLargeRadius,
+                               synapseMaterialId, -1, model, sdfMorphologyData,
+                               sdfGroupId, spineDisplacementRatio);
+        if (origin != target)
+            _addStepConeGeometry(useSDFGeometry, origin, spineSmallRadius,
+                                 surfaceTarget, spineBaseRadius,
+                                 synapseMaterialId, -1, model,
+                                 sdfMorphologyData, sdfGroupId,
+                                 spineDisplacementRatio);
+        ++sdfGroupId;
+    }
+    else
+    {
+        model.addSphere(synapseMaterialId, {origin, radius});
+        if (origin != target)
+            model.addCone(synapseMaterialId,
+                          {origin, surfaceTarget, spineSmallRadius,
+                           spineBaseRadius});
     }
 }
 
-void MorphologyLoader::_addSomaInternals(const uint64_t index,
-                                         ParallelModelContainer& model,
-                                         const size_t materialId,
-                                         const float somaRadius,
-                                         const float mitochondriaDensity) const
+void MorphologyLoader::_addSomaInternals(
+    const uint64_t index, ParallelModelContainer& model,
+    const size_t materialId, const float somaRadius,
+    const float mitochondriaDensity, const bool useSDFGeometry,
+    SDFMorphologyData& sdfMorphologyData, uint32_t& sdfGroupId) const
 {
+    const float mitochondrionRadiusRatio = 0.025f;
+    const float mitochondrionDisplacementRatio = 5.f;
     const float nucleusRadius =
         somaRadius * 0.8f; // 80% of the volume of the soma;
-    const float mitochondriaRadius =
-        somaRadius * 0.025f; // 5% of the volume of the soma
+    const float mitochondrionRadius =
+        somaRadius * mitochondrionRadiusRatio; // 5% of the volume of the soma
 
-    const float somaInnerRadius = nucleusRadius + mitochondriaRadius;
+    const float somaInnerRadius = nucleusRadius + mitochondrionRadius;
     const float availableVolumeForMitochondria =
         sphereVolume(somaRadius) * mitochondriaDensity;
 
     // Soma nucleus
     const auto somaPosition = Vector3f(model.morphologyInfo.somaPosition);
-    model.addSphere(materialId + MATERIAL_OFFSET_NUCLEUS,
-                    {somaPosition, nucleusRadius});
+    const size_t nucleusMaterialId = materialId + MATERIAL_OFFSET_NUCLEUS;
+    if (useSDFGeometry)
+    {
+        _addStepSphereGeometry(useSDFGeometry, true, somaPosition,
+                               nucleusRadius, nucleusMaterialId, -1, model,
+                               sdfMorphologyData, sdfGroupId);
+        ++sdfGroupId;
+    }
+    else
+        model.addSphere(nucleusMaterialId, {somaPosition, nucleusRadius});
 
     // Mitochondria
+    const size_t mitochondrionMaterialId =
+        materialId + MATERIAL_OFFSET_MITOCHONDRION;
     float mitochondriaVolume = 0.f;
     while (mitochondriaVolume < availableVolumeForMitochondria)
     {
         const size_t nbSegments = _getNbMitochondrionSegments();
         const auto pointsInSphere =
             getPointsInSphere(nbSegments, somaInnerRadius / somaRadius);
-        float previousRadius = mitochondriaRadius;
+        float previousRadius = mitochondrionRadius;
         for (size_t i = 0; i < nbSegments; ++i)
         {
+            // Mitochondrion geometry
             const float radius =
-                (1.f + (rand() % 500 / 1000.f)) * mitochondriaRadius;
+                (1.f + (rand() % 500 / 1000.f)) * mitochondrionRadius;
             const auto p2 = somaPosition + somaRadius * pointsInSphere[i];
-            model.addSphere(materialId + MATERIAL_OFFSET_MITOCHONDRION,
-                            {p2, radius});
+            if (useSDFGeometry)
+                _addStepSphereGeometry(useSDFGeometry, true, p2, radius,
+                                       mitochondrionMaterialId, -1, model,
+                                       sdfMorphologyData, sdfGroupId,
+                                       mitochondrionDisplacementRatio);
+
+            else
+                model.addSphere(mitochondrionMaterialId, {p2, radius});
             mitochondriaVolume += sphereVolume(radius);
+
             if (i > 0)
             {
                 const auto p1 =
                     somaPosition + somaRadius * pointsInSphere[i - 1];
-                model.addCone(materialId + MATERIAL_OFFSET_MITOCHONDRION,
-                              {p1, p2, previousRadius, radius});
+                if (useSDFGeometry)
+                    _addStepConeGeometry(useSDFGeometry, p1, previousRadius, p2,
+                                         radius, mitochondrionMaterialId, -1,
+                                         model, sdfMorphologyData, sdfGroupId,
+                                         mitochondrionDisplacementRatio);
+
+                else
+                    model.addCone(mitochondrionMaterialId,
+                                  {p1, p2, previousRadius, radius});
                 mitochondriaVolume +=
                     coneVolume(length(p2 - p1), previousRadius, radius);
             }
             previousRadius = radius;
         }
+        if (useSDFGeometry)
+            ++sdfGroupId;
     }
 }
 
@@ -1081,16 +1139,17 @@ size_t MorphologyLoader::_getNbMitochondrionSegments() const
     return 2 + rand() % 18;
 }
 
-void MorphologyLoader::_addSectionInternals(const PropertyMap& properties,
-                                            const float sectionLength,
-                                            const float sectionVolume,
-                                            const brion::Vector4fs& samples,
-                                            const float mitochondriaDensity,
-                                            const size_t materialId,
-                                            ParallelModelContainer& model) const
+void MorphologyLoader::_addSectionInternals(
+    const PropertyMap& properties, const bool useSDFGeometry,
+    const float sectionLength, const float sectionVolume,
+    const brion::Vector4fs& samples, const float mitochondriaDensity,
+    const size_t materialId, SDFMorphologyData& sdfMorphologyData,
+    uint32_t& sdfGroupId, ParallelModelContainer& model) const
 {
     // Add mitochondria (density is per section, not for the full axon)
     const float mitochondrionSegmentSize = 0.25f;
+    const float mitochondrionRadiusRatio = 0.25f;
+
     const size_t nbMaxMitochondrionSegments =
         sectionLength / mitochondrionSegmentSize;
     const float indexRatio =
@@ -1131,18 +1190,35 @@ void MorphologyLoader::_addSectionInternals(const PropertyMap& properties,
                 const Vector3f direction = dstPosition - srcPosition;
                 const Vector3f position =
                     srcPosition + direction * (step * indexRatio - srcIndex);
-                const float mitocondrionRadius = srcRadius * 0.25f;
+                const float mitocondrionRadius =
+                    srcRadius * mitochondrionRadiusRatio;
                 const float radius =
                     (1.f + ((rand() % 500) / 1000.f)) * mitocondrionRadius;
-                model.addSphere(materialId + MATERIAL_OFFSET_MITOCHONDRION,
-                                {position, radius});
+
+                const size_t mitochondrionMaterialId =
+                    materialId + MATERIAL_OFFSET_MITOCHONDRION;
+                if (useSDFGeometry)
+                    _addStepSphereGeometry(useSDFGeometry, true, position,
+                                           radius, mitochondrionMaterialId, -1,
+                                           model, sdfMorphologyData, sdfGroupId,
+                                           mitochondrionRadiusRatio);
+                else
+                    model.addSphere(mitochondrionMaterialId,
+                                    {position, radius});
                 mitochondriaVolume += sphereVolume(radius);
 
                 if (mitochondrionSegment > 0)
                 {
-                    model.addCone(materialId + MATERIAL_OFFSET_MITOCHONDRION,
-                                  {position, previousPosition, radius,
-                                   previousRadius});
+                    if (useSDFGeometry)
+                        _addStepConeGeometry(useSDFGeometry, position, radius,
+                                             previousPosition, previousRadius,
+                                             mitochondrionMaterialId, -1, model,
+                                             sdfMorphologyData, sdfGroupId,
+                                             mitochondrionRadiusRatio);
+                    else
+                        model.addCone(mitochondrionMaterialId,
+                                      {position, previousPosition, radius,
+                                       previousRadius});
                     mitochondriaVolume +=
                         coneVolume(length(position - previousPosition), radius,
                                    previousRadius);

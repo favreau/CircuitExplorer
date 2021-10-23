@@ -240,28 +240,31 @@ private:
                           SDFMorphologyData& sdfMorphologyData,
                           const bool useSimulationModel,
                           const bool generateInternals,
-                          const float mitochondriaDensity = 0.f) const;
+                          const float mitochondriaDensity,
+                          uint32_t& sdfGroupId) const;
 
     /**
      * Adds the sphere between the steps in the sections
      */
-    void _addStepSphereGeometry(const bool useSDFGeometries, const bool isDone,
+    void _addStepSphereGeometry(const bool useSDFGeometry, const bool isDone,
                                 const Vector3f& position, const double radius,
                                 const size_t materialId,
                                 const uint64_t& userDataOffset,
                                 ParallelModelContainer& model,
-                                const size_t section,
-                                SDFMorphologyData& sdfMorphologyData) const;
+                                SDFMorphologyData& sdfMorphologyData,
+                                const uint32_t sdfGroupId,
+                                const float displacementRatio = 1.f) const;
 
     /**
      * Adds the cone between the steps in the sections
      */
     void _addStepConeGeometry(
-        const bool useSDFGeometries, const Vector3f& position,
+        const bool useSDFGeometry, const Vector3f& position,
         const double radius, const Vector3f& target,
         const double previousRadius, const size_t materialId,
         const uint64_t& userDataOffset, ParallelModelContainer& model,
-        const size_t section, SDFMorphologyData& sdfMorphologyData) const;
+        SDFMorphologyData& sdfMorphologyData, const uint32_t sdfGroupId,
+        const float displacementRatio = 1.f) const;
 
     /**
      * @brief _getMaterialIdFromColorScheme returns the material id
@@ -288,19 +291,22 @@ private:
                      const Vector3f& somaPosition, const float somaRadius,
                      const Matrix4f& transformation, const size_t materialId,
                      ParallelModelContainer& model,
-                     SDFMorphologyData& sdfMorphologyData) const;
+                     SDFMorphologyData& sdfMorphologyData,
+                     uint32_t& sdfGroupId) const;
 
     void _addSomaInternals(const uint64_t index, ParallelModelContainer& model,
                            const size_t materialId, const float somaRadius,
-                           const float mitochondriaDensity) const;
+                           const float mitochondriaDensity,
+                           const bool useSDFGeometry,
+                           SDFMorphologyData& sdfMorphologyData,
+                           uint32_t& sdfGroupId) const;
 
-    void _addSectionInternals(const PropertyMap& properties,
-                              const float sectionLength,
-                              const float sectionVolume,
-                              const brion::Vector4fs& samples,
-                              const float mitochondriaDensity,
-                              const size_t materialId,
-                              ParallelModelContainer& model) const;
+    void _addSectionInternals(
+        const PropertyMap& properties, const bool useSDFGeometry,
+        const float sectionLength, const float sectionVolume,
+        const brion::Vector4fs& samples, const float mitochondriaDensity,
+        const size_t materialId, SDFMorphologyData& sdfMorphologyData,
+        uint32_t& sdfGroupId, ParallelModelContainer& model) const;
 
     size_t _getNbMitochondrionSegments() const;
 
