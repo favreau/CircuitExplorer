@@ -82,9 +82,9 @@ bool MorphologyLoader::isSupported(const std::string& /*filename*/,
     return types.find(extension) != types.end();
 }
 
-MorphologyInfo MorphologyLoader::importMorphology(
+ParallelModelContainer MorphologyLoader::importMorphology(
     const Gid& gid, const PropertyMap& properties, const servus::URI& source,
-    Model& model, const uint64_t index, const SynapsesInfo& synapsesInfo,
+    const uint64_t index, const SynapsesInfo& synapsesInfo,
     const Matrix4f& transformation, CompartmentReportPtr compartmentReport,
     const float mitochondriaDensity) const
 {
@@ -95,12 +95,7 @@ MorphologyInfo MorphologyLoader::importMorphology(
 
     // Apply transformation to everything except synapes
     modelContainer.applyTransformation(transformation);
-    modelContainer.addSpheresToModel(model);
-    modelContainer.addCylindersToModel(model);
-    modelContainer.addConesToModel(model);
-    modelContainer.addSDFGeometriesToModel(model);
-
-    return modelContainer.morphologyInfo;
+    return modelContainer;
 }
 
 void MorphologyLoader::_importMorphology(
@@ -285,9 +280,9 @@ void MorphologyLoader::_connectSDFBifurcations(
     SDFMorphologyData& sdfMorphologyData,
     const MorphologyTreeStructure& mts) const
 {
-    const size_t numSections = mts.sectionChildren.size();
+    const size_t nbSections = mts.sectionChildren.size();
 
-    for (size_t section = 0; section < numSections; section++)
+    for (uint section = 0; section < nbSections; ++section)
     {
         // Find the bifurction geometry id for this section
         size_t bifurcationId = 0;
@@ -339,11 +334,17 @@ void MorphologyLoader::_connectSDFBifurcations(
         // Connect all child sections
         for (const size_t sectionChild : mts.sectionChildren[section])
         {
+            if (sdfMorphologyData.sectionGeometries.find(sectionChild) ==
+                sdfMorphologyData.sectionGeometries.end())
+                PLUGIN_THROW("Invalid SDF connected children section");
             connectGeometriesToBifurcation(
                 sdfMorphologyData.sectionGeometries.at(sectionChild));
         }
 
         // Connect with own section
+        if (sdfMorphologyData.sectionGeometries.find(section) ==
+            sdfMorphologyData.sectionGeometries.end())
+            PLUGIN_THROW("Invalid SDF own section");
         connectGeometriesToBifurcation(
             sdfMorphologyData.sectionGeometries.at(section));
     }
@@ -398,35 +399,35 @@ MorphologyTreeStructure MorphologyLoader::_calculateMorphologyTreeStructure(
     const PropertyMap& properties,
     const brain::neuron::Sections& sections) const
 {
-    const size_t numSections = sections.size();
+    const size_t nbSections = sections.size();
 
     const auto dampenBranchThicknessChangerate = properties.getProperty<bool>(
         PROP_DAMPEN_BRANCH_THICKNESS_CHANGERATE.name);
     if (!dampenBranchThicknessChangerate)
     {
         MorphologyTreeStructure mts;
-        mts.sectionTraverseOrder.resize(numSections);
-        mts.sectionParent.resize(numSections, -1);
+        mts.sectionTraverseOrder.resize(nbSections);
+        mts.sectionParent.resize(nbSections, -1);
         std::iota(mts.sectionTraverseOrder.begin(),
                   mts.sectionTraverseOrder.end(), 0);
         return mts;
     }
 
     std::vector<std::pair<double, Vector3f>> bifurcationPosition(
-        numSections, std::make_pair<double, Vector3f>(0.0f, {0.f, 0.f, 0.f}));
+        nbSections, std::make_pair<double, Vector3f>(0.0f, {0.f, 0.f, 0.f}));
 
     std::vector<std::pair<double, Vector3f>> sectionEndPosition(
-        numSections, std::make_pair<double, Vector3f>(0.0f, {0.f, 0.f, 0.f}));
+        nbSections, std::make_pair<double, Vector3f>(0.0f, {0.f, 0.f, 0.f}));
 
-    std::vector<std::vector<size_t>> sectionChildren(numSections,
+    std::vector<std::vector<size_t>> sectionChildren(nbSections,
                                                      std::vector<size_t>());
 
-    std::vector<int> sectionParent(numSections, -1);
-    std::vector<bool> skipSection(numSections, true);
-    std::vector<bool> addedSection(numSections, false);
+    std::vector<int> sectionParent(nbSections, -1);
+    std::vector<bool> skipSection(nbSections, true);
+    std::vector<bool> addedSection(nbSections, false);
 
     // Find section bifurcations and end positions
-    for (size_t sectionI = 0; sectionI < numSections; sectionI++)
+    for (size_t sectionI = 0; sectionI < nbSections; sectionI++)
     {
         const auto& section = sections[sectionI];
 
@@ -470,12 +471,12 @@ MorphologyTreeStructure MorphologyLoader::_calculateMorphologyTreeStructure(
     };
 
     // Find overlapping section bifurcations and end positions
-    for (size_t sectionI = 0; sectionI < numSections; sectionI++)
+    for (size_t sectionI = 0; sectionI < nbSections; sectionI++)
     {
         if (skipSection[sectionI])
             continue;
 
-        for (size_t sectionJ = sectionI + 1; sectionJ < numSections; sectionJ++)
+        for (size_t sectionJ = sectionI + 1; sectionJ < nbSections; sectionJ++)
         {
             if (skipSection[sectionJ])
                 continue;
@@ -503,7 +504,7 @@ MorphologyTreeStructure MorphologyLoader::_calculateMorphologyTreeStructure(
 
     // Fill stack with root sections
     std::vector<size_t> sectionStack;
-    for (size_t sectionI = 0; sectionI < numSections; sectionI++)
+    for (size_t sectionI = 0; sectionI < nbSections; sectionI++)
     {
         if (skipSection[sectionI])
             continue;
@@ -1293,8 +1294,9 @@ ModelDescriptorPtr MorphologyLoader::importFromFile(
     // the UI
 
     auto model = _scene.createModel();
-    importMorphology(0, props, servus::URI(fileName), *model, 0,
-                     SynapsesInfo());
+    auto modelContainer =
+        importMorphology(0, props, servus::URI(fileName), 0, SynapsesInfo());
+    modelContainer.moveGeometryToModel(*model);
     createMissingMaterials(*model);
 
     auto modelDescriptor =
@@ -1326,6 +1328,7 @@ PropertyMap MorphologyLoader::getCLIProperties()
     pm.setProperty(PROP_MORPHOLOGY_COLOR_SCHEME);
     pm.setProperty(PROP_MORPHOLOGY_QUALITY);
     pm.setProperty(PROP_MORPHOLOGY_MAX_DISTANCE_TO_SOMA);
+    pm.setProperty(PROP_INTERNALS);
     return pm;
 }
 

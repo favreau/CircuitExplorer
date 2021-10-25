@@ -144,7 +144,6 @@ void AstrocyteLoader::_importMorphologiesFromURIs(
     const LoaderProgress &callback, Model &model) const
 {
     PropertyMap morphologyProps(properties);
-    MorphologyLoader loader(_scene, std::move(morphologyProps));
 
     const auto colorScheme = stringToEnum<CircuitColorScheme>(
         properties.getProperty<std::string>(PROP_CIRCUIT_COLOR_SCHEME.name));
@@ -154,23 +153,47 @@ void AstrocyteLoader::_importMorphologiesFromURIs(
     const float mitochondriaDensity =
         generateInternals ? DEFAULT_ASTROCYTE_MITOCHONDRIA_DENSITY : 0.f;
 
-    for (uint64_t i = 0; i < uris.size(); ++i)
+    std::vector<ParallelModelContainer> containers;
+    uint64_t morphologyId;
+#pragma omp parallel for private(morphologyId)
+    for (morphologyId = 0; morphologyId < uris.size(); ++morphologyId)
     {
-        const auto uri = servus::URI(uris[i]);
-        PLUGIN_DEBUG("Loading astrocyte from " << uri);
-        const auto materialId = (colorScheme == CircuitColorScheme::by_id
-                                     ? i * NB_MATERIALS_PER_INSTANCE
-                                     : NO_MATERIAL);
+        const auto uri = servus::URI(uris[morphologyId]);
+        try
+        {
+            PLUGIN_DEBUG("[" << omp_get_thread_num() << "] ["
+                             << morphologyId + 1 << "/" << uris.size()
+                             << "] Loading " << uri);
 
-        loader.setBaseMaterialId(materialId);
+            const auto materialId =
+                (colorScheme == CircuitColorScheme::by_id
+                     ? morphologyId * NB_MATERIALS_PER_INSTANCE
+                     : NO_MATERIAL);
 
-        MorphologyInfo morphologyInfo;
-        morphologyInfo = loader.importMorphology(i, morphologyProps, uri, model,
-                                                 i, SynapsesInfo(), Matrix4f(),
-                                                 nullptr, mitochondriaDensity);
+            MorphologyLoader loader(_scene, std::move(morphologyProps));
+            loader.setBaseMaterialId(materialId);
+            ParallelModelContainer modelContainer =
+                loader.importMorphology(morphologyId, morphologyProps, uri,
+                                        morphologyId, SynapsesInfo(),
+                                        Matrix4f(), nullptr,
+                                        mitochondriaDensity);
+#pragma omp critical
+            containers.push_back(modelContainer);
+        }
+        catch (const std::runtime_error &e)
+        {
+            PLUGIN_ERROR("Failed to load morphology "
+                         << morphologyId << " (" << uri << "): " << e.what());
+        }
+
+#pragma omp critical
         callback.updateProgress("Loading astrocytes...",
-                                (float)i / (float)uris.size());
+                                (float)morphologyId / (float)uris.size());
     }
+
+    for (auto &container : containers)
+        container.moveGeometryToModel(model);
+
     PropertyMap materialProps;
     materialProps.setProperty({MATERIAL_PROPERTY_CAST_USER_DATA, false});
     materialProps.setProperty({MATERIAL_PROPERTY_SHADING_MODE,

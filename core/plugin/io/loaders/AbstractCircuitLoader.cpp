@@ -34,6 +34,8 @@
 #include <brayns/engineapi/Model.h>
 #include <brayns/engineapi/Scene.h>
 
+#include <omp.h>
+
 #if BRAYNS_USE_ASSIMP
 #include <brayns/io/MeshLoader.h>
 #endif
@@ -897,25 +899,32 @@ float AbstractCircuitLoader::_importMorphologies(
 
     PLUGIN_INFO("Create morphology loader");
     PropertyMap morphologyProps(properties);
-    MorphologyLoader loader(_scene, std::move(morphologyProps));
-    auto gid = gids.begin();
 
-    float maxDistanceToSoma = 0.f;
-    for (uint64_t i = 0; i < gids.size(); ++i)
+    std::vector<Gid> localGids;
+    for (const auto gid : gids)
+        localGids.push_back(gid);
+
+    std::vector<ParallelModelContainer> containers;
+    uint64_t morphologyId;
+#pragma omp parallel for private(morphologyId)
+    for (morphologyId = 0; morphologyId < gids.size(); ++morphologyId)
     {
-        const auto uri = somasOnly ? brain::URI() : uris[i];
-        PLUGIN_INFO("[" << i + 1 << "/" << gids.size() << "] Loading " << uri);
-        const auto baseMaterialId =
-            _getMaterialFromCircuitAttributes(properties, i, materialId,
-                                              targetGIDOffsets, layerIds,
-                                              morphologyTypes,
-                                              electrophysiologyTypes, false);
-        loader.setBaseMaterialId(baseMaterialId);
-
+        const auto uri = somasOnly ? brain::URI() : uris[morphologyId];
         try
         {
+            PLUGIN_DEBUG("[" << omp_get_thread_num() << "] ["
+                             << morphologyId + 1 << "/" << gids.size()
+                             << "] Loading " << uri);
+
+            const auto baseMaterialId = _getMaterialFromCircuitAttributes(
+                properties, morphologyId, materialId, targetGIDOffsets,
+                layerIds, morphologyTypes, electrophysiologyTypes, false);
+            MorphologyLoader loader(_scene, std::move(morphologyProps));
+            loader.setBaseMaterialId(baseMaterialId);
+
             SynapsesInfo synapsesInfo;
             synapsesInfo.prePostSynapticUsecase = prePostSynapticUsecase;
+            const auto gid = localGids[morphologyId];
             if (prePostSynapticUsecase)
             {
                 synapsesInfo.preGid =
@@ -926,35 +935,42 @@ float AbstractCircuitLoader::_importMorphologies(
             if (loadAfferentSynapses)
                 synapsesInfo.afferentSynapses =
                     std::unique_ptr<brain::Synapses>(new brain::Synapses(
-                        circuit.getAfferentSynapses({*gid})));
+                        circuit.getAfferentSynapses({gid})));
             if (loadEfferentSynapses)
                 synapsesInfo.efferentSynapses =
                     std::unique_ptr<brain::Synapses>(new brain::Synapses(
-                        circuit.getEfferentSynapses({*gid})));
+                        circuit.getEfferentSynapses({gid})));
 
-            const size_t layerId = layerIds[i];
-            const float mitochondriaDensity =
+            const auto layerId = layerIds[morphologyId];
+            const auto mitochondriaDensity =
                 (layerId < MITOCHONDRIA_DENSITY.size()
                      ? MITOCHONDRIA_DENSITY[layerId]
                      : 0.f);
-            MorphologyInfo morphologyInfo;
-            morphologyInfo =
-                loader.importMorphology(*gid, morphologyProps, uri, model, i,
-                                        synapsesInfo, transformations[i],
+            ParallelModelContainer modelContainer =
+                loader.importMorphology(gid, morphologyProps, uri, morphologyId,
+                                        synapsesInfo,
+                                        transformations[morphologyId],
                                         compartmentReport, mitochondriaDensity);
-
-            maxDistanceToSoma =
-                std::max(morphologyInfo.maxDistanceToSoma, maxDistanceToSoma);
+#pragma omp critical
+            containers.push_back(modelContainer);
         }
         catch (const std::runtime_error &e)
         {
-            PLUGIN_ERROR(e.what());
+            PLUGIN_ERROR("Failed to load morphology "
+                         << morphologyId << " (" << uri << "): " << e.what());
         }
 
+#pragma omp critical
         callback.updateProgress("Loading morphologies...",
-                                (float)i / (float)uris.size());
+                                (float)morphologyId / (float)uris.size());
+    }
 
-        ++gid;
+    float maxDistanceToSoma = 0.f;
+    for (auto &container : containers)
+    {
+        maxDistanceToSoma = std::max(container.morphologyInfo.maxDistanceToSoma,
+                                     maxDistanceToSoma);
+        container.moveGeometryToModel(model);
     }
 
     PLUGIN_TIMER(chrono.elapsed(), "Loading of " << gids.size() << " cells");

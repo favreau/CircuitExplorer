@@ -98,11 +98,11 @@ public:
      * @param index Index of the morphology
      * @param defaultMaterialId Material to use
      * @param compartmentReport Compartment report to map to the morphology
-     * @return Information about the morphology
+     * @return Model container
      */
-    MorphologyInfo importMorphology(
+    ParallelModelContainer importMorphology(
         const Gid& gid, const PropertyMap& properties,
-        const servus::URI& source, Model& model, const uint64_t index,
+        const servus::URI& source, const uint64_t index,
         const SynapsesInfo& synapsesInfo,
         const Matrix4f& transformation = Matrix4f(),
         CompartmentReportPtr compartmentReport = nullptr,
@@ -313,6 +313,7 @@ private:
     size_t _baseMaterialId{NO_MATERIAL};
     PropertyMap _defaults;
 };
+typedef std::shared_ptr<MorphologyLoader> MorphologyLoaderPtr;
 
 struct ParallelModelContainer
 {
@@ -340,7 +341,16 @@ struct ParallelModelContainer
         sdfNeighbours.push_back(neighbours);
     }
 
-    void addSpheresToModel(brayns::Model& model) const
+    void moveGeometryToModel(brayns::Model& model)
+    {
+        moveSpheresToModel(model);
+        moveCylindersToModel(model);
+        moveConesToModel(model);
+        moveSDFGeometriesToModel(model);
+        sdfMaterials.clear();
+    }
+
+    void moveSpheresToModel(brayns::Model& model)
     {
         for (const auto& sphere : spheres)
         {
@@ -349,9 +359,10 @@ struct ParallelModelContainer
                                              sphere.second.begin(),
                                              sphere.second.end());
         }
+        spheres.clear();
     }
 
-    void addCylindersToModel(brayns::Model& model) const
+    void moveCylindersToModel(brayns::Model& model)
     {
         for (const auto& cylinder : cylinders)
         {
@@ -360,9 +371,10 @@ struct ParallelModelContainer
                 model.getCylinders()[index].end(), cylinder.second.begin(),
                 cylinder.second.end());
         }
+        cylinders.clear();
     }
 
-    void addConesToModel(brayns::Model& model) const
+    void moveConesToModel(brayns::Model& model)
     {
         for (const auto& cone : cones)
         {
@@ -371,9 +383,10 @@ struct ParallelModelContainer
                                            cone.second.begin(),
                                            cone.second.end());
         }
+        cones.clear();
     }
 
-    void addSDFGeometriesToModel(brayns::Model& model) const
+    void moveSDFGeometriesToModel(brayns::Model& model)
     {
         const size_t numGeoms = sdfGeometries.size();
         std::vector<size_t> localToGlobalIndex(numGeoms, 0);
@@ -381,8 +394,10 @@ struct ParallelModelContainer
         // Add geometries to Model. We do not know the indices of the neighbours
         // yet so we leave them empty.
         for (size_t i = 0; i < numGeoms; i++)
+        {
             localToGlobalIndex[i] =
                 model.addSDFGeometry(sdfMaterials[i], sdfGeometries[i], {});
+        }
 
         // Write the neighbours using global indices
         uint64_ts neighboursTmp;
@@ -397,6 +412,8 @@ struct ParallelModelContainer
 
             model.updateSDFGeometryNeighbours(globalIndex, neighboursTmp);
         }
+        sdfGeometries.clear();
+        sdfNeighbours.clear();
     }
 
     void applyTransformation(const brayns::Matrix4f& transformation)
