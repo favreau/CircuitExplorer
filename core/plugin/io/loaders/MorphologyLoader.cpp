@@ -1026,20 +1026,37 @@ void MorphologyLoader::_addSynapse(
     }
 
     // Spine geometry
-    const float spineRadiusRatio = 0.9f;
-    const Vector3f direction = target - origin;
-    const Vector3f surfaceTarget = origin + direction * 0.5f;
+    const float spineRadiusRatio = 0.75f;
     const float spineSmallRadius = radius * 0.15f;
     const float spineBaseRadius = radius * 0.25f;
+    const Vector3f direction = target - origin;
+    const Vector3f surfaceTarget = origin + direction * 0.5f;
     const float spineLargeRadius = radius * spineRadiusRatio;
+
+    // Create random shape between origin and target
+    Vector3f middle = (surfaceTarget + origin) / 2.f;
+    const float d = length(surfaceTarget - origin) / 5.f;
+    middle +=
+        Vector3f(d * (rand() % 1000 / 1000.f), d * (rand() % 1000 / 1000.f),
+                 d * (rand() % 1000 / 1000.f));
+    const float spineMiddleRadius =
+        spineSmallRadius + d * 0.1f * (rand() % 1000 / 1000.f);
     if (useSDFGeometry)
     {
         const float spineDisplacementRatio = 5.f;
         _addStepSphereGeometry(useSDFGeometry, true, origin, spineLargeRadius,
                                synapseMaterialId, -1, model, sdfMorphologyData,
                                sdfGroupId, spineDisplacementRatio);
-        if (origin != target)
+        _addStepSphereGeometry(useSDFGeometry, true, middle, spineMiddleRadius,
+                               synapseMaterialId, -1, model, sdfMorphologyData,
+                               sdfGroupId, spineDisplacementRatio);
+        if (origin != middle)
             _addStepConeGeometry(useSDFGeometry, origin, spineSmallRadius,
+                                 middle, spineMiddleRadius, synapseMaterialId,
+                                 -1, model, sdfMorphologyData, sdfGroupId,
+                                 spineDisplacementRatio);
+        if (middle != surfaceTarget)
+            _addStepConeGeometry(useSDFGeometry, middle, spineMiddleRadius,
                                  surfaceTarget, spineBaseRadius,
                                  synapseMaterialId, -1, model,
                                  sdfMorphologyData, sdfGroupId,
@@ -1049,9 +1066,13 @@ void MorphologyLoader::_addSynapse(
     else
     {
         model.addSphere(synapseMaterialId, {origin, radius});
-        if (origin != target)
+        model.addSphere(synapseMaterialId, {middle, spineMiddleRadius});
+        if (origin != middle)
+            model.addCone(synapseMaterialId, {origin, middle, spineSmallRadius,
+                                              spineMiddleRadius});
+        if (middle != surfaceTarget)
             model.addCone(synapseMaterialId,
-                          {origin, surfaceTarget, spineSmallRadius,
+                          {middle, surfaceTarget, spineMiddleRadius,
                            spineBaseRadius});
     }
 }
