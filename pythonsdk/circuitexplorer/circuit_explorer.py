@@ -81,6 +81,16 @@ class CircuitExplorer:
     USER_DATATYPE_SIMULATION_OFFSET = 'Simulation offset'
     USER_DATATYPE_DISTANCE_TO_SOMA = 'Distance to soma'
 
+    # Material offsets in morphologies
+    MATERIAL_OFFSET_SOMA = 1
+    MATERIAL_OFFSET_AXON = 2
+    MATERIAL_OFFSET_DENDRITE = 3
+    MATERIAL_OFFSET_APICAL_DENDRITE = 4
+    MATERIAL_OFFSET_AFFERENT_SYNPASE = 5
+    MATERIAL_OFFSET_EFFERENT_SYNPASE = 6
+    MATERIAL_OFFSET_MITOCHONDRION = 7
+    MATERIAL_OFFSET_NUCLEUS = 8
+
     def __init__(self, client):
         """Create a new Circuit Explorer instance"""
         self._client = client.rockets_client
