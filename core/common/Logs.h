@@ -43,12 +43,34 @@ namespace circuitexplorer
 #endif
 #define PLUGIN_TIMER(__time, __msg)                                       \
     std::cout << std::dec << "[" << std::this_thread::get_id() << "] T [" \
-              << PLUGIN_PREFIX << "] [" << __time << "] " << __msg        \
-              << std::endl;
+              << PLUGIN_PREFIX << "] " << __msg << " in " << __time       \
+              << " seconds" << std::endl;
 
 #define PLUGIN_THROW(message)              \
     {                                      \
         PLUGIN_ERROR(message);             \
         throw std::runtime_error(message); \
     }
+
+#define PLUGIN_PROGRESS(message, progress, barWidth)                          \
+    {                                                                         \
+        std::cout << std::dec << "[" << std::this_thread::get_id() << "] I [" \
+                  << PLUGIN_PREFIX << "] [";                                  \
+        const float __maxValue = float(barWidth);                             \
+        const float __step = 100.f / __maxValue;                              \
+        const uint32_t __pos = progress / __maxValue * 50.f;                  \
+        for (uint32_t __i = 0; __i < 50; ++__i)                               \
+        {                                                                     \
+            if (__i < __pos)                                                  \
+                std::cout << "=";                                             \
+            else if (__i == __pos)                                            \
+                std::cout << ">";                                             \
+            else                                                              \
+                std::cout << " ";                                             \
+        }                                                                     \
+        std::cout << "] " << std::min(__pos * 2, uint32_t(100)) << "% "       \
+                  << message << "\r";                                         \
+        std::cout.flush();                                                    \
+    }
+
 } // namespace circuitexplorer

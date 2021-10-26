@@ -18,10 +18,12 @@
 
 #include "AstrocyteLoader.h"
 
-#include <brayns/engineapi/Model.h>
-#include <brayns/engineapi/Scene.h>
 #include <common/CommonTypes.h>
 #include <common/Logs.h>
+
+#include <brayns/common/Timer.h>
+#include <brayns/engineapi/Model.h>
+#include <brayns/engineapi/Scene.h>
 
 #include <fstream>
 
@@ -149,9 +151,10 @@ void AstrocyteLoader::_importMorphologiesFromURIs(
         properties.getProperty<std::string>(PROP_CIRCUIT_COLOR_SCHEME.name));
     const auto generateInternals =
         properties.getProperty<bool>(PROP_INTERNALS.name);
-
     const float mitochondriaDensity =
         generateInternals ? DEFAULT_ASTROCYTE_MITOCHONDRIA_DENSITY : 0.f;
+
+    Timer chrono;
 
     std::vector<ParallelModelContainer> containers;
     uint64_t morphologyId;
@@ -179,6 +182,11 @@ void AstrocyteLoader::_importMorphologiesFromURIs(
                                         mitochondriaDensity);
 #pragma omp critical
             containers.push_back(modelContainer);
+
+            if (omp_get_thread_num() == 0)
+                PLUGIN_PROGRESS("- Loading astrocytes",
+                                (1 + morphologyId) * omp_get_num_threads(),
+                                uris.size());
         }
         catch (const std::runtime_error &e)
         {
@@ -190,9 +198,14 @@ void AstrocyteLoader::_importMorphologiesFromURIs(
         callback.updateProgress("Loading astrocytes...",
                                 (float)morphologyId / (float)uris.size());
     }
+    PLUGIN_INFO("");
 
-    for (auto &container : containers)
-        container.moveGeometryToModel(model);
+    for (size_t i = 0; i < containers.size(); ++i)
+    {
+        PLUGIN_PROGRESS("- Compiling 3D geometry...", 1 + i, containers.size());
+        containers[i].moveGeometryToModel(model);
+    }
+    PLUGIN_INFO("");
 
     PropertyMap materialProps;
     materialProps.setProperty({MATERIAL_PROPERTY_CAST_USER_DATA, false});
@@ -202,6 +215,8 @@ void AstrocyteLoader::_importMorphologiesFromURIs(
         {MATERIAL_PROPERTY_CLIPPING_MODE,
          static_cast<int>(MaterialClippingMode::no_clipping)});
     MorphologyLoader::createMissingMaterials(model, materialProps);
+
+    PLUGIN_TIMER(chrono.elapsed(), "- " << uris.size() << " astrocytes loaded");
 }
 } // namespace loader
 } // namespace io

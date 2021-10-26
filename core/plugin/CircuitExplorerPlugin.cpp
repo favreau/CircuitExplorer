@@ -647,6 +647,15 @@ void CircuitExplorerPlugin::_setMaterials(const MaterialsDescriptor& md)
         if (modelDescriptor)
         {
             size_t id = 0;
+            std::string materialIdsAsString;
+            for (const auto materialId : md.materialIds)
+            {
+                if (!materialIdsAsString.empty())
+                    materialIdsAsString += ",";
+                materialIdsAsString += std::to_string(materialId);
+            }
+            PLUGIN_INFO("Setting materials [" << materialIdsAsString << "]");
+
             for (const auto materialId : md.materialIds)
             {
                 try
@@ -655,7 +664,6 @@ void CircuitExplorerPlugin::_setMaterials(const MaterialsDescriptor& md)
                         modelDescriptor->getModel().getMaterial(materialId);
                     if (material)
                     {
-                        PLUGIN_INFO("Setting material " << materialId);
                         if (!md.diffuseColors.empty())
                         {
                             const size_t index = id * 3;
