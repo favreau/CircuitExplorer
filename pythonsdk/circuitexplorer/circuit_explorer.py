@@ -82,6 +82,7 @@ class CircuitExplorer:
     USER_DATATYPE_DISTANCE_TO_SOMA = 'Distance to soma'
 
     # Material offsets in morphologies
+    NB_MATERIALS_PER_MORPHOLOGY = 10
     MATERIAL_OFFSET_SOMA = 1
     MATERIAL_OFFSET_AXON = 2
     MATERIAL_OFFSET_DENDRITE = 3
