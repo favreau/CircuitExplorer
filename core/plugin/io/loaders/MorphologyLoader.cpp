@@ -255,20 +255,20 @@ void MorphologyLoader::_connectSDFSomaChildren(
     for (const auto& child : somaChildren)
     {
         const auto& samples = child.getSamples();
-        const Vector3f sample{samples[0].x(), samples[0].y(), samples[0].z()};
+        const auto index = std::min(size_t(1), samples.size());
+        const auto sample = samples[index];
+        const Vector3f s{sample.x(), sample.y(), sample.z()};
 
         // Create a sigmoid cone with soma radius to center of soma to give it
         // an organic look.
         const auto radiusEnd =
-            _getCorrectedRadius(properties, samples[0].w() * 0.5f);
+            _getCorrectedRadius(properties, sample.w() * 0.5f);
 
-        const size_t geomIdx =
-            _addSDFGeometry(sdfMorphologyData,
-                            createSDFConePillSigmoid(somaPosition, sample,
-                                                     somaRadius, radiusEnd,
-                                                     userDataOffset,
-                                                     DISPLACEMENT_PARAMS),
-                            {}, materialId, -1);
+        const size_t geomIdx = _addSDFGeometry(
+            sdfMorphologyData,
+            createSDFConePillSigmoid(somaPosition, s, somaRadius, radiusEnd,
+                                     userDataOffset, DISPLACEMENT_PARAMS),
+            {}, materialId, -1);
         child_indices.insert(geomIdx);
     }
 
@@ -540,20 +540,15 @@ void MorphologyLoader::_addSomaGeometry(
     const bool /*useSimulationModel*/, const bool generateInternals,
     const float mitochondriaDensity, uint32_t& sdfGroupId) const
 {
-    const size_t materialId =
+    size_t materialId =
         _getMaterialIdFromColorScheme(properties,
-                                      brain::neuron::SectionType::undefined);
+                                      brain::neuron::SectionType::soma);
     model.morphologyInfo.somaPosition =
         glm::make_vec3(soma.getCentroid().array);
     const double somaRadius =
         _getCorrectedRadius(properties, soma.getMeanRadius());
     const bool useSDFGeometry =
         properties.getProperty<bool>(PROP_USE_SDF_GEOMETRY.name);
-
-    if (generateInternals && mitochondriaDensity > 0.f)
-        _addSomaInternals(index, model, materialId, somaRadius,
-                          mitochondriaDensity, useSDFGeometry,
-                          sdfMorphologyData, sdfGroupId);
 
     const auto& children = soma.getChildren();
 
@@ -584,6 +579,15 @@ void MorphologyLoader::_addSomaGeometry(
                            static_cast<float>(somaRadius),
                            static_cast<float>(sampleRadius), offset});
         }
+    }
+
+    if (generateInternals && mitochondriaDensity > 0.f)
+    {
+        materialId = _getMaterialIdFromColorScheme(
+            properties, brain::neuron::SectionType::undefined);
+        _addSomaInternals(index, model, materialId, somaRadius,
+                          mitochondriaDensity, useSDFGeometry,
+                          sdfMorphologyData, sdfGroupId);
     }
 }
 
