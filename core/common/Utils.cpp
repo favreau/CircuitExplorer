@@ -27,20 +27,6 @@ brayns::Vector3f get_translation(const brayns::Matrix4f& matrix)
                             glm::value_ptr(matrix)[14]);
 }
 
-brain::Matrix4f glm_to_vmmlib(const brayns::Matrix4f& matrix)
-{
-    brain::Matrix4f result;
-    memcpy(&result.array, glm::value_ptr(matrix), sizeof(result.array));
-    return result;
-}
-
-brayns::Matrix4f vmmlib_to_glm(const brain::Matrix4f& matrix)
-{
-    brayns::Matrix4f result;
-    memcpy(glm::value_ptr(result), &matrix.array, sizeof(matrix.array));
-    return result;
-}
-
 bool inBox(const brayns::Vector3f& point, const brayns::Boxf& box)
 {
     const auto min = box.getMin();

@@ -435,13 +435,6 @@ void CircuitExplorerPlugin::init()
                 _setConnectionsPerValue(param);
             });
 
-        endPoint = PLUGIN_API_PREFIX + "set-metaballs-per-simulation-value";
-        PLUGIN_INFO("Registering '" + endPoint + "' endpoint");
-        actionInterface->registerNotification<MetaballsFromSimulationValue>(
-            endPoint, [&](const MetaballsFromSimulationValue& param) {
-                _setMetaballsPerSimulationValue(param);
-            });
-
         endPoint = PLUGIN_API_PREFIX + "set-odu-camera";
         PLUGIN_INFO("Registering '" + endPoint + "' endpoint");
         _api->getActionInterface()->registerNotification<CameraDefinition>(
@@ -976,65 +969,6 @@ void CircuitExplorerPlugin::_setConnectionsPerValue(
     }
     else
         PLUGIN_INFO("Model " << cpv.modelId << " is not registered");
-}
-
-void CircuitExplorerPlugin::_setMetaballsPerSimulationValue(
-    const MetaballsFromSimulationValue& mpsv)
-{
-    meshing::PointCloud pointCloud;
-
-    auto modelDescriptor = _api->getScene().getModel(mpsv.modelId);
-    if (modelDescriptor)
-    {
-        auto simulationHandler =
-            modelDescriptor->getModel().getSimulationHandler();
-        if (!simulationHandler)
-        {
-            PLUGIN_ERROR("Scene has not user data handler");
-            return;
-        }
-
-        auto& model = modelDescriptor->getModel();
-        for (const auto& spheres : model.getSpheres())
-        {
-            for (const auto& s : spheres.second)
-            {
-                const float* data = static_cast<float*>(
-                    simulationHandler->getFrameData(mpsv.frame));
-
-                const float value = data[s.userData];
-                if (abs(value - mpsv.value) < mpsv.epsilon)
-                    pointCloud[spheres.first].push_back(
-                        {s.center.x, s.center.y, s.center.z, s.radius});
-            }
-        }
-
-        if (!pointCloud.empty())
-        {
-            auto meshModel = _api->getScene().createModel();
-            meshing::PointCloudMesher mesher;
-            if (mesher.toMetaballs(*meshModel, pointCloud, mpsv.gridSize,
-                                   mpsv.threshold))
-            {
-                auto modelDesc = std::make_shared<ModelDescriptor>(
-                    std::move(meshModel),
-                    "Connection for value " + std::to_string(mpsv.value));
-
-                _api->getScene().addModel(modelDesc);
-                PLUGIN_INFO("Metaballs successfully added to the scene");
-
-                _dirty = true;
-            }
-            else
-                PLUGIN_INFO("No mesh was created for value "
-                            << std::to_string(mpsv.value));
-        }
-        else
-            PLUGIN_INFO("No connections added for value "
-                        << std::to_string(mpsv.value));
-    }
-    else
-        PLUGIN_INFO("Model " << mpsv.modelId << " is not registered");
 }
 
 void CircuitExplorerPlugin::_setCamera(const CameraDefinition& payload)

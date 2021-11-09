@@ -22,8 +22,6 @@
 
 #include <brayns/parameters/AnimationParameters.h>
 
-#include <servus/types.h>
-
 namespace circuitexplorer
 {
 namespace io

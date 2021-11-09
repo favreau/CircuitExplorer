@@ -49,10 +49,6 @@ PairSynapsesLoader::PairSynapsesLoader(
                                 enumToString(CircuitColorScheme::by_id)});
     _fixedDefaults.setProperty(
         {PROP_DAMPEN_BRANCH_THICKNESS_CHANGERATE.name, true});
-    _fixedDefaults.setProperty({PROP_USE_REALISTIC_SOMA.name, false});
-    _fixedDefaults.setProperty({PROP_METABALLS_SAMPLES_FROM_SOMA.name, 0});
-    _fixedDefaults.setProperty({PROP_METABALLS_GRID_SIZE.name, 0});
-    _fixedDefaults.setProperty({PROP_METABALLS_THRESHOLD.name, 0.0});
     _fixedDefaults.setProperty(
         {PROP_USER_DATA_TYPE.name, enumToString(UserDataType::undefined)});
     _fixedDefaults.setProperty({PROP_MORPHOLOGY_MAX_DISTANCE_TO_SOMA.name,

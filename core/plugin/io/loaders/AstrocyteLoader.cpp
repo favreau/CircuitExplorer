@@ -58,10 +58,6 @@ AstrocyteLoader::AstrocyteLoader(
     _fixedDefaults.setProperty({PROP_RADIUS_CORRECTION.name, 0.0});
     _fixedDefaults.setProperty(
         {PROP_DAMPEN_BRANCH_THICKNESS_CHANGERATE.name, true});
-    _fixedDefaults.setProperty({PROP_USE_REALISTIC_SOMA.name, false});
-    _fixedDefaults.setProperty({PROP_METABALLS_SAMPLES_FROM_SOMA.name, 0});
-    _fixedDefaults.setProperty({PROP_METABALLS_GRID_SIZE.name, 0});
-    _fixedDefaults.setProperty({PROP_METABALLS_THRESHOLD.name, 0.0});
     _fixedDefaults.setProperty(
         {PROP_USER_DATA_TYPE.name, enumToString(UserDataType::undefined)});
     _fixedDefaults.setProperty({PROP_MORPHOLOGY_MAX_DISTANCE_TO_SOMA.name,
@@ -161,7 +157,7 @@ void AstrocyteLoader::_importMorphologiesFromURIs(
 #pragma omp parallel for private(morphologyId)
     for (morphologyId = 0; morphologyId < uris.size(); ++morphologyId)
     {
-        const auto uri = servus::URI(uris[morphologyId]);
+        const auto uri = uris[morphologyId];
         try
         {
             PLUGIN_DEBUG("[" << omp_get_thread_num() << "] ["

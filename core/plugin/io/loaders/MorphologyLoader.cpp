@@ -19,13 +19,14 @@
 #include "MorphologyLoader.h"
 #include <common/Logs.h>
 #include <common/Utils.h>
-#include <plugin/meshing/MetaballsGenerator.h>
 
 #include <brayns/common/simulation/AbstractSimulationHandler.h>
 #include <brayns/common/types.h>
 #include <brayns/engineapi/Material.h>
 #include <brayns/engineapi/Model.h>
 #include <brayns/engineapi/Scene.h>
+
+#include <brion/uri.h>
 
 #include <boost/filesystem.hpp>
 
@@ -35,6 +36,8 @@ namespace io
 {
 namespace loader
 {
+using namespace brayns;
+
 const std::string LOADER_NAME = "Morphology";
 const std::string SUPPORTED_EXTENTION_H5 = "h5";
 const std::string SUPPORTED_EXTENTION_SWC = "swc";
@@ -83,7 +86,7 @@ bool MorphologyLoader::isSupported(const std::string& /*filename*/,
 }
 
 ParallelModelContainer MorphologyLoader::importMorphology(
-    const Gid& gid, const PropertyMap& properties, const servus::URI& source,
+    const Gid& gid, const PropertyMap& properties, const std::string& source,
     const uint64_t index, const SynapsesInfo& synapsesInfo,
     const Matrix4f& transformation, CompartmentReportPtr compartmentReport,
     const float mitochondriaDensity) const
@@ -99,20 +102,16 @@ ParallelModelContainer MorphologyLoader::importMorphology(
 }
 
 void MorphologyLoader::_importMorphology(
-    const Gid& gid, const PropertyMap& properties, const servus::URI& source,
+    const Gid& gid, const PropertyMap& properties, const std::string& source,
     const uint64_t index, const Matrix4f& transformation,
     ParallelModelContainer& model, CompartmentReportPtr compartmentReport,
     const SynapsesInfo& synapsesInfo, const float mitochondriaDensity) const
 {
     const auto sectionTypes = getSectionTypesFromProperties(properties);
-    const auto useRealisticSoma =
-        properties.getProperty<bool>(PROP_USE_REALISTIC_SOMA.name);
 
     if (sectionTypes.size() == 1 &&
         sectionTypes[0] == brain::neuron::SectionType::soma)
         _importMorphologyAsPoint(properties, index, compartmentReport, model);
-    else if (useRealisticSoma)
-        _createRealisticSoma(properties, source, model);
     else
         _importMorphologyFromURI(gid, properties, source, index, transformation,
                                  compartmentReport, model, synapsesInfo,
@@ -150,85 +149,6 @@ void MorphologyLoader::_importMorphologyAsPoint(
                      static_cast<float>(radiusMultiplier), userDataOffset});
 }
 
-void MorphologyLoader::_createRealisticSoma(const PropertyMap& properties,
-                                            const servus::URI& uri,
-                                            ParallelModelContainer& model) const
-{
-    brain::neuron::SectionTypes sectionTypes;
-    if (properties.getProperty<bool>(PROP_SECTION_TYPE_SOMA.name))
-        sectionTypes.push_back(brain::neuron::SectionType::soma);
-    if (properties.getProperty<bool>(PROP_SECTION_TYPE_AXON.name))
-        sectionTypes.push_back(brain::neuron::SectionType::axon);
-    if (properties.getProperty<bool>(PROP_SECTION_TYPE_DENDRITE.name))
-        sectionTypes.push_back(brain::neuron::SectionType::dendrite);
-    if (properties.getProperty<bool>(PROP_SECTION_TYPE_APICAL_DENDRITE.name))
-        sectionTypes.push_back(brain::neuron::SectionType::apicalDendrite);
-    const size_t metaballsSamplesFromSoma =
-        properties.getProperty<int>(PROP_METABALLS_SAMPLES_FROM_SOMA.name);
-    const auto metaballsGridSize =
-        properties.getProperty<int>(PROP_METABALLS_GRID_SIZE.name);
-    const auto metaballsThreshold =
-        properties.getProperty<double>(PROP_METABALLS_THRESHOLD.name);
-
-    brain::neuron::Morphology morphology(uri);
-    const auto& st = sectionTypes;
-    const brain::neuron::Sections& sections = morphology.getSections(st);
-
-    Vector4fs metaballs;
-
-    if (std::find(st.begin(), st.end(), brain::neuron::SectionType::soma) !=
-        st.end())
-    {
-        // Soma
-        const auto& soma = morphology.getSoma();
-        model.morphologyInfo.somaPosition =
-            glm::make_vec3(morphology.getSoma().getCentroid().array);
-        const auto radius =
-            _getCorrectedRadius(properties, soma.getMeanRadius());
-        metaballs.push_back({model.morphologyInfo.somaPosition.x,
-                             model.morphologyInfo.somaPosition.y,
-                             model.morphologyInfo.somaPosition.z, radius});
-    }
-
-    // Dendrites and axon
-    for (const auto& section : sections)
-    {
-        const auto hasParent = section.hasParent();
-        if (hasParent)
-        {
-            const auto parentSectionType = section.getParent().getType();
-            if (parentSectionType != brain::neuron::SectionType::soma)
-                continue;
-        }
-
-        const auto& samples = section.getSamples();
-        if (samples.empty())
-            continue;
-
-        const auto samplesToProcess =
-            std::min(metaballsSamplesFromSoma, samples.size());
-        for (size_t i = 0; i < samplesToProcess; ++i)
-        {
-            const auto& sample = samples[i];
-            const Vector3f position(sample.x(), sample.y(), sample.z());
-            const auto radius =
-                _getCorrectedRadius(properties, sample.w() * 0.5f);
-            if (radius > 0.f)
-                metaballs.push_back(
-                    {position.x, position.y, position.z, radius});
-        }
-    }
-
-    // Generate mesh from metaballs
-    meshing::MetaballsGenerator metaballsGenerator;
-    const auto materialId =
-        _getMaterialIdFromColorScheme(properties,
-                                      brain::neuron::SectionType::soma);
-    metaballsGenerator.generateMesh(metaballs, metaballsGridSize,
-                                    metaballsThreshold, materialId,
-                                    model.trianglesMeshes);
-}
-
 size_t MorphologyLoader::_addSDFGeometry(SDFMorphologyData& sdfMorphologyData,
                                          const SDFGeometry& geometry,
                                          const std::set<size_t>& neighbours,
@@ -257,17 +177,16 @@ void MorphologyLoader::_connectSDFSomaChildren(
         const auto& samples = child.getSamples();
         const auto index = std::min(size_t(1), samples.size());
         const auto sample = samples[index];
-        const Vector3f s{sample.x(), sample.y(), sample.z()};
+        const Vector3f s{sample.x, sample.y, sample.z};
 
         // Create a sigmoid cone with soma radius to center of soma to give it
         // an organic look.
-        const auto radiusEnd =
-            _getCorrectedRadius(properties, sample.w() * 0.5f);
+        const auto radiusEnd = _getCorrectedRadius(properties, sample.w * 0.5f);
 
         const size_t geomIdx = _addSDFGeometry(
             sdfMorphologyData,
             createSDFConePillSigmoid(somaPosition, s, somaRadius, radiusEnd,
-                                     userDataOffset, DISPLACEMENT_PARAMS),
+                                     userDataOffset, {0.2f, 1.75f, 2.0f}),
             {}, materialId, -1);
         child_indices.insert(geomIdx);
     }
@@ -444,9 +363,9 @@ MorphologyTreeStructure MorphologyLoader::_calculateMorphologyTreeStructure(
             const auto& sample = samples[0];
 
             const auto radius =
-                _getCorrectedRadius(properties, sample.w() * 0.5f);
+                _getCorrectedRadius(properties, sample.w * 0.5f);
 
-            const Vector3f position(sample.x(), sample.y(), sample.z());
+            const Vector3f position(sample.x, sample.y, sample.z);
 
             bifurcationPosition[sectionI].first = radius;
             bifurcationPosition[sectionI].second = position;
@@ -455,8 +374,8 @@ MorphologyTreeStructure MorphologyLoader::_calculateMorphologyTreeStructure(
         { // Branch end
             const auto& sample = samples.back();
             const auto radius =
-                _getCorrectedRadius(properties, sample.w() * 0.5f);
-            const Vector3f position(sample.x(), sample.y(), sample.z());
+                _getCorrectedRadius(properties, sample.w * 0.5f);
+            const Vector3f position(sample.x, sample.y, sample.z);
             sectionEndPosition[sectionI].first = radius;
             sectionEndPosition[sectionI].second = position;
         }
@@ -543,8 +462,7 @@ void MorphologyLoader::_addSomaGeometry(
     size_t materialId =
         _getMaterialIdFromColorScheme(properties,
                                       brain::neuron::SectionType::soma);
-    model.morphologyInfo.somaPosition =
-        glm::make_vec3(soma.getCentroid().array);
+    model.morphologyInfo.somaPosition = soma.getCentroid();
     const double somaRadius =
         _getCorrectedRadius(properties, soma.getMeanRadius());
     const bool useSDFGeometry =
@@ -567,12 +485,11 @@ void MorphologyLoader::_addSomaGeometry(
         for (const auto& child : children)
         {
             const auto& samples = child.getSamples();
-            const Vector3f sample{samples[0].x(), samples[0].y(),
-                                  samples[0].z()};
+            const Vector3f sample{samples[0].x, samples[0].y, samples[0].z};
 
             model.morphologyInfo.bounds.merge(sample);
             const double sampleRadius =
-                _getCorrectedRadius(properties, samples[0].w() * 0.5f);
+                _getCorrectedRadius(properties, samples[0].w * 0.5f);
 
             model.addCone(materialId,
                           {model.morphologyInfo.somaPosition, sample,
@@ -606,8 +523,9 @@ void MorphologyLoader::_addStepSphereGeometry(
             // Since our cone pills already give us a sphere at the end
             // points we don't need to add any sphere between segments
             // except at the bifurcation
-            const auto displacementParams =
-                DISPLACEMENT_PARAMS * displacementRatio;
+            const Vector3f displacementParams = {std::min(radius, 0.2), 1.75f,
+                                                 2.0f};
+            // DISPLACEMENT_PARAMS * displacementRatio;
             const size_t idx =
                 _addSDFGeometry(sdfMorphologyData,
                                 createSDFSphere(position, radius,
@@ -634,7 +552,10 @@ void MorphologyLoader::_addStepConeGeometry(
     model.morphologyInfo.bounds.merge(target);
     if (useSDFGeometry)
     {
-        const auto displacementParams = DISPLACEMENT_PARAMS * displacementRatio;
+        // const auto displacementParams = DISPLACEMENT_PARAMS *
+        // displacementRatio;
+        const Vector3f displacementParams = {std::min(radius, 0.2), 1.75f,
+                                             2.0f};
         const auto geom =
             (almost_equal(radius, previousRadius, 100000))
                 ? createSDFPill(position, target, radius, userDataOffset,
@@ -688,19 +609,15 @@ float MorphologyLoader::_distanceToSoma(const brain::neuron::Section& section,
 }
 
 void MorphologyLoader::_importMorphologyFromURI(
-    const Gid& gid, const PropertyMap& properties, const servus::URI& uri,
+    const Gid& gid, const PropertyMap& properties, const std::string& uri,
     const uint64_t index, const Matrix4f& transformation,
     CompartmentReportPtr compartmentReport, ParallelModelContainer& model,
     const SynapsesInfo& synapsesInfo, const float mitochondriaDensity) const
 {
     SDFMorphologyData sdfMorphologyData;
 
-    brain::neuron::Morphology morphology(uri);
-
     // Soma
     const auto sectionTypes = getSectionTypesFromProperties(properties);
-    const auto useRealisticSoma =
-        properties.getProperty<bool>(PROP_USE_REALISTIC_SOMA.name);
     const auto morphologyQuality = stringToEnum<MorphologyQuality>(
         properties.getProperty<std::string>(PROP_MORPHOLOGY_QUALITY.name));
     const auto userDataType = stringToEnum<UserDataType>(
@@ -720,11 +637,12 @@ void MorphologyLoader::_importMorphologyFromURI(
     if (compartmentReport)
         userDataOffset = compartmentReport->getOffsets()[index][0];
 
-    const auto& sections = morphology.getSections(sectionTypes);
+    const brion::URI source(uri);
+    const brain::neuron::Morphology morphology(source);
+    const auto sections = morphology.getSections(sectionTypes);
 
     uint32_t sdfGroupId = 0;
-    if (!useRealisticSoma &&
-        std::find(sectionTypes.begin(), sectionTypes.end(),
+    if (std::find(sectionTypes.begin(), sectionTypes.end(),
                   brain::neuron::SectionType::soma) != sectionTypes.end())
     {
         _addSomaGeometry(index, properties, morphology.getSoma(),
@@ -767,7 +685,7 @@ void MorphologyLoader::_importMorphologyFromURI(
 
         const auto materialId =
             _getMaterialIdFromColorScheme(properties, section.getType());
-        const brion::Vector4fs& samples = section.getSamples();
+        const auto& samples = section.getSamples();
         if (samples.empty())
             continue;
 
@@ -801,7 +719,7 @@ void MorphologyLoader::_importMorphologyFromURI(
             _getCorrectedRadius(properties,
                                 section.hasParent()
                                     ? _getLastSampleRadius(section.getParent())
-                                    : samples[0].w() * 0.5f);
+                                    : samples[0].w * 0.5f);
 
         bool done = false;
         float sectionVolume = 0.f;
@@ -867,16 +785,16 @@ void MorphologyLoader::_importMorphologyFromURI(
                 break;
             }
 
-            const auto sample = samples[s];
-            Vector3f position(sample.x(), sample.y(), sample.z());
-            Vector3f target(previousSample.x(), previousSample.y(),
-                            previousSample.z());
+            const auto& sample = samples[s];
+            const Vector3f position{sample.x, sample.y, sample.z};
+            const Vector3f target(previousSample.x, previousSample.y,
+                                  previousSample.z);
             sectionLength += length(position - target);
 
             model.morphologyInfo.bounds.merge(position);
             model.morphologyInfo.bounds.merge(target);
 
-            auto radius = _getCorrectedRadius(properties, sample.w() * 0.5f);
+            auto radius = _getCorrectedRadius(properties, sample.w * 0.5f);
             const double maxRadiusChange = 0.1f;
 
             const double dist = glm::length(target - position);
@@ -930,8 +848,7 @@ void MorphologyLoader::_importMorphologyFromURI(
     const size_t materialId =
         _getMaterialIdFromColorScheme(properties,
                                       brain::neuron::SectionType::undefined);
-    const Vector3f somaPosition =
-        glm::make_vec3(morphology.getSoma().getCentroid().array);
+    const auto& somaPosition = morphology.getSoma().getCentroid();
     const double somaRadius =
         _getCorrectedRadius(properties, morphology.getSoma().getMeanRadius());
 
@@ -986,9 +903,9 @@ void MorphologyLoader::_addSynapse(
     case SynapseType::afferent:
     {
         auto pos = synapse.getPostsynapticSurfacePosition();
-        origin = Vector3f(pos.x(), pos.y(), pos.z());
+        origin = Vector3f(pos.x, pos.y, pos.z);
         pos = synapse.getPostsynapticCenterPosition();
-        target = Vector3f(pos.x(), pos.y(), pos.z());
+        target = Vector3f(pos.x, pos.y, pos.z);
         sectionId = synapse.getPostsynapticSectionID();
         if (sectionId < sections.size())
         {
@@ -1002,9 +919,9 @@ void MorphologyLoader::_addSynapse(
     case SynapseType::efferent:
     {
         auto pos = synapse.getPresynapticSurfacePosition();
-        origin = Vector3f(pos.x(), pos.y(), pos.z());
+        origin = Vector3f(pos.x, pos.y, pos.z);
         pos = synapse.getPresynapticCenterPosition();
-        target = Vector3f(pos.x(), pos.y(), pos.z());
+        target = Vector3f(pos.x, pos.y, pos.z);
         sectionId = synapse.getPresynapticSectionID();
         if (sectionId < sections.size())
         {
@@ -1026,7 +943,7 @@ void MorphologyLoader::_addSynapse(
     if (processRadius && segmentId < segments.size())
     {
         const auto& segment = segments[segmentId];
-        radius = segment.w() * 0.1f;
+        radius = segment.w * 0.1f;
     }
 
     // Spine geometry
@@ -1201,17 +1118,17 @@ void MorphologyLoader::_addSectionInternals(
                 const auto& srcSample = samples[srcIndex];
                 const auto& dstSample = samples[dstIndex];
                 const float srcRadius =
-                    _getCorrectedRadius(properties, srcSample.w() * 0.5f);
+                    _getCorrectedRadius(properties, srcSample.w * 0.5f);
                 const Vector3f srcPosition{
-                    srcSample.x() + srcRadius * (rand() % 100 - 50) / 500.f,
-                    srcSample.y() + srcRadius * (rand() % 100 - 50) / 500.f,
-                    srcSample.z() + srcRadius * (rand() % 100 - 50) / 500.f};
+                    srcSample.x + srcRadius * (rand() % 100 - 50) / 500.f,
+                    srcSample.y + srcRadius * (rand() % 100 - 50) / 500.f,
+                    srcSample.z + srcRadius * (rand() % 100 - 50) / 500.f};
                 const float dstRadius =
-                    _getCorrectedRadius(properties, dstSample.w() * 0.5f);
+                    _getCorrectedRadius(properties, dstSample.w * 0.5f);
                 const Vector3f dstPosition{
-                    dstSample.x() + dstRadius * (rand() % 100 - 50) / 500.f,
-                    dstSample.y() + dstRadius * (rand() % 100 - 50) / 500.f,
-                    dstSample.z() + dstRadius * (rand() % 100 - 50) / 500.f};
+                    dstSample.x + dstRadius * (rand() % 100 - 50) / 500.f,
+                    dstSample.y + dstRadius * (rand() % 100 - 50) / 500.f,
+                    dstSample.z + dstRadius * (rand() % 100 - 50) / 500.f};
 
                 const Vector3f direction = dstPosition - srcPosition;
                 const Vector3f position =
@@ -1320,7 +1237,7 @@ ModelDescriptorPtr MorphologyLoader::importFromFile(
 
     auto model = _scene.createModel();
     auto modelContainer =
-        importMorphology(0, props, servus::URI(fileName), 0, SynapsesInfo());
+        importMorphology(0, props, fileName, 0, SynapsesInfo());
     modelContainer.moveGeometryToModel(*model);
     createMissingMaterials(*model);
 
@@ -1345,10 +1262,6 @@ PropertyMap MorphologyLoader::getCLIProperties()
     pm.setProperty(PROP_SECTION_TYPE_APICAL_DENDRITE);
     pm.setProperty(PROP_USE_SDF_GEOMETRY);
     pm.setProperty(PROP_DAMPEN_BRANCH_THICKNESS_CHANGERATE);
-    pm.setProperty(PROP_USE_REALISTIC_SOMA);
-    pm.setProperty(PROP_METABALLS_SAMPLES_FROM_SOMA);
-    pm.setProperty(PROP_METABALLS_GRID_SIZE);
-    pm.setProperty(PROP_METABALLS_THRESHOLD);
     pm.setProperty(PROP_USER_DATA_TYPE);
     pm.setProperty(PROP_MORPHOLOGY_COLOR_SCHEME);
     pm.setProperty(PROP_MORPHOLOGY_QUALITY);

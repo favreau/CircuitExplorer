@@ -102,7 +102,7 @@ public:
      */
     ParallelModelContainer importMorphology(
         const Gid& gid, const PropertyMap& properties,
-        const servus::URI& source, const uint64_t index,
+        const std::string& source, const uint64_t index,
         const SynapsesInfo& synapsesInfo,
         const Matrix4f& transformation = Matrix4f(),
         CompartmentReportPtr compartmentReport = nullptr,
@@ -139,7 +139,7 @@ private:
                                const double radius) const;
 
     void _importMorphology(const Gid& gid, const PropertyMap& properties,
-                           const servus::URI& source, const uint64_t index,
+                           const std::string& source, const uint64_t index,
                            const Matrix4f& transformation,
                            ParallelModelContainer& model,
                            CompartmentReportPtr compartmentReport,
@@ -172,25 +172,12 @@ private:
      * into
      */
     void _importMorphologyFromURI(const Gid& gid, const PropertyMap& properties,
-                                  const servus::URI& uri, const uint64_t index,
+                                  const std::string& uri, const uint64_t index,
                                   const Matrix4f& transformation,
                                   CompartmentReportPtr compartmentReport,
                                   ParallelModelContainer& model,
                                   const SynapsesInfo& synapsesInfo,
                                   const float mitochondriaDensity) const;
-
-    /**
-     * @brief _createRealisticSoma Creates a realistic soma using the metaballs
-     * algorithm.
-     * @param uri URI of the morphology for which the soma is created
-     * @param index Index of the current morphology
-     * @param material Material that is forced in case geometry parameters
-     * do not apply
-     * @param scene Scene to which the morphology should be loaded into
-     */
-    void _createRealisticSoma(const PropertyMap& properties,
-                              const servus::URI& uri,
-                              ParallelModelContainer& model) const;
 
     size_t _addSDFGeometry(SDFMorphologyData& sdfMorphologyData,
                            const SDFGeometry& geometry,

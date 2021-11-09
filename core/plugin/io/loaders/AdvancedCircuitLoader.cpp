@@ -81,10 +81,6 @@ PropertyMap AdvancedCircuitLoader::getCLIProperties()
     pm.setProperty(PROP_SECTION_TYPE_APICAL_DENDRITE);
     pm.setProperty(PROP_USE_SDF_GEOMETRY);
     pm.setProperty(PROP_DAMPEN_BRANCH_THICKNESS_CHANGERATE);
-    pm.setProperty(PROP_USE_REALISTIC_SOMA);
-    pm.setProperty(PROP_METABALLS_SAMPLES_FROM_SOMA);
-    pm.setProperty(PROP_METABALLS_GRID_SIZE);
-    pm.setProperty(PROP_METABALLS_THRESHOLD);
     pm.setProperty(PROP_USER_DATA_TYPE);
     pm.setProperty(PROP_MORPHOLOGY_COLOR_SCHEME);
     pm.setProperty(PROP_MORPHOLOGY_QUALITY);

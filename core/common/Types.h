@@ -260,18 +260,6 @@ const brayns::Property PROP_USE_SDF_GEOMETRY = {
 const brayns::Property PROP_DAMPEN_BRANCH_THICKNESS_CHANGERATE = {
     "061DampenBranchThicknessChangerate", true,
     {"Dampen branch thickness changerate"}};
-const brayns::Property PROP_USE_REALISTIC_SOMA = {
-    "070RealisticSoma", false,
-    {"Uses metaballs to build somata geometry"}};
-const brayns::Property PROP_METABALLS_SAMPLES_FROM_SOMA = {
-    "071MetaballsSamplesFromSoma", 5,
-    {"Number of section samples used to compute metaballs"}};
-const brayns::Property PROP_METABALLS_GRID_SIZE = {
-    "072MetaballsGridSize", 20,
-    {"Size of the grid uarraysed to compute metaballs"}};
-const brayns::Property PROP_METABALLS_THRESHOLD = {
-    "073MetaballsThreshold", 1.,
-    {"Threshold used to compute metaballs"}};
 const brayns::Property PROP_MORPHOLOGY_COLOR_SCHEME = {
     "080MorphologyColorScheme", enumToString(MorphologyColorScheme::none),
     enumerateNames<MorphologyColorScheme>(),

@@ -105,8 +105,7 @@ class CircuitExplorer:
                      mesh_filename_pattern='', mesh_transformation=False, radius_multiplier=1,
                      radius_correction=0, load_soma=True, load_axon=True, load_dendrite=True,
                      load_apical_dendrite=True, use_sdf=False,
-                     dampen_branch_thickness_changerate=True, use_metaballs_for_soma=False,
-                     metaballs_section_samples=5, metaballs_grid_size=20, metaballs_threshold=1,
+                     dampen_branch_thickness_changerate=True, 
                      morphology_color_scheme=MORPHOLOGY_COLOR_SCHEME_NONE,
                      morphology_quality=GEOMETRY_QUALITY_HIGH, max_distance_to_soma=1e6,
                      cell_clipping=False, load_afferent_synapses=False,
@@ -145,13 +144,6 @@ class CircuitExplorer:
         :param bool use_sdf: Defines if signed distance field geometries should be used
         :param bool dampen_branch_thickness_changerate: Defines if the dampen branch
         thicknesschangerate option should be used (Only application is use_sdf is True)
-        :param bool use_metaballs_for_soma: Defines if metaballs should be used to build the soma
-        :param int metaballs_section_samples: Defines how many sections from the soma should be used
-        to build the soma with metaballs (Only application if use_metaballs_for_soma is True)
-        :param int metaballs_grid_size: Defines the size of grid to build the soma with metaballs (
-        Only application if use_metaballs_for_soma is True)
-        :param float metaballs_threshold: Defines the threshold to build the soma with metaballs (
-        Only application if use_metaballs_for_soma is True)
         :param int morphology_color_scheme: Defines the color scheme to apply to the morphologies (
         MORPHOLOGY_COLOR_SCHEME_NONE, MORPHOLOGY_COLOR_SCHEME_BY_SECTION_TYPE)
         :param int morphology_quality: Defines the level of quality for each geometry (
@@ -207,11 +199,6 @@ class CircuitExplorer:
 
         props['060UseSdfgeometry'] = use_sdf
         props['061DampenBranchThicknessChangerate'] = dampen_branch_thickness_changerate
-
-        props['070RealisticSoma'] = use_metaballs_for_soma
-        props['071MetaballsSamplesFromSoma'] = metaballs_section_samples
-        props['072MetaballsGridSize'] = metaballs_grid_size
-        props['073MetaballsThreshold'] = metaballs_threshold
 
         props['080MorphologyColorScheme'] = morphology_color_scheme
 
@@ -291,11 +278,6 @@ class CircuitExplorer:
         props['060UseSdfgeometry'] = use_sdf
         props['061DampenBranchThicknessChangerate'] = dampen_branch_thickness_changerate
 
-        props['070RealisticSoma'] = False
-        props['071MetaballsSamplesFromSoma'] = 0
-        props['072MetaballsGridSize'] = 0
-        props['073MetaballsThreshold'] = 0.0
-
         props['080MorphologyColorScheme'] = morphology_color_scheme
 
         props['090MorphologyQuality'] = morphology_quality
@@ -370,11 +352,6 @@ class CircuitExplorer:
 
         props['060UseSdfgeometry'] = use_sdf
         props['061DampenBranchThicknessChangerate'] = dampen_branch_thickness_changerate
-
-        props['070RealisticSoma'] = False
-        props['071MetaballsSamplesFromSoma'] = 0
-        props['072MetaballsGridSize'] = 0
-        props['073MetaballsThreshold'] = 0.0
 
         props['080MorphologyColorScheme'] = morphology_color_scheme
 

@@ -154,7 +154,7 @@ include_directories(
 set(${NAME}_LINK_LIBRARIES
     PUBLIC ${OSPRAY_LIBRARIES}
     PRIVATE braynsCommon braynsParameters braynsIO braynsEngine braynsPluginAPI
-    braynsOSPRayEngine glm vmmlib Brion Brain
+    braynsOSPRayEngine glm Brion Brain
     ${FREEIMAGE_LIBRARIES} ${HDF5_LIBRARIES}
 )
 

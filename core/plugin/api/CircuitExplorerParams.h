@@ -166,19 +166,6 @@ struct ConnectionsPerValue
 bool from_json(ConnectionsPerValue& connectionsPerValue,
                const std::string& payload);
 
-/** Metaballs per simulation value */
-struct MetaballsFromSimulationValue
-{
-    int32_t modelId;
-    int32_t frame;
-    double value;
-    double epsilon;
-    int32_t gridSize;
-    double threshold;
-};
-
-bool from_json(MetaballsFromSimulationValue& param, const std::string& payload);
-
 /** Set extra attributes to materials */
 struct MaterialExtraAttributes
 {

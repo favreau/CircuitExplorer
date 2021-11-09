@@ -394,7 +394,7 @@ ModelDescriptorPtr AbstractCircuitLoader::importCircuit(
     PLUGIN_INFO("- Applying cell transformations");
     Matrix4fs allTransformations;
     for (const auto &transformation : circuit.getTransforms(allGids))
-        allTransformations.push_back(vmmlib_to_glm(transformation));
+        allTransformations.push_back(transformation);
 
     PLUGIN_INFO("- Filtering out guids according to clipping planes");
     if (cellClipping)
@@ -418,14 +418,14 @@ ModelDescriptorPtr AbstractCircuitLoader::importCircuit(
     const auto &electrophysiologyTypes = circuit.getElectrophysiologyTypes(
         colorScheme == CircuitColorScheme::by_etype ? allGids
                                                     : brain::GIDSet());
-    callback.updateProgress("Getting morphology types...", 0);
-    PLUGIN_INFO("- Getting morphology types");
+    callback.updateProgress("Getting cell types...", 0);
+    PLUGIN_INFO("- Getting cell types");
     size_ts morphologyTypes;
     if (colorScheme == CircuitColorScheme::by_mtype)
         morphologyTypes = circuit.getMorphologyTypes(allGids);
 
-    callback.updateProgress("Importing morphologies...", 0);
-    PLUGIN_INFO("- Importing morphologies");
+    callback.updateProgress("Importing cells...", 0);
+    PLUGIN_INFO("- Importing cells");
     float maxMorphologyLength = 0.f;
     if (meshFolder.empty())
         maxMorphologyLength =
@@ -574,26 +574,26 @@ size_ts AbstractCircuitLoader::_populateLayerIds(
     const auto circuitSource = blueConfig.getCircuitSource();
     try
     {
-        PLUGIN_INFO("- Opening Brion circuit from " << circuitSource);
+        PLUGIN_INFO("  - Opening Brion circuit from " << circuitSource);
         const brion::Circuit circuit(circuitSource);
         for (const auto &values : circuit.get(gids, brion::NEURON_LAYER))
             layerIds.push_back(values.size() > 0 ? std::stoi(values[0]) : 0);
     }
     catch (...)
     {
-        PLUGIN_INFO("- Failed to open Brion circuit from " << circuitSource);
+        PLUGIN_INFO("  - Failed to open Brion circuit from " << circuitSource);
         const auto colorScheme = stringToEnum<CircuitColorScheme>(
             properties.getProperty<std::string>(
                 PROP_CIRCUIT_COLOR_SCHEME.name));
         if (colorScheme == CircuitColorScheme::by_layer)
         {
             PLUGIN_ERROR(
-                "Only MVD2 format is currently supported by Brion "
-                "circuits. Color scheme by layer not available for "
-                "this circuit");
+                "  - Only MVD2 format is currently supported by Brion "
+                "circuits. Color scheme by layer not available for this "
+                "circuit");
         }
         else
-            PLUGIN_WARN("- No layer Id could be identified");
+            PLUGIN_WARN("  - No layer Id could be identified");
     }
     return layerIds;
 }
@@ -664,7 +664,7 @@ void AbstractCircuitLoader::_importMeshes(
             PLUGIN_WARN(e.what());
         }
         ++meshIndex;
-        callback.updateProgress("Loading morphologies as meshes...",
+        callback.updateProgress("Loading cells as meshes...",
                                 (float)meshIndex / (float)gids.size());
     }
     // Add custom properties to materials
@@ -893,7 +893,7 @@ float AbstractCircuitLoader::_importMorphologies(
     brain::URIs uris;
     if (!somasOnly)
     {
-        PLUGIN_INFO("- Getting morphology URIs");
+        PLUGIN_INFO("- Getting cell URIs");
         uris = circuit.getMorphologyURIs(gids);
     }
 
@@ -908,7 +908,8 @@ float AbstractCircuitLoader::_importMorphologies(
 #pragma omp parallel for private(morphologyId)
     for (morphologyId = 0; morphologyId < localGids.size(); ++morphologyId)
     {
-        const auto uri = somasOnly ? brain::URI() : uris[morphologyId];
+        const auto uri = somasOnly ? std::string()
+                                   : std::string(uris[morphologyId].getPath());
         try
         {
             const auto baseMaterialId = _getMaterialFromCircuitAttributes(
@@ -936,7 +937,7 @@ float AbstractCircuitLoader::_importMorphologies(
                     std::unique_ptr<brain::Synapses>(new brain::Synapses(
                         circuit.getEfferentSynapses({gid})));
 
-            const auto layerId = layerIds[morphologyId];
+            const auto layerId = layerIds.empty() ? 0 : layerIds[morphologyId];
             const auto mitochondriaDensity =
                 (layerId < MITOCHONDRIA_DENSITY.size()
                      ? MITOCHONDRIA_DENSITY[layerId]
@@ -951,24 +952,28 @@ float AbstractCircuitLoader::_importMorphologies(
         }
         catch (const std::runtime_error &e)
         {
-            PLUGIN_ERROR("Failed to load morphology "
-                         << morphologyId << " (" << uri << "): " << e.what());
+            PLUGIN_ERROR("Failed to load cell " << morphologyId << " (" << uri
+                                                << "): " << e.what());
         }
         if (omp_get_thread_num() == 0)
-            PLUGIN_PROGRESS("- Loading morphologies",
-                            (1 + morphologyId) * omp_get_num_threads(),
-                            localGids.size());
+        {
+            const float progress = (1 + morphologyId) * omp_get_num_threads();
+            PLUGIN_PROGRESS("- Loading cells", progress, localGids.size());
 
-#pragma omp critical
-        callback.updateProgress("Loadinging morphologies...",
-                                (float)morphologyId / (float)uris.size());
+            callback.updateProgress("Loading cells...",
+                                    progress / localGids.size());
+        }
     }
     PLUGIN_INFO("");
 
     float maxDistanceToSoma = 0.f;
     for (size_t i = 0; i < containers.size(); ++i)
     {
-        PLUGIN_PROGRESS("- Compiling 3D geometry...", 1 + i, containers.size());
+        const float progress = 1.f + i;
+        PLUGIN_PROGRESS("- Compiling 3D geometry...", progress,
+                        containers.size());
+        callback.updateProgress("Compiling 3D geometry...",
+                                progress / containers.size());
         auto &container = containers[i];
         maxDistanceToSoma = std::max(container.morphologyInfo.maxDistanceToSoma,
                                      maxDistanceToSoma);
@@ -976,8 +981,7 @@ float AbstractCircuitLoader::_importMorphologies(
     }
     PLUGIN_INFO("");
 
-    PLUGIN_TIMER(chrono.elapsed(),
-                 "- " << gids.size() << " morphologies loaded");
+    PLUGIN_TIMER(chrono.elapsed(), "- " << gids.size() << " cells loaded");
     return maxDistanceToSoma;
 }
 
