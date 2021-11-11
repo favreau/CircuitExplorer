@@ -23,6 +23,9 @@
 """Provides a class that wraps the API exposed by the braynsCircuitExplorer plug-in"""
 
 
+import seaborn as sns
+
+
 class CircuitExplorer:
     """Circuit Explorer, a class that wraps the API exposed by the braynsCircuitExplorer plug-in"""
 
@@ -52,9 +55,9 @@ class CircuitExplorer:
     MORPHOLOGY_SECTION_TYPE_APICAL_DENDRITE = 8
 
     # Geometry qualities
-    GEOMETRY_QUALITY_LOW = 0
-    GEOMETRY_QUALITY_MEDIUM = 1
-    GEOMETRY_QUALITY_HIGH = 2
+    GEOMETRY_QUALITY_LOW = 'Low'
+    GEOMETRY_QUALITY_MEDIUM = 'Medium'
+    GEOMETRY_QUALITY_HIGH = 'High'
 
     # Shading modes
     SHADING_MODE_NONE = 0
@@ -95,6 +98,7 @@ class CircuitExplorer:
     def __init__(self, client):
         """Create a new Circuit Explorer instance"""
         self._client = client.rockets_client
+        self._core = client
 
     # pylint: disable=W0102,R0913,R0914
     def load_circuit(self, path, name='Circuit', density=100.0, gids=list(),
@@ -212,12 +216,7 @@ class CircuitExplorer:
 
         props['120Internals'] = generate_internals
 
-        params = dict()
-        params['name'] = name
-        params['path'] = path
-        params['loader_properties'] = props
-
-        return self._client.request(method='add-model', params=params)
+        return self._core.add_model(name=name, path=path, load_properties=props)
 
     def load_pair_synapses_usecase(self, path, pre_synaptic_neuron, post_synaptic_neuron,
                                    radius_multiplier=1, radius_correction=0,
@@ -290,12 +289,9 @@ class CircuitExplorer:
 
         props['120Internals'] = False
 
-        params = dict()
-        params['name'] = 'Pair-symapses (%d, %d)' % (pre_synaptic_neuron, post_synaptic_neuron)
-        params['path'] = path
-        params['loader_properties'] = props
-
-        return self._client.request(method='add-model', params=params)
+        return self._core.add_model(
+            name='Pair-symapses (%d, %d)' % (pre_synaptic_neuron, post_synaptic_neuron),
+            path=path, load_properties=props)
 
     def load_astrocytes(self, path, name='Astrocytes', radius_multiplier=1.0, radius_correction=0.0,
                         load_soma=True, load_dendrite=True, load_end_foot=False,
@@ -366,12 +362,84 @@ class CircuitExplorer:
 
         props['120Internals'] = generate_internals
 
-        params = dict()
-        params['name'] = name
-        params['path'] = path
-        params['loader_properties'] = props
+        return self._core.add_model(name=name, path=path, load_properties=props)
 
-        return self._client.request(method='add-model', params=params)
+    def load_vasculature(self, name, path, use_sdf=False, radius_multiplier=1.0,
+                         geometry_quality=GEOMETRY_QUALITY_LOW):
+        props = dict()
+        props['060UseSdfgeometry'] = use_sdf
+        props['050RadiusMultiplier'] = radius_multiplier
+        props['090MorphologyQuality'] = geometry_quality
+        return self._core.add_model(
+            name=name, path=path, loader_name='Vasculature', loader_properties=props)
+
+    def attach_vasculature_report(self, path, model_id):
+        params = dict()
+        params['modelId'] = model_id
+        params['filename'] = path
+        return self._client.request(
+            self.PLUGIN_API_PREFIX + 'attach-vasculature-handler', params,
+            response_timeout=self.DEFAULT_RESPONSE_TIMEOUT)
+
+    def set_vasculature_default_materials(
+        self, model_id, palette_name, opacity=1.0,
+        map_simulation_data=False, shading_mode=SHADING_MODE_DIFFUSE):
+
+        simulation_data_casts=list()
+        opacities=list()
+        refraction_indices=list()
+        reflection_indices=list()
+        shading_modes=list()
+        diffuse_colors=list()
+        specular_colors=list()
+        specular_exponents=list()
+        material_ids=list()
+        glossinesses=list()
+        user_parameters=list()
+        
+        material_ids = self.get_material_ids(model_id)['ids']
+        nb_materials = len(material_ids)
+        palette = sns.color_palette(palette_name, nb_materials)
+        
+        for i in range(nb_materials):
+            c=palette[i]
+            simulation_data_casts.append(map_simulation_data)
+            opacities.append(opacity)
+            shading_modes.append(shading_mode)
+
+            if shading_mode == self.SHADING_MODE_PERLIN:
+                glossinesses.append(0.1)
+                user_parameters.append(0.001)
+                specular_exponents.append(5)
+            elif shading_mode == self.SHADING_MODE_DIFFUSE:
+                glossinesses.append(1.0)
+                user_parameters.append(1.0)
+                specular_exponents.append(50.0)
+            elif shading_mode == self.SHADING_MODE_CARTOON:
+                glossinesses.append(1.0)
+                user_parameters.append(4.0)
+                specular_exponents.append(0.0)
+            else:
+                glossinesses.append(1.0)
+                user_parameters.append(1.0)
+                specular_exponents.append(50.0)
+
+            refraction_indices.append(1.0)
+            reflection_indices.append(0.0)
+            diffuse_colors.append([c[0],c[1],c[2]])
+            specular_colors.append([c[0],c[1],c[2]])
+            
+
+        self.set_material_extra_attributes(model_id)
+        self.set_materials(
+            model_ids=[model_id], material_ids=material_ids,
+            simulation_data_casts=simulation_data_casts,
+            opacities=opacities, reflection_indices=reflection_indices,
+            shading_modes=shading_modes, user_parameters=user_parameters,
+            diffuse_colors=diffuse_colors, specular_colors=specular_colors,
+            specular_exponents=specular_exponents, glossinesses=glossinesses,
+            refraction_indices=refraction_indices)
+        self._core.set_renderer()            
 
     # pylint: disable=R0913, R0914
     def set_material(self, model_id, material_id, diffuse_color=(1.0, 1.0, 1.0),

@@ -7,7 +7,7 @@
 cmake_minimum_required(VERSION 3.1 FATAL_ERROR)
 
 set(NAME CIRCUITEXPLORER)
-set(PACKAGE_VERSION 0.1.0)
+set(PACKAGE_VERSION 0.2.0)
 project(${NAME} VERSION ${PACKAGE_VERSION})
 
 add_subdirectory(core)

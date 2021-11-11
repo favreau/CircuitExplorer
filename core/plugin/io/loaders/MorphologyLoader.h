@@ -20,12 +20,10 @@
 
 #include <plugin/api/CircuitExplorerParams.h>
 
-#include <brayns/common/geometry/SDFGeometry.h>
 #include <brayns/common/loader/Loader.h>
 #include <brayns/common/types.h>
 #include <brayns/parameters/GeometryParameters.h>
 
-#include <unordered_map>
 #include <vector>
 
 namespace circuitexplorer
@@ -40,18 +38,6 @@ class AdvancedCircuitLoader;
 struct ParallelModelContainer;
 using GIDOffsets = std::vector<uint64_t>;
 using CompartmentReportPtr = std::shared_ptr<brion::CompartmentReport>;
-
-// SDF structures
-struct SDFMorphologyData
-{
-    std::vector<SDFGeometry> geometries;
-    std::vector<std::set<size_t>> neighbours;
-    std::vector<size_t> materials;
-    std::vector<size_t> localToGlobalIdx;
-    std::vector<size_t> bifurcationIndices;
-    std::unordered_map<size_t, int> geometrySection;
-    std::unordered_map<int, std::vector<size_t>> sectionGeometries;
-};
 
 struct MorphologyTreeStructure
 {

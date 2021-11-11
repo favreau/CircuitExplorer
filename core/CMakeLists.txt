@@ -24,6 +24,7 @@ list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/CMake)
 find_package(Brayns REQUIRED)
 find_package(Brion REQUIRED)
 find_package(ospray REQUIRED)
+find_package(HighFive REQUIRED)
 
 # OpenMP
 find_package(OpenMP)
@@ -72,6 +73,7 @@ set(CIRCUITEXPLORER_SOURCES
     plugin/io/handlers/VoltageSimulationHandler.cpp
     plugin/io/handlers/CellGrowthHandler.cpp
     plugin/io/handlers/SpikeSimulationHandler.cpp
+    plugin/io/handlers/VasculatureHandler.cpp
     plugin/io/loaders/MorphologyCollageLoader.cpp
     plugin/io/loaders/PairSynapsesLoader.cpp
     plugin/io/loaders/AbstractCircuitLoader.cpp
@@ -82,6 +84,7 @@ set(CIRCUITEXPLORER_SOURCES
     plugin/io/loaders/BrickLoader.cpp
     plugin/io/loaders/MorphologyLoader.cpp
     plugin/io/loaders/SynapseJSONLoader.cpp
+    plugin/io/loaders/VasculatureLoader.cpp
     common/Utils.cpp
 )
 
@@ -92,6 +95,7 @@ set(CIRCUITEXPLORER_PUBLIC_HEADERS
     plugin/io/handlers/CellGrowthHandler.h
     plugin/io/handlers/VoltageSimulationHandler.h
     plugin/io/handlers/SpikeSimulationHandler.h
+    plugin/io/handlers/VasculatureHandler.h
     plugin/io/loaders/BrickLoader.h
     plugin/io/loaders/AbstractCircuitLoader.h
     plugin/io/loaders/PairSynapsesLoader.h
@@ -102,6 +106,7 @@ set(CIRCUITEXPLORER_PUBLIC_HEADERS
     plugin/io/loaders/SynapseCircuitLoader.h
     plugin/io/loaders/MorphologyLoader.h
     plugin/io/loaders/SynapseJSONLoader.h
+    plugin/io/loaders/VasculatureLoader.h
     plugin/io/Utils.h
 )
 
@@ -154,7 +159,7 @@ include_directories(
 set(${NAME}_LINK_LIBRARIES
     PUBLIC ${OSPRAY_LIBRARIES}
     PRIVATE braynsCommon braynsParameters braynsIO braynsEngine braynsPluginAPI
-    braynsOSPRayEngine glm Brion Brain
+    braynsOSPRayEngine glm Brion Brain HighFive
     ${FREEIMAGE_LIBRARIES} ${HDF5_LIBRARIES}
 )
 

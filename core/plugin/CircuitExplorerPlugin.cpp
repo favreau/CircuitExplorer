@@ -29,8 +29,10 @@
 #include <plugin/io/loaders/PairSynapsesLoader.h>
 #include <plugin/io/loaders/SynapseCircuitLoader.h>
 #include <plugin/io/loaders/SynapseJSONLoader.h>
+#include <plugin/io/loaders/VasculatureLoader.h>
 
 #include <plugin/io/handlers/CellGrowthHandler.h>
+#include <plugin/io/handlers/VasculatureHandler.h>
 #include <plugin/io/handlers/VoltageSimulationHandler.h>
 
 #include <plugin/meshing/PointCloudMesher.h>
@@ -353,6 +355,9 @@ void CircuitExplorerPlugin::init()
         std::make_unique<AstrocyteLoader>(scene, pm.getApplicationParameters(),
                                           AstrocyteLoader::getCLIProperties()));
 
+    registry.registerLoader(std::make_unique<VasculatureLoader>(
+        scene, VasculatureLoader::getCLIProperties()));
+
     // Renderers
     auto& engine = _api->getEngine();
     _addAdvancedSimulationRenderer(engine);
@@ -459,6 +464,14 @@ void CircuitExplorerPlugin::init()
             ->registerNotification<AttachCircuitSimulationHandler>(
                 endPoint, [&](const AttachCircuitSimulationHandler& s) {
                     _attachCircuitSimulationHandler(s);
+                });
+
+        endPoint = PLUGIN_API_PREFIX + "attach-vasculature-handler";
+        PLUGIN_INFO("Registering '" + endPoint + "' endpoint");
+        _api->getActionInterface()
+            ->registerNotification<AttachVasculatureHandler>(
+                endPoint, [&](const AttachVasculatureHandler& s) {
+                    _attachVasculatureHandler(s);
                 });
 
         endPoint = PLUGIN_API_PREFIX + "trace-anterograde";
@@ -1050,6 +1063,26 @@ void CircuitExplorerPlugin::_attachCircuitSimulationHandler(
         auto handler = std::make_shared<io::handler::VoltageSimulationHandler>(
             blueConfiguration.getReportSource(payload.reportName).getPath(),
             gids, payload.synchronousMode);
+        auto& model = modelDescriptor->getModel();
+        model.setSimulationHandler(handler);
+        AdvancedCircuitLoader::setSimulationTransferFunction(
+            model.getTransferFunction());
+    }
+    else
+    {
+        PLUGIN_ERROR("Model " << payload.modelId << " does not exist");
+    }
+}
+
+void CircuitExplorerPlugin::_attachVasculatureHandler(
+    const AttachVasculatureHandler& payload)
+{
+    PLUGIN_INFO("Attaching Vasculature Handler to model " << payload.modelId);
+    auto modelDescriptor = _api->getScene().getModel(payload.modelId);
+    if (modelDescriptor)
+    {
+        auto handler =
+            std::make_shared<io::handler::VasculatureHandler>(payload.filename);
         auto& model = modelDescriptor->getModel();
         model.setSimulationHandler(handler);
         AdvancedCircuitLoader::setSimulationTransferFunction(

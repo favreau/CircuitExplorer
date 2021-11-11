@@ -70,6 +70,7 @@ private:
     void _attachCellGrowthHandler(const AttachCellGrowthHandler& payload);
     void _attachCircuitSimulationHandler(
         const AttachCircuitSimulationHandler& payload);
+    void _attachVasculatureHandler(const AttachVasculatureHandler& payload);
 
     // Anterograde tracing
     AnterogradeTracingResult _traceAnterogrades(

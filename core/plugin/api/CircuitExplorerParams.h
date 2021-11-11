@@ -142,6 +142,13 @@ struct SynapseAttributes
     float radius;
 };
 
+// Vasculature attributes
+struct VasculatureAttributes
+{
+    bool useSDF;
+    float radius;
+};
+
 bool from_json(SynapseAttributes& synapseAttributes,
                const std::string& payload);
 
@@ -249,6 +256,13 @@ struct AttachCircuitSimulationHandler
 };
 bool from_json(AttachCircuitSimulationHandler& param,
                const std::string& payload);
+
+struct AttachVasculatureHandler
+{
+    uint64_t modelId;
+    std::string filename;
+};
+bool from_json(AttachVasculatureHandler& param, const std::string& payload);
 
 struct ExportFramesToDisk
 {

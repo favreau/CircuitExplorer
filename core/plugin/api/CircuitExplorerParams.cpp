@@ -422,6 +422,21 @@ bool from_json(AttachCircuitSimulationHandler& param,
     return true;
 }
 
+bool from_json(AttachVasculatureHandler& param, const std::string& payload)
+{
+    try
+    {
+        auto js = nlohmann::json::parse(payload);
+        FROM_JSON(param, js, modelId);
+        FROM_JSON(param, js, filename);
+    }
+    catch (...)
+    {
+        return false;
+    }
+    return true;
+}
+
 bool from_json(ExportFramesToDisk& param, const std::string& payload)
 {
     try

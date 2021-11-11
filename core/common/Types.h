@@ -35,12 +35,15 @@
 #include <brion/brion.h>
 
 #include <memory>
+#include <unordered_map>
 #include <vector>
 
 #include <glm/gtx/matrix_decompose.hpp>
 
 namespace circuitexplorer
 {
+using namespace brayns;
+
 /** Additional marterial attributes */
 const std::string MATERIAL_PROPERTY_CAST_USER_DATA = "cast_simulation_data";
 const std::string MATERIAL_PROPERTY_SHADING_MODE = "shading_mode";
@@ -72,7 +75,7 @@ const size_t MATERIAL_OFFSET_MITOCHONDRION = 7;
 const size_t MATERIAL_OFFSET_NUCLEUS = 8;
 
 // Empirical amplitude & frequency
-const brayns::Vector3f DISPLACEMENT_PARAMS = {0.05f, 2.0f, 0.f};
+const Vector3f DISPLACEMENT_PARAMS = {0.05f, 2.0f, 0.f};
 
 /** Morphology color scheme */
 enum class MorphologyColorScheme
@@ -192,103 +195,103 @@ inline std::vector<std::pair<std::string, bool>> enumerateMap()
 const std::string CIRCUIT_ON_OFF[2] = {"off", "on"};
 
 // clang-format off
-const brayns::Property PROP_DB_CONNECTION_STRING = {
+const Property PROP_DB_CONNECTION_STRING = {
     "000DbConnectionString", std::string(""),
     {"Connection string to the database"}};
-const brayns::Property PROP_DENSITY = {
+const Property PROP_DENSITY = {
     "001Density", 1.0,
     {"Density of cells in the circuit in percent"}};
-const brayns::Property PROP_RANDOM_SEED = {
+const Property PROP_RANDOM_SEED = {
     "002RandomSeed", 0.0,
     {"Random seed for target subsetting"}};
-const brayns::Property PROP_TARGETS = {
+const Property PROP_TARGETS = {
     "010Targets",  std::string(""),
     {"Circuit targets [comma separated list of labels]"}};
-const brayns::Property PROP_GIDS = {
+const Property PROP_GIDS = {
     "011Gids",  std::string(""),
     {"Circuit GIDs [comma separated list of GIDs]"}};
-const brayns::Property PROP_PRESYNAPTIC_NEURON_GID = {
+const Property PROP_PRESYNAPTIC_NEURON_GID = {
     "012PreNeuron",  std::string(""),
     {"Pre-synaptic neuron GID"}};
-const brayns::Property PROP_POSTSYNAPTIC_NEURON_GID = {
+const Property PROP_POSTSYNAPTIC_NEURON_GID = {
     "013PostNeuron",  std::string(""),
     {"Post-synaptic neuron GID"}};
-const brayns::Property PROP_REPORT{
+const Property PROP_REPORT{
     "020Report", std::string(),
     {"Circuit report"}};
-const brayns::Property PROP_REPORT_TYPE = {
+const Property PROP_REPORT_TYPE = {
     "021ReportType", enumToString(ReportType::undefined),
     enumerateNames<ReportType>(),
     {"Type of simulation report"}};
-const brayns::Property PROP_USER_DATA_TYPE = {
+const Property PROP_USER_DATA_TYPE = {
     "022UserDataType", enumToString(UserDataType::undefined),
     enumerateNames<UserDataType>(),
     {"Type of data attached to morphology segments"}};
-const brayns::Property PROP_SYNCHRONOUS_MODE = {
+const Property PROP_SYNCHRONOUS_MODE = {
     "023SynchronousMode", false, {"Synchronous mode"}};
-const brayns::Property PROP_CIRCUIT_COLOR_SCHEME = {
+const Property PROP_CIRCUIT_COLOR_SCHEME = {
     "030CircuitColorScheme", enumToString(CircuitColorScheme::none),
     enumerateNames<CircuitColorScheme>(),
     {"Color scheme to be applied to the circuit"}};
-const brayns::Property PROP_MESH_FOLDER = {
+const Property PROP_MESH_FOLDER = {
     "040MeshFolder", std::string(), {"Folder constaining meshes"}};
-const brayns::Property PROP_MESH_FILENAME_PATTERN = {
+const Property PROP_MESH_FILENAME_PATTERN = {
     "041MeshFilenamePattern", std::string("mesh_{gid}.obj"), {"File name pattern for meshes"}};
-const brayns::Property PROP_MESH_TRANSFORMATION = {
+const Property PROP_MESH_TRANSFORMATION = {
     "042MeshTransformation", false, {"Apply circuit transformation to meshes"}};
-const brayns::Property PROP_RADIUS_MULTIPLIER = {
+const Property PROP_RADIUS_MULTIPLIER = {
     "050RadiusMultiplier", double(1.0),
     {"Multiplier applied to morphology radius"}};
-const brayns::Property PROP_RADIUS_CORRECTION = {
+const Property PROP_RADIUS_CORRECTION = {
     "051RadiusCorrection", double(0.0),
     {"Value overrideing the radius of the morphology"}};
-const brayns::Property PROP_SECTION_TYPE_SOMA = {
+const Property PROP_SECTION_TYPE_SOMA = {
     "052SectionTypeSoma", true,
     {"Soma"}};
-const brayns::Property PROP_SECTION_TYPE_AXON = {
+const Property PROP_SECTION_TYPE_AXON = {
     "053SectionTypeAxon", true,
     {"Axon"}};
-const brayns::Property PROP_SECTION_TYPE_DENDRITE = {
+const Property PROP_SECTION_TYPE_DENDRITE = {
     "054SectionTypeDendrite", true,
     {"Dendrite"}};
-const brayns::Property PROP_SECTION_TYPE_APICAL_DENDRITE = {
+const Property PROP_SECTION_TYPE_APICAL_DENDRITE = {
     "055SectionTypeApicalDendrite", true,
     {"Apical Dendrite"}};
-const brayns::Property PROP_USE_SDF_GEOMETRY = {
+const Property PROP_USE_SDF_GEOMETRY = {
     "060UseSdfgeometry", true,
     { "Use signed distance field geometry"}};
-const brayns::Property PROP_DAMPEN_BRANCH_THICKNESS_CHANGERATE = {
+const Property PROP_DAMPEN_BRANCH_THICKNESS_CHANGERATE = {
     "061DampenBranchThicknessChangerate", true,
     {"Dampen branch thickness changerate"}};
-const brayns::Property PROP_MORPHOLOGY_COLOR_SCHEME = {
+const Property PROP_MORPHOLOGY_COLOR_SCHEME = {
     "080MorphologyColorScheme", enumToString(MorphologyColorScheme::none),
     enumerateNames<MorphologyColorScheme>(),
     {"Color scheme to be applied to the morphology"}};
-const brayns::Property PROP_MORPHOLOGY_QUALITY = {
+const Property PROP_MORPHOLOGY_QUALITY = {
     "090MorphologyQuality", enumToString(MorphologyQuality::high),
     enumerateNames<MorphologyQuality>(),
     {"Quality of the morphology"}};
-const brayns::Property PROP_MORPHOLOGY_MAX_DISTANCE_TO_SOMA = {
+const Property PROP_MORPHOLOGY_MAX_DISTANCE_TO_SOMA = {
     "091MaxDistanceToSoma", std::numeric_limits<double>::max(),
     {"Maximum distance to soma"}};
-const brayns::Property PROP_CELL_CLIPPING = {
+const Property PROP_CELL_CLIPPING = {
     "100CellClipping", false,
     {"Clip cells according to scene-defined clipping planes"}};
-const brayns::Property PROP_AREAS_OF_INTEREST = {
+const Property PROP_AREAS_OF_INTEREST = {
     "101AreasOfInterest", 0,
     {"Loads only one cell per area of interest"}};
-const brayns::Property PROP_LOAD_AFFERENT_SYNAPSES = {
+const Property PROP_LOAD_AFFERENT_SYNAPSES = {
     "110LoadAfferentSynapses", false, {"Loads afferent synapses"}};
-const brayns::Property PROP_LOAD_EFFERENT_SYNAPSES = {
+const Property PROP_LOAD_EFFERENT_SYNAPSES = {
     "111LoadEfferentSynapses", false, {"Loads efferent synapses"}};
-const brayns::Property PROP_INTERNALS = {
+const Property PROP_INTERNALS = {
     "120Internals", false, {"Generate internals (mitochondria and nucleus)"}};
 // clang-format on
 
 struct MorphologyInfo
 {
-    brayns::Vector3d somaPosition;
-    brayns::Boxd bounds;
+    Vector3d somaPosition;
+    Boxd bounds;
     float maxDistanceToSoma;
 };
 
@@ -306,6 +309,18 @@ enum class SynapseType
 {
     afferent,
     efferent
+};
+
+// SDF structures
+struct SDFMorphologyData
+{
+    std::vector<SDFGeometry> geometries;
+    std::vector<std::set<size_t>> neighbours;
+    std::vector<size_t> materials;
+    std::vector<size_t> localToGlobalIdx;
+    std::vector<size_t> bifurcationIndices;
+    std::unordered_map<size_t, int> geometrySection;
+    std::unordered_map<int, std::vector<size_t>> sectionGeometries;
 };
 
 } // namespace circuitexplorer
