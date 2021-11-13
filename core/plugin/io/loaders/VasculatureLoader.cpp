@@ -245,25 +245,27 @@ ModelDescriptorPtr VasculatureLoader::importFromFile(
         for (uint64_t i = 0; i < nbSegments; ++i)
         {
             callback.updateProgress("Loading vasculature...", i / nbSegments);
-            const uint64_t userDataOffset = i;
+            const uint64_t userData = i;
             const uint32_t sectionId = ss[i];
             const Vector3f start{sx[i], sy[i], sz[i]};
             const float start_radius = sd[i] * 0.5f * radiusMultiplier;
 
             const Vector3f displacementParams = {std::min(start_radius, 0.2f),
                                                  0.75f, 1.0f};
-            if (useSDFGeometry)
-            {
-                const size_t idx =
-                    _addSDFGeometry(sdfMorphologyData,
-                                    createSDFSphere(start, start_radius,
-                                                    userDataOffset,
-                                                    displacementParams),
-                                    {}, DEFAULT_MATERIAL, sectionId);
-            }
-            else
-                model->addSphere(DEFAULT_MATERIAL,
-                                 {start, start_radius, userDataOffset});
+            if (morphologyQuality != MorphologyQuality::medium)
+                if (useSDFGeometry)
+                {
+                    const size_t idx =
+                        _addSDFGeometry(sdfMorphologyData,
+                                        createSDFSphere(start, start_radius,
+                                                        userData,
+                                                        displacementParams),
+                                        {}, DEFAULT_MATERIAL, sectionId);
+                }
+                else
+                    model->addSphere(DEFAULT_MATERIAL,
+                                     {start, start_radius, userData});
+
             if (morphologyQuality != MorphologyQuality::low)
             {
                 const Vector3f end{ex[i], ey[i], ez[i]};
@@ -273,20 +275,19 @@ ModelDescriptorPtr VasculatureLoader::importFromFile(
                 {
                     _addStepConeGeometry(useSDFGeometry, start, start_radius,
                                          end, end_radius, DEFAULT_MATERIAL,
-                                         userDataOffset, *model,
-                                         sdfMorphologyData, sectionId,
-                                         displacementParams);
+                                         userData, *model, sdfMorphologyData,
+                                         sectionId, displacementParams);
                 }
                 else
                 {
                     if (almost_equal(start_radius, end_radius, 100000))
                         model->addCylinder(DEFAULT_MATERIAL,
                                            {start, end, start_radius,
-                                            userDataOffset});
+                                            userData});
                     else
                         model->addCone(DEFAULT_MATERIAL,
                                        {start, end, start_radius, end_radius,
-                                        userDataOffset});
+                                        userData});
                 }
             }
         }
@@ -304,6 +305,74 @@ ModelDescriptorPtr VasculatureLoader::importFromFile(
                      exc.what());
     }
     return modelDescriptor;
+}
+
+void VasculatureLoader::applyGeometryReport(
+    Model& model, const ApplyVasculatureGeometryReport& details)
+{
+    try
+    {
+        std::unique_ptr<HighFive::File> file = std::unique_ptr<HighFive::File>(
+            new HighFive::File(details.path, HighFive::File::ReadOnly));
+
+        std::vector<std::vector<double>> simulationData;
+        const auto& report = file->getGroup("report");
+        const auto& vasculature = report.getGroup("vasculature");
+        const auto& dataset = vasculature.getDataSet("data");
+        dataset.read(simulationData);
+        const size_t nbFrames = simulationData.size();
+        if (nbFrames == 0)
+            PLUGIN_THROW("Report does not contain any simulation data: " +
+                         details.path);
+        std::vector<double> series;
+        if (details.debug)
+        {
+            for (uint64_t i = 0; i < simulationData[0].size(); ++i)
+            {
+                const float value =
+                    static_cast<float>(simulationData[0][i]) *
+                    (1.f + details.amplitude *
+                               (sin(float(details.frame + i) * M_PI / 360.f) +
+                                0.5f * cos(float(details.frame + i) * 3.f *
+                                           M_PI / 360.f)));
+                series.push_back(value);
+            }
+        }
+        else
+        {
+            if (details.frame >= nbFrames)
+                PLUGIN_THROW("Invalid frame specified for report: " +
+                             details.path);
+            series = simulationData[details.frame];
+        }
+
+        auto& spheresMap = model.getSpheres();
+        for (auto& spheres : spheresMap)
+            for (auto& sphere : spheres.second)
+                sphere.radius = details.amplitude * series[sphere.userData];
+
+        auto& conesMap = model.getCones();
+        for (auto& cones : conesMap)
+            for (auto& cone : cones.second)
+            {
+                cone.centerRadius = details.amplitude * series[cone.userData];
+                cone.upRadius = details.amplitude * series[cone.userData + 1];
+            }
+
+        auto& cylindersMap = model.getCylinders();
+        for (auto& cylinders : cylindersMap)
+            for (auto& cylinder : cylinders.second)
+                cylinder.radius = details.amplitude * series[cylinder.userData];
+
+        model.updateBounds();
+        PLUGIN_DEBUG("Vasculature geometry successfully modified using report "
+                     << details.path);
+    }
+    catch (const HighFive::FileException& exc)
+    {
+        PLUGIN_THROW("Could not open vasculature report file " + details.path +
+                     ": " + exc.what());
+    }
 }
 
 } // namespace loader

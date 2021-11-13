@@ -428,7 +428,27 @@ bool from_json(AttachVasculatureHandler& param, const std::string& payload)
     {
         auto js = nlohmann::json::parse(payload);
         FROM_JSON(param, js, modelId);
-        FROM_JSON(param, js, filename);
+        FROM_JSON(param, js, path);
+        FROM_JSON(param, js, debug);
+    }
+    catch (...)
+    {
+        return false;
+    }
+    return true;
+}
+
+bool from_json(ApplyVasculatureGeometryReport& param,
+               const std::string& payload)
+{
+    try
+    {
+        auto js = nlohmann::json::parse(payload);
+        FROM_JSON(param, js, modelId);
+        FROM_JSON(param, js, path);
+        FROM_JSON(param, js, frame);
+        FROM_JSON(param, js, amplitude);
+        FROM_JSON(param, js, debug);
     }
     catch (...)
     {

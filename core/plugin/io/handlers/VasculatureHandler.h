@@ -18,9 +18,10 @@
 
 #pragma once
 
-#include <brayns/common/simulation/AbstractSimulationHandler.h>
+#include <plugin/api/CircuitExplorerParams.h>
 
 #include <brayns/api.h>
+#include <brayns/common/simulation/AbstractSimulationHandler.h>
 #include <brayns/common/types.h>
 
 namespace circuitexplorer
@@ -29,8 +30,11 @@ namespace io
 {
 namespace handler
 {
+using namespace api;
+
 /**
- * @brief The VasculatureHandler class handles distance to the soma
+ * @brief The VasculatureHandler class handles the mapping of the vasculature
+ * simulation to the geometry
  */
 class VasculatureHandler : public brayns::AbstractSimulationHandler
 {
@@ -38,7 +42,7 @@ public:
     /**
      * @brief Default constructor
      */
-    VasculatureHandler(const std::string& filename);
+    VasculatureHandler(const AttachVasculatureHandler& details);
     VasculatureHandler(const VasculatureHandler& rhs);
     ~VasculatureHandler();
 

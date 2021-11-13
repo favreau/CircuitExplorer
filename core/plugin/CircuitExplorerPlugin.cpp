@@ -466,12 +466,20 @@ void CircuitExplorerPlugin::init()
                     _attachCircuitSimulationHandler(s);
                 });
 
-        endPoint = PLUGIN_API_PREFIX + "attach-vasculature-handler";
+        endPoint = PLUGIN_API_PREFIX + "attach-vasculature-report";
         PLUGIN_INFO("Registering '" + endPoint + "' endpoint");
         _api->getActionInterface()
             ->registerNotification<AttachVasculatureHandler>(
                 endPoint, [&](const AttachVasculatureHandler& s) {
                     _attachVasculatureHandler(s);
+                });
+
+        endPoint = PLUGIN_API_PREFIX + "apply-vasculature-geometry-report";
+        PLUGIN_INFO("Registering '" + endPoint + "' endpoint");
+        _api->getActionInterface()
+            ->registerNotification<ApplyVasculatureGeometryReport>(
+                endPoint, [&](const ApplyVasculatureGeometryReport& payload) {
+                    return _applyVasculatureGeometryReport(payload);
                 });
 
         endPoint = PLUGIN_API_PREFIX + "trace-anterograde";
@@ -1082,7 +1090,7 @@ void CircuitExplorerPlugin::_attachVasculatureHandler(
     if (modelDescriptor)
     {
         auto handler =
-            std::make_shared<io::handler::VasculatureHandler>(payload.filename);
+            std::make_shared<io::handler::VasculatureHandler>(payload);
         auto& model = modelDescriptor->getModel();
         model.setSimulationHandler(handler);
         AdvancedCircuitLoader::setSimulationTransferFunction(
@@ -1276,7 +1284,6 @@ AnterogradeTracingResult CircuitExplorerPlugin::_traceAnterogrades(
 
             _api->getScene().markModified();
             _api->getEngine().triggerRender();
-            //_dirty = true;
         }
     }
     else
@@ -1751,6 +1758,19 @@ void CircuitExplorerPlugin::_addColumn(const AddColumn& payload)
 
     scene.addModel(
         std::make_shared<ModelDescriptor>(std::move(model), "Column"));
+}
+
+void CircuitExplorerPlugin::_applyVasculatureGeometryReport(
+    const ApplyVasculatureGeometryReport& payload)
+{
+    auto& scene = _api->getScene();
+    auto modelDescriptor = scene.getModel(static_cast<size_t>(payload.modelId));
+    if (!modelDescriptor)
+        PLUGIN_THROW("Unknown model Id");
+
+    auto& model = modelDescriptor->getModel();
+    VasculatureLoader::applyGeometryReport(model, payload);
+    scene.markModified();
 }
 
 #ifdef USE_PQXX

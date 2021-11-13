@@ -62,6 +62,9 @@ public:
         const std::string& filename, const LoaderProgress& callback,
         const PropertyMap& properties) const final;
 
+    static void applyGeometryReport(
+        Model& model, const ApplyVasculatureGeometryReport& details);
+
 private:
     size_t _addSDFGeometry(SDFMorphologyData& sdfMorphologyData,
                            const SDFGeometry& geometry,

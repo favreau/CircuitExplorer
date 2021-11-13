@@ -260,9 +260,21 @@ bool from_json(AttachCircuitSimulationHandler& param,
 struct AttachVasculatureHandler
 {
     uint64_t modelId;
-    std::string filename;
+    std::string path;
+    bool debug;
 };
 bool from_json(AttachVasculatureHandler& param, const std::string& payload);
+
+struct ApplyVasculatureGeometryReport
+{
+    uint64_t modelId;
+    std::string path;
+    uint64_t frame;
+    double amplitude;
+    bool debug;
+};
+bool from_json(ApplyVasculatureGeometryReport& param,
+               const std::string& payload);
 
 struct ExportFramesToDisk
 {

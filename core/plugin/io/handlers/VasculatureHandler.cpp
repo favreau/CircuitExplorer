@@ -31,45 +31,57 @@ namespace io
 {
 namespace handler
 {
-VasculatureHandler::VasculatureHandler(const std::string& filename)
+VasculatureHandler::VasculatureHandler(const AttachVasculatureHandler& details)
     : brayns::AbstractSimulationHandler()
 {
     // Load simulation information from compartment reports
     _dt = 1.f;
-    _nbFrames = 1;
-    _unit = "milliseconds";
-    _frameSize = 0;
 
-    try
+    if (details.debug)
     {
-        std::unique_ptr<HighFive::File> file = std::unique_ptr<HighFive::File>(
-            new HighFive::File(filename, HighFive::File::ReadOnly));
-        const auto& report = file->getGroup("report");
-        const auto& vasculature = report.getGroup("vasculature");
-        const auto& dataset = vasculature.getDataSet("data");
-        dataset.read(_simulationData);
-        _nbFrames = _simulationData.size();
-        if (_nbFrames == 0)
-            PLUGIN_THROW("Report file does not contain any data: " + filename);
-
-        _frameSize = _simulationData[0].size();
-        float minValue = std::numeric_limits<float>::max();
-        float maxValue = -std::numeric_limits<float>::max();
-        for (const auto& series : _simulationData)
-            for (const auto& value : series)
-            {
-                const float v = static_cast<float>(value);
-                minValue = std::min(minValue, v);
-                maxValue = std::max(maxValue, v);
-            }
-        PLUGIN_INFO("Report successfully attached. Frame size is "
-                    << _frameSize << ". Values are in range [" << minValue
-                    << "," << maxValue << "]");
+        _frameSize = 1349411;
+        _nbFrames = 720;
+        _unit = "ms (debug)";
     }
-    catch (const HighFive::FileException& exc)
+    else
     {
-        PLUGIN_THROW("Could not open vasculature report file " + filename +
-                     ": " + exc.what());
+        _nbFrames = 1;
+        _frameSize = 0;
+        _unit = "ms";
+
+        try
+        {
+            std::unique_ptr<HighFive::File> file =
+                std::unique_ptr<HighFive::File>(
+                    new HighFive::File(details.path, HighFive::File::ReadOnly));
+            const auto& report = file->getGroup("report");
+            const auto& vasculature = report.getGroup("vasculature");
+            const auto& dataset = vasculature.getDataSet("data");
+            dataset.read(_simulationData);
+            _nbFrames = _simulationData.size();
+            if (_nbFrames == 0)
+                PLUGIN_THROW("Report file does not contain any data: " +
+                             details.path);
+
+            _frameSize = _simulationData[0].size();
+            float minValue = std::numeric_limits<float>::max();
+            float maxValue = -std::numeric_limits<float>::max();
+            for (const auto& series : _simulationData)
+                for (const auto& value : series)
+                {
+                    const float v = static_cast<float>(value);
+                    minValue = std::min(minValue, v);
+                    maxValue = std::max(maxValue, v);
+                }
+            PLUGIN_INFO("Report successfully attached. Frame size is "
+                        << _frameSize << ". Values are in range [" << minValue
+                        << "," << maxValue << "]");
+        }
+        catch (const HighFive::FileException& exc)
+        {
+            PLUGIN_THROW("Could not open vasculature report file " +
+                         details.path + ": " + exc.what());
+        }
     }
 }
 
@@ -86,13 +98,23 @@ void* VasculatureHandler::getFrameData(const uint32_t frame)
     {
         _frameData.clear();
         _frameData.reserve(_frameSize);
+#if 0
         const auto& frameData = _simulationData[frame];
-
         for (const auto value : frameData)
             _frameData.push_back(static_cast<float>(value));
+#else
+        for (uint64_t i = 0; i < _frameSize; ++i)
+        {
+            const float value =
+                0.5f +
+                0.5f * (sin(float(frame + i) * M_PI / 360.f) +
+                        0.5f * cos(float(frame + i) * 3.f * M_PI / 360.f));
+            _frameData.push_back(static_cast<float>(value));
+        }
+#endif
         _currentFrame = frame;
-        PLUGIN_INFO("Frame " << frame << " loaded: " << _frameData.size()
-                             << " segments");
+        PLUGIN_DEBUG("Frame " << frame << " loaded: " << _frameData.size()
+                              << " segments");
     }
     return _frameData.data();
 }
