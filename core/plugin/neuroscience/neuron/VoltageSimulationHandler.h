@@ -18,13 +18,14 @@
 
 #pragma once
 
+#include <plugin/neuroscience/common/Types.h>
+
 #include <brayns/common/simulation/AbstractSimulationHandler.h>
 #include <plugin/api/CircuitExplorerParams.h>
 
 #include <brayns/api.h>
 #include <brayns/common/types.h>
 #include <brayns/engineapi/Scene.h>
-#include <brion/brion.h>
 
 namespace circuitexplorer
 {
@@ -33,7 +34,7 @@ namespace neuroscience
 namespace neuron
 {
 using namespace brayns;
-typedef std::shared_ptr<brion::CompartmentReport> CompartmentReportPtr;
+using namespace common;
 
 /**
  * @brief The VoltageSimulationHandler class handles simulation frames for the

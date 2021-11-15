@@ -18,10 +18,13 @@
 
 #include "BrickLoader.h"
 
-#include <plugin/neuroscience/common/MorphologyLoader.h>
 #include <plugin/neuroscience/common/Types.h>
+
+#ifdef USE_MORPHOLOGIES
+#include <plugin/neuroscience/common/MorphologyLoader.h>
 #include <plugin/neuroscience/neuron/SpikeSimulationHandler.h>
 #include <plugin/neuroscience/neuron/VoltageSimulationHandler.h>
+#endif
 
 #include <common/CommonTypes.h>
 #include <common/Logs.h>
@@ -29,9 +32,6 @@
 #include <brayns/engineapi/Material.h>
 #include <brayns/engineapi/Model.h>
 #include <brayns/engineapi/Scene.h>
-
-#include <brain/brain.h>
-#include <brion/brion.h>
 
 #include <fstream>
 
@@ -42,8 +42,10 @@ namespace io
 namespace loader
 {
 using namespace neuroscience;
-using namespace neuron;
 using namespace common;
+#ifdef USE_MORPHOLOGIES
+using namespace neuron;
+#endif
 
 const size_t CACHE_VERSION_1 = 1;
 const size_t CACHE_VERSION_2 = 2;
@@ -583,6 +585,7 @@ ModelDescriptorPtr BrickLoader::importFromFile(
             file.ignore(bufferSize);
     }
 
+#ifdef USE_MORPHOLOGIES
     load = props.getProperty<bool>(PROP_LOAD_SIMULATION.name);
     if (version >= CACHE_VERSION_3 && load)
     {
@@ -671,6 +674,7 @@ ModelDescriptorPtr BrickLoader::importFromFile(
             tf.setColorMap(colorMap);
         }
     }
+#endif
     callback.updateProgress("Done", 1.f);
 
     file.close();
@@ -937,7 +941,8 @@ void BrickLoader::exportToFile(const ModelDescriptorPtr modelDescriptor,
         file.write((char*)sdfData.neighboursFlat.data(), bufferSize);
     }
 
-    // Simulation handler
+// Simulation handler
+#ifdef USE_MORPHOLOGIES
     const AbstractSimulationHandlerPtr handler = model.getSimulationHandler();
     if (handler)
     {
@@ -1026,6 +1031,7 @@ void BrickLoader::exportToFile(const ModelDescriptorPtr modelDescriptor,
         file.write((char*)&nbElements, sizeof(size_t));
         file.write((char*)&colorMap.colors[0], nbElements * sizeof(Vector3f));
     }
+#endif
 
     file.close();
 }

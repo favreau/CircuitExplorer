@@ -51,6 +51,31 @@ private:
     // Plug-in
     Response _getVersion() const;
 
+#ifdef USE_MORPHOLOGIES
+    // Handlers
+    void _attachCellGrowthHandler(const AttachCellGrowthHandler& payload);
+    void _attachCircuitSimulationHandler(
+        const AttachCircuitSimulationHandler& payload);
+    void _setConnectionsPerValue(const ConnectionsPerValue&);
+
+#ifdef USE_PQXX
+    // Database
+    Response _importVolume(const ImportVolume&);
+    Response _importCompartmentSimulation(const ImportCompartmentSimulation&);
+    Response _importMorphology(const ImportMorphology&);
+    Response _importMorphologyAsSDF(const ImportMorphology&);
+#endif
+
+    SynapseAttributes _synapseAttributes;
+#endif
+
+#ifdef USE_VASCULATURE
+    // Vasculature
+    void _attachVasculatureHandler(const AttachVasculatureHandler& payload);
+    void _applyVasculatureGeometryReport(
+        const ApplyVasculatureGeometryReport& payload);
+#endif
+
     // Rendering
     void _setMaterial(const MaterialDescriptor&);
     void _setMaterials(const MaterialsDescriptor&);
@@ -59,23 +84,8 @@ private:
     MaterialIds _getMaterialIds(const ModelId& modelId);
 
     // Experimental
-    void _setConnectionsPerValue(const ConnectionsPerValue&);
     void _exportModelToFile(const ExportModelToFile&);
     void _exportModelToMesh(const ExportModelToMesh&);
-
-    // Handlers
-    void _attachCellGrowthHandler(const AttachCellGrowthHandler& payload);
-    void _attachCircuitSimulationHandler(
-        const AttachCircuitSimulationHandler& payload);
-
-    // Vasculature
-    void _attachVasculatureHandler(const AttachVasculatureHandler& payload);
-    void _applyVasculatureGeometryReport(
-        const ApplyVasculatureGeometryReport& payload);
-
-    // Anterograde tracing
-    AnterogradeTracingResult _traceAnterogrades(
-        const AnterogradeTracing& payload);
 
     // Add geometry
     void _createShapeMaterial(ModelPtr& model, const size_t id,
@@ -88,16 +98,6 @@ private:
     // Predefined models
     void _addGrid(const AddGrid& payload);
     void _addColumn(const AddColumn& payload);
-
-#ifdef USE_PQXX
-    // Database
-    Response _importVolume(const ImportVolume&);
-    Response _importCompartmentSimulation(const ImportCompartmentSimulation&);
-    Response _importMorphology(const ImportMorphology&);
-    Response _importMorphologyAsSDF(const ImportMorphology&);
-#endif
-
-    SynapseAttributes _synapseAttributes;
 
     bool _dirty{false};
 };

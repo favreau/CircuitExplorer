@@ -21,18 +21,22 @@
 #include <common/Logs.h>
 
 #include <plugin/io/filesystem/BrickLoader.h>
+#ifdef USE_MORPHOLOGIES
 #include <plugin/neuroscience/astrocyte/AstrocyteLoader.h>
 #include <plugin/neuroscience/common/MorphologyLoader.h>
 #include <plugin/neuroscience/neuron/AdvancedCircuitLoader.h>
+#include <plugin/neuroscience/neuron/CellGrowthHandler.h>
 #include <plugin/neuroscience/neuron/MeshCircuitLoader.h>
 #include <plugin/neuroscience/neuron/MorphologyCollageLoader.h>
 #include <plugin/neuroscience/neuron/PairSynapsesLoader.h>
 #include <plugin/neuroscience/neuron/SynapseCircuitLoader.h>
-#include <plugin/neuroscience/vasculature/VasculatureLoader.h>
-
-#include <plugin/neuroscience/neuron/CellGrowthHandler.h>
 #include <plugin/neuroscience/neuron/VoltageSimulationHandler.h>
+#endif
+
+#ifdef USE_VASCULATURE
 #include <plugin/neuroscience/vasculature/VasculatureHandler.h>
+#include <plugin/neuroscience/vasculature/VasculatureLoader.h>
+#endif
 
 #include <plugin/meshing/PointCloudMesher.h>
 
@@ -53,8 +57,6 @@
 #include <brayns/engineapi/Scene.h>
 #include <brayns/parameters/ParametersManager.h>
 #include <brayns/pluginapi/Plugin.h>
-
-#include <brion/brion.h>
 
 #include <cstdio>
 #include <dirent.h>
@@ -93,20 +95,24 @@ using namespace brayns;
 using namespace api;
 using namespace io;
 using namespace loader;
+
+#ifdef USE_MORPHOLOGIES
 using namespace neuroscience;
 using namespace common;
 using namespace neuron;
 using namespace astrocyte;
+#endif
+
+#ifdef USE_VASCULATURE
+using namespace neuroscience;
+using namespace common;
 using namespace vasculature;
+#endif
 
 #define REGISTER_LOADER(LOADER, FUNC) \
     registry.registerLoader({std::bind(&LOADER::getSupportedDataTypes), FUNC});
 
 const std::string PLUGIN_API_PREFIX = "ce-";
-
-const std::string ANTEROGRADE_TYPE_AFFERENT = "afferent";
-const std::string ANTEROGRADE_TYPE_AFFERENTEXTERNAL = "projection";
-const std::string ANTEROGRADE_TYPE_EFFERENT = "efferent";
 
 void _addAdvancedSimulationRenderer(Engine& engine)
 {
@@ -327,6 +333,7 @@ void CircuitExplorerPlugin::init()
     registry.registerLoader(
         std::make_unique<BrickLoader>(scene, BrickLoader::getCLIProperties()));
 
+#ifdef USE_MORPHOLOGIES
     registry.registerLoader(std::make_unique<SynapseCircuitLoader>(
         scene, pm.getApplicationParameters(),
         SynapseCircuitLoader::getCLIProperties()));
@@ -353,9 +360,12 @@ void CircuitExplorerPlugin::init()
     registry.registerLoader(
         std::make_unique<AstrocyteLoader>(scene, pm.getApplicationParameters(),
                                           AstrocyteLoader::getCLIProperties()));
+#endif
 
+#ifdef USE_VASCULATURE
     registry.registerLoader(std::make_unique<VasculatureLoader>(
         scene, VasculatureLoader::getCLIProperties()));
+#endif
 
     // Renderers
     auto& engine = _api->getEngine();
@@ -425,6 +435,7 @@ void CircuitExplorerPlugin::init()
             endPoint,
             [&](const ExportModelToMesh& param) { _exportModelToMesh(param); });
 
+#ifdef USE_MORPHOLOGIES
         endPoint = PLUGIN_API_PREFIX + "set-connections-per-value";
         PLUGIN_INFO("Registering '" + endPoint + "' endpoint");
         actionInterface->registerNotification<ConnectionsPerValue>(
@@ -448,6 +459,41 @@ void CircuitExplorerPlugin::init()
                     _attachCircuitSimulationHandler(s);
                 });
 
+#ifdef USE_PQXX
+        endPoint = PLUGIN_API_PREFIX + "import-volume";
+        PLUGIN_INFO("Registering '" + endPoint + "' endpoint");
+        actionInterface->registerRequest<ImportVolume, Response>(
+            endPoint, [&](const ImportVolume& param) -> Response {
+                return _importVolume(param);
+            });
+
+        endPoint = PLUGIN_API_PREFIX + "import-compartment-simulation";
+        PLUGIN_INFO("Registering '" + endPoint + "' endpoint");
+        _api->getActionInterface()
+            ->registerRequest<ImportCompartmentSimulation, Response>(
+                endPoint,
+                [&](const ImportCompartmentSimulation& payload) -> Response {
+                    return _importCompartmentSimulation(payload);
+                });
+
+        endPoint = PLUGIN_API_PREFIX + "import-morphology";
+        PLUGIN_INFO("Registering '" + endPoint + "' endpoint");
+        actionInterface->registerRequest<ImportMorphology, Response>(
+            endPoint, [&](const ImportMorphology& param) -> Response {
+                return _importMorphology(param);
+            });
+
+        endPoint = PLUGIN_API_PREFIX + "import-morphology-as-sdf";
+        PLUGIN_INFO("Registering '" + endPoint + "' endpoint");
+        actionInterface->registerRequest<ImportMorphology, Response>(
+            endPoint, [&](const ImportMorphology& param) -> Response {
+                return _importMorphologyAsSDF(param);
+            });
+#endif
+
+#endif
+
+#ifdef USE_VASCULATURE
         endPoint = PLUGIN_API_PREFIX + "attach-vasculature-report";
         PLUGIN_INFO("Registering '" + endPoint + "' endpoint");
         _api->getActionInterface()
@@ -463,14 +509,7 @@ void CircuitExplorerPlugin::init()
                 endPoint, [&](const ApplyVasculatureGeometryReport& payload) {
                     return _applyVasculatureGeometryReport(payload);
                 });
-
-        endPoint = PLUGIN_API_PREFIX + "trace-anterograde";
-        PLUGIN_INFO("Registering '" + endPoint + "' endpoint");
-        _api->getActionInterface()
-            ->registerRequest<AnterogradeTracing, AnterogradeTracingResult>(
-                endPoint, [&](const AnterogradeTracing& payload) {
-                    return _traceAnterogrades(payload);
-                });
+#endif
 
         endPoint = PLUGIN_API_PREFIX + "add-grid";
         PLUGIN_INFO("Registering '" + endPoint + "' endpoint");
@@ -506,38 +545,6 @@ void CircuitExplorerPlugin::init()
         PLUGIN_INFO("Registering '" + endPoint + "' endpoint");
         _api->getActionInterface()->registerRequest<AddBox, AddShapeResult>(
             endPoint, [&](const AddBox& payload) { return _addBox(payload); });
-
-#ifdef USE_PQXX
-        endPoint = PLUGIN_API_PREFIX + "import-volume";
-        PLUGIN_INFO("Registering '" + endPoint + "' endpoint");
-        actionInterface->registerRequest<ImportVolume, Response>(
-            endPoint, [&](const ImportVolume& param) -> Response {
-                return _importVolume(param);
-            });
-
-        endPoint = PLUGIN_API_PREFIX + "import-compartment-simulation";
-        PLUGIN_INFO("Registering '" + endPoint + "' endpoint");
-        _api->getActionInterface()
-            ->registerRequest<ImportCompartmentSimulation, Response>(
-                endPoint,
-                [&](const ImportCompartmentSimulation& payload) -> Response {
-                    return _importCompartmentSimulation(payload);
-                });
-
-        endPoint = PLUGIN_API_PREFIX + "import-morphology";
-        PLUGIN_INFO("Registering '" + endPoint + "' endpoint");
-        actionInterface->registerRequest<ImportMorphology, Response>(
-            endPoint, [&](const ImportMorphology& param) -> Response {
-                return _importMorphology(param);
-            });
-
-        endPoint = PLUGIN_API_PREFIX + "import-morphology-as-sdf";
-        PLUGIN_INFO("Registering '" + endPoint + "' endpoint");
-        actionInterface->registerRequest<ImportMorphology, Response>(
-            endPoint, [&](const ImportMorphology& param) -> Response {
-                return _importMorphologyAsSDF(param);
-            });
-#endif
     }
 }
 
@@ -879,6 +886,7 @@ void CircuitExplorerPlugin::_exportModelToMesh(const ExportModelToMesh& payload)
         PLUGIN_ERROR("Model " << payload.modelId << " is not registered");
 }
 
+#ifdef USE_MORPHOLOGIES
 void CircuitExplorerPlugin::_setConnectionsPerValue(
     const ConnectionsPerValue& cpv)
 {
@@ -968,220 +976,7 @@ void CircuitExplorerPlugin::_attachCircuitSimulationHandler(
         PLUGIN_ERROR("Model " << payload.modelId << " does not exist");
     }
 }
-
-void CircuitExplorerPlugin::_attachVasculatureHandler(
-    const AttachVasculatureHandler& payload)
-{
-    PLUGIN_INFO("Attaching Vasculature Handler to model " << payload.modelId);
-    auto modelDescriptor = _api->getScene().getModel(payload.modelId);
-    if (modelDescriptor)
-    {
-        auto handler = std::make_shared<VasculatureHandler>(payload);
-        auto& model = modelDescriptor->getModel();
-        model.setSimulationHandler(handler);
-        AdvancedCircuitLoader::setSimulationTransferFunction(
-            model.getTransferFunction());
-    }
-    else
-    {
-        PLUGIN_ERROR("Model " << payload.modelId << " does not exist");
-    }
-}
-
-AnterogradeTracingResult CircuitExplorerPlugin::_traceAnterogrades(
-    const AnterogradeTracing& payload)
-{
-    AnterogradeTracingResult result;
-    result.error = 0;
-
-    if (payload.cellGIDs.empty())
-    {
-        result.error = 1;
-        result.message = "No input cell GIDs specified";
-        return result;
-    }
-    if (payload.sourceCellColor.size() < 4)
-    {
-        result.error = 2;
-        result.message =
-            "Source cell stain color must have "
-            "4 components (RGBA)";
-        return result;
-    }
-    if (payload.connectedCellsColor.size() < 4)
-    {
-        result.error = 3;
-        result.message =
-            "Connected cell stain color must have "
-            "4 components (RGBA)";
-        return result;
-    }
-    if (payload.nonConnectedCellsColor.size() < 4)
-    {
-        result.error = 4;
-        result.message =
-            "Non connected cell stain color must have "
-            "4 components (RGBA)";
-        return result;
-    }
-
-    auto modelDescriptor =
-        _api->getScene().getModel(static_cast<size_t>(payload.modelId));
-    if (modelDescriptor)
-    {
-        const brion::BlueConfig blueConfiguration(modelDescriptor->getPath());
-        const brain::Circuit circuit(blueConfiguration);
-
-        // Parse loaded targets
-        const ModelMetadata& metaData = modelDescriptor->getMetadata();
-        auto targetsIt = metaData.find("Targets");
-        std::vector<std::string> targets;
-        if (targetsIt != metaData.end())
-        {
-            const std::string& targetsString = targetsIt->second;
-            if (!targetsString.empty())
-            {
-                if (targetsString.find(',') == std::string::npos)
-                    targets.push_back(targetsString);
-                else
-                {
-                    targets = _splitString(targetsString, ',');
-                }
-            }
-        }
-
-        auto densityIt = metaData.find("Density");
-        const double density = std::stod(densityIt->second);
-        auto randomIt = metaData.find("RandomSeed");
-        const double randomSeed = std::stod(randomIt->second);
-
-        auto gidsMetaIt = metaData.find("GIDs");
-        const std::string& gidsStr = gidsMetaIt->second;
-
-        brion::GIDSet allGIDs;
-
-        if (!gidsStr.empty())
-        {
-            std::vector<std::string> tempStrGids = _splitString(gidsStr, ',');
-            for (const auto& gidStrTok : tempStrGids)
-            {
-                allGIDs.insert(static_cast<uint32_t>(std::stoul(gidStrTok)));
-            }
-        }
-        else
-        {
-            // Gather all GIDs from loaded targets
-            if (!targets.empty())
-            {
-                for (const auto& targetName : targets)
-                {
-                    if (density < 1.0)
-                    {
-                        brion::GIDSet targetGids =
-                            circuit.getRandomGIDs(density, targetName,
-                                                  randomSeed);
-                        allGIDs.insert(targetGids.begin(), targetGids.end());
-                    }
-                    else
-                    {
-                        brion::GIDSet targetGids = circuit.getGIDs(targetName);
-                        allGIDs.insert(targetGids.begin(), targetGids.end());
-                    }
-                }
-            }
-            else if (density < 1.0)
-                allGIDs = circuit.getRandomGIDs(density, "", randomSeed);
-            else
-                allGIDs = circuit.getGIDs();
-        }
-
-        // Map GIDs to material IDs
-        std::unordered_map<uint32_t, size_t> gidMaterialMap;
-        auto materials = modelDescriptor->getModel().getMaterials();
-        auto itGids = allGIDs.begin();
-        auto itMats = materials.begin();
-        for (; itMats != materials.end(); ++itMats, ++itGids)
-        {
-            gidMaterialMap[*itGids] = itMats->first;
-        }
-
-        const size_t totalSynapses = payload.targetCellGIDs.size();
-        result.message = "Tracing returned " + std::to_string(totalSynapses) +
-                         " connected cells";
-
-        // If there is any GID, modify the scene materials
-        if (totalSynapses > 0)
-        {
-            // Enable CircuitExplorer extra parameters on materials
-            MaterialExtraAttributes mea;
-            mea.modelId = payload.modelId;
-            _setMaterialExtraAttributes(mea);
-
-            // Reset all cells to default color
-            MaterialRangeDescriptor mrd;
-            mrd.modelId = payload.modelId;
-            mrd.opacity = static_cast<float>(payload.nonConnectedCellsColor[3]);
-            mrd.diffuseColor = {
-                static_cast<float>(payload.nonConnectedCellsColor[0]),
-                static_cast<float>(payload.nonConnectedCellsColor[1]),
-                static_cast<float>(payload.nonConnectedCellsColor[2])};
-
-            mrd.specularColor = {0.f, 0.f, 0.f};
-            mrd.specularExponent = 0.f;
-            mrd.glossiness = 0.f;
-            mrd.shadingMode =
-                static_cast<int>(MaterialShadingMode::diffuse_transparency);
-            _setMaterialRange(mrd);
-
-            // Mark connections
-            MaterialRangeDescriptor connectedMrd = mrd;
-            mrd.diffuseColor = {
-                static_cast<float>(payload.connectedCellsColor[0]),
-                static_cast<float>(payload.connectedCellsColor[1]),
-                static_cast<float>(payload.connectedCellsColor[2])};
-            mrd.opacity = 1.0f;
-            mrd.modelId = payload.modelId;
-            mrd.materialIds.reserve(payload.targetCellGIDs.size());
-            for (auto gid : payload.targetCellGIDs)
-            {
-                auto it = gidMaterialMap.find(gid);
-                if (it != gidMaterialMap.end())
-                    mrd.materialIds.push_back(it->second);
-            }
-            _setMaterialRange(connectedMrd);
-
-            // Mark sources
-            const std::set<uint32_t> gidsSet(payload.cellGIDs.begin(),
-                                             payload.cellGIDs.end());
-            MaterialRangeDescriptor sourcesMrd = mrd;
-            mrd.diffuseColor = {static_cast<float>(payload.sourceCellColor[0]),
-                                static_cast<float>(payload.sourceCellColor[1]),
-                                static_cast<float>(payload.sourceCellColor[2])};
-            mrd.opacity = 1.f;
-            mrd.modelId = payload.modelId;
-            mrd.materialIds.reserve(gidsSet.size());
-            for (auto source : gidsSet)
-            {
-                auto it = gidMaterialMap.find(source);
-                if (it != gidMaterialMap.end())
-                    mrd.materialIds.push_back(it->second);
-            }
-            _setMaterialRange(sourcesMrd);
-
-            _api->getScene().markModified();
-            _api->getEngine().triggerRender();
-        }
-    }
-    else
-    {
-        result.error = 5;
-        result.message =
-            "The given model ID does not correspond "
-            "to any existing scene model";
-    }
-
-    return result;
-}
+#endif
 
 void CircuitExplorerPlugin::_createShapeMaterial(ModelPtr& model,
                                                  const size_t id,
@@ -1646,6 +1441,22 @@ void CircuitExplorerPlugin::_addColumn(const AddColumn& payload)
         std::make_shared<ModelDescriptor>(std::move(model), "Column"));
 }
 
+#ifdef USE_VASCULATURE
+void CircuitExplorerPlugin::_attachVasculatureHandler(
+    const AttachVasculatureHandler& payload)
+{
+    PLUGIN_INFO("Attaching Vasculature Handler to model " << payload.modelId);
+    auto modelDescriptor = _api->getScene().getModel(payload.modelId);
+    if (modelDescriptor)
+    {
+        auto handler = std::make_shared<VasculatureHandler>(payload);
+        auto& model = modelDescriptor->getModel();
+        model.setSimulationHandler(handler);
+    }
+    else
+        PLUGIN_ERROR("Model " << payload.modelId << " does not exist");
+}
+
 void CircuitExplorerPlugin::_applyVasculatureGeometryReport(
     const ApplyVasculatureGeometryReport& payload)
 {
@@ -1658,7 +1469,9 @@ void CircuitExplorerPlugin::_applyVasculatureGeometryReport(
     VasculatureLoader::applyGeometryReport(model, payload);
     scene.markModified();
 }
+#endif
 
+#ifdef USE_MORPHOLOGIES
 #ifdef USE_PQXX
 Response CircuitExplorerPlugin::_importMorphology(
     const ImportMorphology& payload)
@@ -1734,6 +1547,7 @@ Response CircuitExplorerPlugin::_importCompartmentSimulation(
     }
     return response;
 }
+#endif
 #endif
 
 extern "C" ExtensionPlugin* brayns_plugin_create(int /*argc*/, char** /*argv*/)

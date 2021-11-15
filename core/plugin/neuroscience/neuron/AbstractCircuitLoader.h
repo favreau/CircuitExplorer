@@ -25,9 +25,6 @@
 #include <brayns/common/loader/Loader.h>
 #include <brayns/common/types.h>
 
-#include <brain/brain.h>
-#include <brion/brion.h>
-
 #include <set>
 #include <vector>
 

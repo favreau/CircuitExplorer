@@ -22,6 +22,16 @@
 
 // clang-format off
 
+// Morphologies
+#if @USE_MORPHOLOGIES@==1
+#  define USE_MORPHOLOGIES
+#endif
+
+// Vasculature
+#if @USE_VASCULATURE@==1
+#  define USE_VASCULATURE
+#endif
+
 // CGAL
 #if @CGAL_FOUND@==1
 #  define USE_CGAL

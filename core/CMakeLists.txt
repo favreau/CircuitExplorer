@@ -18,17 +18,28 @@ list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/CMake)
 set(${NAME}_MODULES_DIR ${PROJECT_SOURCE_DIR})
 set(CMAKE_CXX_STANDARD 14) # C++ 14
 
-list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/CMake)
-
 # Packages
 find_package(Brayns REQUIRED)
-find_package(Brion REQUIRED)
 find_package(ospray REQUIRED)
-find_package(HighFive REQUIRED)
+
+option(${NAME}_USE_MORPHOLOGIES "Use morphologies features" ON)
+option(${NAME}_USE_VASCULATURE "Use vasculature features" ON)
+
+set(USE_MORPHOLOGIES 0)
+if(${NAME}_USE_MORPHOLOGIES)
+  find_package(Brion REQUIRED)
+  set(USE_MORPHOLOGIES 1)
+endif()
+
+set(USE_VASCULATURE 0)
+if(${NAME}_USE_VASCULATURE)
+  find_package(HighFive REQUIRED)
+  set(USE_VASCULATURE 1)
+endif()
 
 # OpenMP
 find_package(OpenMP)
-if (OPENMP_FOUND)
+if(OPENMP_FOUND)
     set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
     set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
     set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}")
@@ -55,69 +66,81 @@ include_directories( ${PROJECT_SOURCE_DIR}/core ${CMAKE_BINARY_DIR}/generated/ci
 # ==============================================================================
 # Sources
 # ==============================================================================
-set(CIRCUITEXPLORER_SOURCES
+set(${NAME}_SOURCES
     common/Utils.cpp
     plugin/CircuitExplorerPlugin.cpp
     plugin/api/CircuitExplorerParams.cpp
-    plugin/meshing/MetaballsGenerator.cpp
     plugin/io/filesystem/BrickLoader.cpp
-    plugin/neuroscience/common/MorphologyLoader.cpp
-    plugin/neuroscience/common/ParallelModelContainer.cpp
-    plugin/neuroscience/neuron/CellGrowthHandler.cpp
-    plugin/neuroscience/neuron/VoltageSimulationHandler.cpp
-    plugin/neuroscience/neuron/SpikeSimulationHandler.cpp
-    plugin/neuroscience/vasculature/VasculatureHandler.cpp
-    plugin/neuroscience/astrocyte/AstrocyteLoader.cpp
-    plugin/neuroscience/neuron/AbstractCircuitLoader.cpp
-    plugin/neuroscience/neuron/PairSynapsesLoader.cpp
-    plugin/neuroscience/neuron/MeshCircuitLoader.cpp
-    plugin/neuroscience/neuron/MorphologyCollageLoader.cpp
-    plugin/neuroscience/neuron/AdvancedCircuitLoader.cpp
-    plugin/neuroscience/neuron/SynapseCircuitLoader.cpp
-    plugin/neuroscience/vasculature/VasculatureLoader.cpp
-    plugin/neuroscience/vasculature/VasculatureHandler.cpp
     module/ispc/camera/DOFPerspectiveCamera.cpp
     module/ispc/camera/SphereClippingPerspectiveCamera.cpp
     module/ispc/render/CircuitExplorerMaterial.cpp
     module/ispc/render/CircuitExplorerBasicRenderer.cpp
     module/ispc/render/CircuitExplorerAdvancedRenderer.cpp
     module/ispc/render/VoxelizedSimulationRenderer.cpp
-    module/ispc/render/ProximityDetectionRenderer.cpp
-    module/ispc/render/CellGrowthRenderer.cpp
     module/ispc/render/utils/CircuitExplorerAbstractRenderer.cpp
     module/ispc/render/utils/CircuitExplorerSimulationRenderer.cpp
     module/ispc/render/DefaultMaterial.cpp
 )
 
-set(CIRCUITEXPLORER_PUBLIC_HEADERS
+set(${NAME}_PUBLIC_HEADERS
     common/Utils.h
     plugin/CircuitExplorerPlugin.h
     plugin/api/CircuitExplorerParams.h
-    plugin/meshing/MetaballsGenerator.h
     plugin/io/filesystem/BrickLoader.h
-    plugin/neuroscience/common/ParallelModelContainer.h
-    plugin/neuroscience/common/MorphologyLoader.h
-    plugin/neuroscience/neuron/CellGrowthHandler.h
-    plugin/neuroscience/neuron/VoltageSimulationHandler.h
-    plugin/neuroscience/neuron/SpikeSimulationHandler.h
-    plugin/neuroscience/vasculature/VasculatureHandler.h
-    plugin/neuroscience/astrocyte/AstrocyteLoader.h
-    plugin/neuroscience/neuron/AbstractCircuitLoader.h
-    plugin/neuroscience/neuron/PairSynapsesLoader.h
-    plugin/neuroscience/neuron/MeshCircuitLoader.h
-    plugin/neuroscience/neuron/MorphologyCollageLoader.h
-    plugin/neuroscience/neuron/AdvancedCircuitLoader.h
-    plugin/neuroscience/neuron/SynapseCircuitLoader.h
-    plugin/neuroscience/vasculature/VasculatureLoader.h
-    plugin/neuroscience/vasculature/VasculatureHandler.h
 )
+
+if(${NAME}_USE_MORPHOLOGIES)
+    list(APPEND CIRCUITEXPLORER_SOURCES
+        module/ispc/render/ProximityDetectionRenderer.cpp
+        module/ispc/render/CellGrowthRenderer.cpp
+        plugin/neuroscience/common/MorphologyLoader.cpp
+        plugin/neuroscience/common/ParallelModelContainer.cpp
+        plugin/neuroscience/neuron/CellGrowthHandler.cpp
+        plugin/neuroscience/neuron/VoltageSimulationHandler.cpp
+        plugin/neuroscience/neuron/SpikeSimulationHandler.cpp
+        plugin/neuroscience/astrocyte/AstrocyteLoader.cpp
+        plugin/neuroscience/neuron/AbstractCircuitLoader.cpp
+        plugin/neuroscience/neuron/PairSynapsesLoader.cpp
+        plugin/neuroscience/neuron/MeshCircuitLoader.cpp
+        plugin/neuroscience/neuron/MorphologyCollageLoader.cpp
+        plugin/neuroscience/neuron/AdvancedCircuitLoader.cpp
+        plugin/neuroscience/neuron/SynapseCircuitLoader.cpp
+        plugin/meshing/MetaballsGenerator.cpp
+        )
+    list(APPEND CIRCUITEXPLORER_PUBLIC_HEADERS
+        plugin/neuroscience/common/ParallelModelContainer.h
+        plugin/neuroscience/common/MorphologyLoader.h
+        plugin/neuroscience/neuron/CellGrowthHandler.h
+        plugin/neuroscience/neuron/VoltageSimulationHandler.h
+        plugin/neuroscience/neuron/SpikeSimulationHandler.h
+        plugin/neuroscience/astrocyte/AstrocyteLoader.h
+        plugin/neuroscience/neuron/AbstractCircuitLoader.h
+        plugin/neuroscience/neuron/PairSynapsesLoader.h
+        plugin/neuroscience/neuron/MeshCircuitLoader.h
+        plugin/neuroscience/neuron/MorphologyCollageLoader.h
+        plugin/neuroscience/neuron/AdvancedCircuitLoader.h
+        plugin/neuroscience/neuron/SynapseCircuitLoader.h
+        plugin/meshing/MetaballsGenerator.h
+        )
+endif()
+
+if(${NAME}_USE_VASCULATURE)
+    list(APPEND CIRCUITEXPLORER_SOURCES
+        plugin/neuroscience/vasculature/VasculatureLoader.cpp
+        plugin/neuroscience/vasculature/VasculatureHandler.cpp
+    )
+    list(APPEND CIRCUITEXPLORER_PUBLIC_HEADERS
+        plugin/neuroscience/vasculature/VasculatureLoader.h
+        plugin/neuroscience/vasculature/VasculatureHandler.h
+    )
+endif()
 
 if(${CGAL_FOUND})
     list(APPEND ${NAME}_SOURCES plugin/meshing/PointCloudMesher.cpp)
     list(APPEND ${NAME}_PUBLIC_HEADERS plugin/meshing/PointCloudMesher.h)
 endif()
 
-if(${PQXX_FOUND})
+if(${PQXX_FOUND} AND ${NAME}_USE_MORPHOLOGIES)
     list(APPEND ${NAME}_SOURCES plugin/io/db/DBConnector.cpp)
     list(APPEND ${NAME}_PUBLIC_HEADERS plugin/io/db/DBConnector.h)
 endif()
@@ -130,12 +153,17 @@ set(${NAME}_ISPC_SOURCES
     module/ispc/render/CircuitExplorerBasicRenderer.ispc
     module/ispc/render/CircuitExplorerAdvancedRenderer.ispc
     module/ispc/render/VoxelizedSimulationRenderer.ispc
-    module/ispc/render/ProximityDetectionRenderer.ispc
-    module/ispc/render/CellGrowthRenderer.ispc
     module/ispc/render/utils/CircuitExplorerSimulationRenderer.ispc
     module/ispc/render/utils/CircuitExplorerRandomGenerator.ispc
     module/ispc/render/DefaultMaterial.ispc
 )
+
+if(${NAME}_USE_MORPHOLOGIES)
+    list(APPEND ${NAME}_ISPC_SOURCES
+        module/ispc/render/ProximityDetectionRenderer.ispc
+        module/ispc/render/CellGrowthRenderer.ispc
+    )
+endif()
 
 # ==============================================================================
 # Compile ispc code
@@ -161,9 +189,17 @@ include_directories(
 set(${NAME}_LINK_LIBRARIES
     PUBLIC ${OSPRAY_LIBRARIES}
     PRIVATE braynsCommon braynsParameters braynsIO braynsEngine braynsPluginAPI
-    braynsOSPRayEngine glm Brion Brain HighFive
+    braynsOSPRayEngine glm 
     ${FREEIMAGE_LIBRARIES} ${HDF5_LIBRARIES}
 )
+
+if(${NAME}_USE_MORPHOLOGIES)
+    list(APPEND ${NAME}_LINK_LIBRARIES Brion Brain)
+endif()
+
+if(${NAME}_USE_VASCULATURE)
+    list(APPEND ${NAME}_LINK_LIBRARIES HighFive)
+endif()
 
 if(${CGAL_FOUND})
     list(APPEND ${NAME}_LINK_LIBRARIES ${CGAL_LIBRARIES})

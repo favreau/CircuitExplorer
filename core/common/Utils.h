@@ -21,8 +21,6 @@
 #include <brayns/common/mathTypes.h>
 #include <brayns/common/types.h>
 
-#include <brain/brain.h>
-
 #include <glm/gtx/matrix_decompose.hpp>
 
 namespace circuitexplorer

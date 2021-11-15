@@ -132,6 +132,14 @@ struct MaterialIds
 
 std::string to_json(const MaterialIds& param);
 
+/** Set extra attributes to materials */
+struct MaterialExtraAttributes
+{
+    int32_t modelId;
+};
+bool from_json(MaterialExtraAttributes& param, const std::string& payload);
+
+#ifdef USE_MORPHOLOGIES
 // Synapse attributes
 struct SynapseAttributes
 {
@@ -139,13 +147,6 @@ struct SynapseAttributes
     int32_t gid;
     std::vector<std::string> htmlColors;
     float lightEmission;
-    float radius;
-};
-
-// Vasculature attributes
-struct VasculatureAttributes
-{
-    bool useSDF;
     float radius;
 };
 
@@ -173,73 +174,6 @@ struct ConnectionsPerValue
 bool from_json(ConnectionsPerValue& connectionsPerValue,
                const std::string& payload);
 
-/** Set extra attributes to materials */
-struct MaterialExtraAttributes
-{
-    int32_t modelId;
-};
-
-bool from_json(MaterialExtraAttributes& param, const std::string& payload);
-
-// DB API
-struct LoadCellsAsInstances
-{
-    std::string connectionString;
-    std::string sqlStatement;
-    std::string name;
-    std::string description;
-    std::string morphologyFolder;
-    std::string morphologyExtension;
-};
-bool from_json(LoadCellsAsInstances& param, const std::string& payload);
-
-struct LoadCells
-{
-    std::string connectionString;
-    std::string name;
-    std::string sqlCell;
-    std::string sqlMorphology;
-    bool sdf;
-};
-bool from_json(LoadCells& param, const std::string& payload);
-
-struct LoadSomas
-{
-    std::string connectionString;
-    std::string sqlStatement;
-    std::string name;
-    float radius{1.f};
-    bool showOrientations;
-};
-bool from_json(LoadSomas& param, const std::string& payload);
-
-struct LoadSegments
-{
-    std::string connectionString;
-    std::string sqlStatement;
-    std::string name;
-    float radius{1.f};
-};
-bool from_json(LoadSegments& param, const std::string& payload);
-
-struct LoadMeshes
-{
-    std::string connectionString;
-    std::string sqlStatement;
-};
-bool from_json(LoadMeshes& param, const std::string& payload);
-
-struct CameraDefinition
-{
-    std::vector<double> origin;
-    std::vector<double> direction;
-    std::vector<double> up;
-    double apertureRadius;
-    double focusDistance;
-};
-bool from_json(CameraDefinition& param, const std::string& payload);
-std::string to_json(const CameraDefinition& param);
-
 struct AttachCellGrowthHandler
 {
     uint64_t modelId;
@@ -256,6 +190,15 @@ struct AttachCircuitSimulationHandler
 };
 bool from_json(AttachCircuitSimulationHandler& param,
                const std::string& payload);
+#endif
+
+#ifdef USE_VASCULATURE
+// Vasculature attributes
+struct VasculatureAttributes
+{
+    bool useSDF;
+    float radius;
+};
 
 struct AttachVasculatureHandler
 {
@@ -275,35 +218,7 @@ struct ApplyVasculatureGeometryReport
 };
 bool from_json(ApplyVasculatureGeometryReport& param,
                const std::string& payload);
-
-struct ExportFramesToDisk
-{
-    std::string path;
-    std::string format;
-    uint16_t quality{100};
-    uint16_t spp{0};
-    uint16_t startFrame{0};
-    std::vector<uint64_t> animationInformation;
-    std::vector<double> cameraInformation;
-};
-bool from_json(ExportFramesToDisk& param, const std::string& payload);
-
-struct FrameExportProgress
-{
-    float progress;
-};
-std::string to_json(const FrameExportProgress& exportProgress);
-
-struct MakeMovieParameters
-{
-    std::vector<uint16_t> dimensions;
-    std::string framesFolderPath;
-    std::string framesFileExtension;
-    uint32_t fpsRate;
-    std::string outputMoviePath;
-    bool eraseFrames;
-};
-bool from_json(MakeMovieParameters& movieParams, const std::string& payload);
+#endif
 
 struct AddGrid
 {
@@ -322,24 +237,6 @@ struct AddColumn
     float radius;
 };
 bool from_json(AddColumn& param, const std::string& payload);
-
-struct AnterogradeTracing
-{
-    int32_t modelId;
-    std::vector<uint32_t> cellGIDs;
-    std::vector<uint32_t> targetCellGIDs;
-    std::vector<double> sourceCellColor;
-    std::vector<double> connectedCellsColor;
-    std::vector<double> nonConnectedCellsColor;
-};
-bool from_json(AnterogradeTracing& param, const std::string& payload);
-
-struct AnterogradeTracingResult
-{
-    int error;
-    std::string message;
-};
-std::string to_json(const AnterogradeTracingResult& result);
 
 struct AddSphere
 {

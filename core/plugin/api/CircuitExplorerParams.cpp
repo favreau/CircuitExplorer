@@ -203,6 +203,21 @@ std::string to_json(const MaterialIds& param)
     return "";
 }
 
+bool from_json(MaterialExtraAttributes& param, const std::string& payload)
+{
+    try
+    {
+        auto js = nlohmann::json::parse(payload);
+        FROM_JSON(param, js, modelId);
+    }
+    catch (...)
+    {
+        return false;
+    }
+    return true;
+}
+
+#ifdef USE_MORPHOLOGIES
 bool from_json(SynapseAttributes& param, const std::string& payload)
 {
     try
@@ -252,143 +267,6 @@ bool from_json(ConnectionsPerValue& param, const std::string& payload)
     return true;
 }
 
-bool from_json(MaterialExtraAttributes& param, const std::string& payload)
-{
-    try
-    {
-        auto js = nlohmann::json::parse(payload);
-        FROM_JSON(param, js, modelId);
-    }
-    catch (...)
-    {
-        return false;
-    }
-    return true;
-}
-
-bool from_json(LoadCellsAsInstances& param, const std::string& payload)
-{
-    try
-    {
-        auto js = nlohmann::json::parse(payload);
-        FROM_JSON(param, js, connectionString);
-        FROM_JSON(param, js, sqlStatement);
-        FROM_JSON(param, js, name);
-        FROM_JSON(param, js, description);
-        FROM_JSON(param, js, morphologyFolder);
-        FROM_JSON(param, js, morphologyExtension);
-    }
-    catch (...)
-    {
-        return false;
-    }
-    return true;
-}
-
-bool from_json(LoadCells& param, const std::string& payload)
-{
-    try
-    {
-        auto js = nlohmann::json::parse(payload);
-        FROM_JSON(param, js, connectionString);
-        FROM_JSON(param, js, name);
-        FROM_JSON(param, js, sqlCell);
-        FROM_JSON(param, js, sqlMorphology);
-        FROM_JSON(param, js, sdf);
-    }
-    catch (...)
-    {
-        return false;
-    }
-    return true;
-}
-
-bool from_json(LoadSomas& param, const std::string& payload)
-{
-    try
-    {
-        auto js = nlohmann::json::parse(payload);
-        FROM_JSON(param, js, connectionString);
-        FROM_JSON(param, js, sqlStatement);
-        FROM_JSON(param, js, name);
-        FROM_JSON(param, js, radius);
-        FROM_JSON(param, js, showOrientations);
-    }
-    catch (...)
-    {
-        return false;
-    }
-    return true;
-}
-
-bool from_json(LoadSegments& param, const std::string& payload)
-{
-    try
-    {
-        auto js = nlohmann::json::parse(payload);
-        FROM_JSON(param, js, connectionString);
-        FROM_JSON(param, js, sqlStatement);
-        FROM_JSON(param, js, name);
-        FROM_JSON(param, js, radius);
-    }
-    catch (...)
-    {
-        return false;
-    }
-    return true;
-}
-
-bool from_json(LoadMeshes& param, const std::string& payload)
-{
-    try
-    {
-        auto js = nlohmann::json::parse(payload);
-        FROM_JSON(param, js, connectionString);
-        FROM_JSON(param, js, sqlStatement);
-    }
-    catch (...)
-    {
-        return false;
-    }
-    return true;
-}
-
-bool from_json(CameraDefinition& param, const std::string& payload)
-{
-    try
-    {
-        auto js = nlohmann::json::parse(payload);
-        FROM_JSON(param, js, origin);
-        FROM_JSON(param, js, direction);
-        FROM_JSON(param, js, up);
-    }
-    catch (...)
-    {
-        return false;
-    }
-    return true;
-}
-
-std::string to_json(const CameraDefinition& param)
-{
-    try
-    {
-        nlohmann::json js;
-
-        TO_JSON(param, js, origin);
-        TO_JSON(param, js, direction);
-        TO_JSON(param, js, up);
-        TO_JSON(param, js, apertureRadius);
-        TO_JSON(param, js, focusDistance);
-        return js.dump();
-    }
-    catch (...)
-    {
-        return "";
-    }
-    return "";
-}
-
 bool from_json(AttachCellGrowthHandler& param, const std::string& payload)
 {
     try
@@ -421,7 +299,9 @@ bool from_json(AttachCircuitSimulationHandler& param,
     }
     return true;
 }
+#endif
 
+#ifdef USE_VASCULATURE
 bool from_json(AttachVasculatureHandler& param, const std::string& payload)
 {
     try
@@ -456,60 +336,7 @@ bool from_json(ApplyVasculatureGeometryReport& param,
     }
     return true;
 }
-
-bool from_json(ExportFramesToDisk& param, const std::string& payload)
-{
-    try
-    {
-        auto js = nlohmann::json::parse(payload);
-        FROM_JSON(param, js, path);
-        FROM_JSON(param, js, format);
-        FROM_JSON(param, js, quality);
-        FROM_JSON(param, js, spp);
-        FROM_JSON(param, js, startFrame);
-        FROM_JSON(param, js, animationInformation);
-        FROM_JSON(param, js, cameraInformation);
-    }
-    catch (...)
-    {
-        return false;
-    }
-    return true;
-}
-
-std::string to_json(const FrameExportProgress& exportProgress)
-{
-    try
-    {
-        nlohmann::json json;
-        TO_JSON(exportProgress, json, progress);
-        return json.dump();
-    }
-    catch (...)
-    {
-        return "";
-    }
-    return "";
-}
-
-bool from_json(MakeMovieParameters& movieParams, const std::string& payload)
-{
-    try
-    {
-        auto json = nlohmann::json::parse(payload);
-        FROM_JSON(movieParams, json, dimensions);
-        FROM_JSON(movieParams, json, framesFolderPath);
-        FROM_JSON(movieParams, json, framesFileExtension);
-        FROM_JSON(movieParams, json, fpsRate);
-        FROM_JSON(movieParams, json, outputMoviePath);
-        FROM_JSON(movieParams, json, eraseFrames);
-    }
-    catch (...)
-    {
-        return false;
-    }
-    return true;
-}
+#endif
 
 bool from_json(AddGrid& param, const std::string& payload)
 {
@@ -543,41 +370,6 @@ bool from_json(AddColumn& param, const std::string& payload)
         return false;
     }
     return true;
-}
-
-bool from_json(AnterogradeTracing& param, const std::string& payload)
-{
-    try
-    {
-        auto js = nlohmann::json::parse(payload);
-        FROM_JSON(param, js, modelId);
-        FROM_JSON(param, js, cellGIDs);
-        FROM_JSON(param, js, targetCellGIDs);
-        FROM_JSON(param, js, sourceCellColor);
-        FROM_JSON(param, js, connectedCellsColor);
-        FROM_JSON(param, js, nonConnectedCellsColor);
-    }
-    catch (...)
-    {
-        return false;
-    }
-    return true;
-}
-
-std::string to_json(const AnterogradeTracingResult& result)
-{
-    try
-    {
-        nlohmann::json json;
-        TO_JSON(result, json, error);
-        TO_JSON(result, json, message);
-        return json.dump();
-    }
-    catch (...)
-    {
-        return "";
-    }
-    return "";
 }
 
 bool from_json(AddSphere& param, const std::string& payload)
