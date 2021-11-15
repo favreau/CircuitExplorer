@@ -56,6 +56,26 @@ include_directories( ${PROJECT_SOURCE_DIR}/core ${CMAKE_BINARY_DIR}/generated/ci
 # Sources
 # ==============================================================================
 set(CIRCUITEXPLORER_SOURCES
+    common/Utils.cpp
+    plugin/CircuitExplorerPlugin.cpp
+    plugin/api/CircuitExplorerParams.cpp
+    plugin/meshing/MetaballsGenerator.cpp
+    plugin/io/filesystem/BrickLoader.cpp
+    plugin/neuroscience/common/MorphologyLoader.cpp
+    plugin/neuroscience/common/ParallelModelContainer.cpp
+    plugin/neuroscience/neuron/CellGrowthHandler.cpp
+    plugin/neuroscience/neuron/VoltageSimulationHandler.cpp
+    plugin/neuroscience/neuron/SpikeSimulationHandler.cpp
+    plugin/neuroscience/vasculature/VasculatureHandler.cpp
+    plugin/neuroscience/astrocyte/AstrocyteLoader.cpp
+    plugin/neuroscience/neuron/AbstractCircuitLoader.cpp
+    plugin/neuroscience/neuron/PairSynapsesLoader.cpp
+    plugin/neuroscience/neuron/MeshCircuitLoader.cpp
+    plugin/neuroscience/neuron/MorphologyCollageLoader.cpp
+    plugin/neuroscience/neuron/AdvancedCircuitLoader.cpp
+    plugin/neuroscience/neuron/SynapseCircuitLoader.cpp
+    plugin/neuroscience/vasculature/VasculatureLoader.cpp
+    plugin/neuroscience/vasculature/VasculatureHandler.cpp
     module/ispc/camera/DOFPerspectiveCamera.cpp
     module/ispc/camera/SphereClippingPerspectiveCamera.cpp
     module/ispc/render/CircuitExplorerMaterial.cpp
@@ -67,47 +87,29 @@ set(CIRCUITEXPLORER_SOURCES
     module/ispc/render/utils/CircuitExplorerAbstractRenderer.cpp
     module/ispc/render/utils/CircuitExplorerSimulationRenderer.cpp
     module/ispc/render/DefaultMaterial.cpp
-    plugin/api/CircuitExplorerParams.cpp
-    plugin/meshing/MetaballsGenerator.cpp
-    plugin/CircuitExplorerPlugin.cpp
-    plugin/io/handlers/VoltageSimulationHandler.cpp
-    plugin/io/handlers/CellGrowthHandler.cpp
-    plugin/io/handlers/SpikeSimulationHandler.cpp
-    plugin/io/handlers/VasculatureHandler.cpp
-    plugin/io/loaders/MorphologyCollageLoader.cpp
-    plugin/io/loaders/PairSynapsesLoader.cpp
-    plugin/io/loaders/AbstractCircuitLoader.cpp
-    plugin/io/loaders/MeshCircuitLoader.cpp
-    plugin/io/loaders/AdvancedCircuitLoader.cpp
-    plugin/io/loaders/AstrocyteLoader.cpp
-    plugin/io/loaders/SynapseCircuitLoader.cpp
-    plugin/io/loaders/BrickLoader.cpp
-    plugin/io/loaders/MorphologyLoader.cpp
-    plugin/io/loaders/SynapseJSONLoader.cpp
-    plugin/io/loaders/VasculatureLoader.cpp
-    common/Utils.cpp
 )
 
 set(CIRCUITEXPLORER_PUBLIC_HEADERS
+    common/Utils.h
+    plugin/CircuitExplorerPlugin.h
     plugin/api/CircuitExplorerParams.h
     plugin/meshing/MetaballsGenerator.h
-    plugin/CircuitExplorerPlugin.h
-    plugin/io/handlers/CellGrowthHandler.h
-    plugin/io/handlers/VoltageSimulationHandler.h
-    plugin/io/handlers/SpikeSimulationHandler.h
-    plugin/io/handlers/VasculatureHandler.h
-    plugin/io/loaders/BrickLoader.h
-    plugin/io/loaders/AbstractCircuitLoader.h
-    plugin/io/loaders/PairSynapsesLoader.h
-    plugin/io/loaders/MeshCircuitLoader.h
-    plugin/io/loaders/MorphologyCollageLoader.h
-    plugin/io/loaders/AdvancedCircuitLoader.h
-    plugin/io/loaders/AstrocyteLoader.h
-    plugin/io/loaders/SynapseCircuitLoader.h
-    plugin/io/loaders/MorphologyLoader.h
-    plugin/io/loaders/SynapseJSONLoader.h
-    plugin/io/loaders/VasculatureLoader.h
-    plugin/io/Utils.h
+    plugin/io/filesystem/BrickLoader.h
+    plugin/neuroscience/common/ParallelModelContainer.h
+    plugin/neuroscience/common/MorphologyLoader.h
+    plugin/neuroscience/neuron/CellGrowthHandler.h
+    plugin/neuroscience/neuron/VoltageSimulationHandler.h
+    plugin/neuroscience/neuron/SpikeSimulationHandler.h
+    plugin/neuroscience/vasculature/VasculatureHandler.h
+    plugin/neuroscience/astrocyte/AstrocyteLoader.h
+    plugin/neuroscience/neuron/AbstractCircuitLoader.h
+    plugin/neuroscience/neuron/PairSynapsesLoader.h
+    plugin/neuroscience/neuron/MeshCircuitLoader.h
+    plugin/neuroscience/neuron/MorphologyCollageLoader.h
+    plugin/neuroscience/neuron/AdvancedCircuitLoader.h
+    plugin/neuroscience/neuron/SynapseCircuitLoader.h
+    plugin/neuroscience/vasculature/VasculatureLoader.h
+    plugin/neuroscience/vasculature/VasculatureHandler.h
 )
 
 if(${CGAL_FOUND})

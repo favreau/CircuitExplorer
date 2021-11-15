@@ -19,7 +19,7 @@
 #include "DBConnector.h"
 
 #include <common/Logs.h>
-#include <plugin/io/loaders/MorphologyLoader.h>
+#include <plugin/neuroscience/common/MorphologyLoader.h>
 
 #include <brayns/engineapi/Model.h>
 #include <brayns/engineapi/Scene.h>
@@ -31,6 +31,8 @@ namespace circuitexplorer
 namespace db
 {
 using namespace brayns;
+using namespace neuroscience;
+using namespace common;
 
 const uint16_t NB_CONNECTIONS = 8;
 
@@ -140,7 +142,7 @@ void DBConnector::importMorphology(Scene& scene, const uint64_t guid,
             props.setProperty({"054SectionTypeDendrite", section == 1});
             props.setProperty({"055SectionTypeApicalDendrite", section == 2});
 
-            io::loader::MorphologyLoader loader(scene, std::move(props));
+            MorphologyLoader loader(scene, std::move(props));
             auto modelDescriptor =
                 loader.importFromFile(filename, LoaderProgress(), props);
 
@@ -226,7 +228,7 @@ void DBConnector::importMorphologyAsSDF(Scene& scene, const uint64_t guid,
         props.setProperty({"054SectionTypeDendrite", true});
         props.setProperty({"055SectionTypeApicalDendrite", true});
 
-        io::loader::MorphologyLoader loader(scene, std::move(props));
+        MorphologyLoader loader(scene, std::move(props));
         auto modelDescriptor =
             loader.importFromFile(filename, LoaderProgress(), props);
 

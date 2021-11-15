@@ -52,8 +52,6 @@ private:
     Response _getVersion() const;
 
     // Rendering
-    void _setCamera(const CameraDefinition&);
-    CameraDefinition _getCamera();
     void _setMaterial(const MaterialDescriptor&);
     void _setMaterials(const MaterialsDescriptor&);
     void _setMaterialRange(const MaterialRangeDescriptor&);
@@ -61,7 +59,6 @@ private:
     MaterialIds _getMaterialIds(const ModelId& modelId);
 
     // Experimental
-    void _setSynapseAttributes(const SynapseAttributes&);
     void _setConnectionsPerValue(const ConnectionsPerValue&);
     void _exportModelToFile(const ExportModelToFile&);
     void _exportModelToMesh(const ExportModelToMesh&);

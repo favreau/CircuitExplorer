@@ -18,11 +18,37 @@
 
 #pragma once
 
-#include <Defines.h>
+#include <brayns/common/simulation/AbstractSimulationHandler.h>
+
+#include <brayns/api.h>
 #include <brayns/common/types.h>
 
-/** Additional marterial attributes */
-const std::string MATERIAL_PROPERTY_CAST_USER_DATA = "cast_simulation_data";
-const std::string MATERIAL_PROPERTY_SHADING_MODE = "shading_mode";
-const std::string MATERIAL_PROPERTY_CLIPPING_MODE = "clipping_mode";
-const std::string MATERIAL_PROPERTY_USER_PARAMETER = "user_parameter";
+namespace circuitexplorer
+{
+namespace neuroscience
+{
+namespace neuron
+{
+/**
+ * @brief The CellGrowthHandler class handles distance to the soma
+ */
+class CellGrowthHandler : public brayns::AbstractSimulationHandler
+{
+public:
+    /**
+     * @brief Default constructor
+     */
+    CellGrowthHandler(const uint32_t nbFrames);
+    CellGrowthHandler(const CellGrowthHandler& rhs);
+    ~CellGrowthHandler();
+
+    void* getFrameData(const uint32_t) final;
+
+    bool isReady() const final { return true; }
+
+    brayns::AbstractSimulationHandlerPtr clone() const final;
+};
+using CellGrowthHandlerPtr = std::shared_ptr<CellGrowthHandler>;
+} // namespace neuron
+} // namespace neuroscience
+} // namespace circuitexplorer

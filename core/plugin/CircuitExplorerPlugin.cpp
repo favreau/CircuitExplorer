@@ -20,20 +20,19 @@
 #include <common/CommonTypes.h>
 #include <common/Logs.h>
 
-#include <plugin/io/loaders/AdvancedCircuitLoader.h>
-#include <plugin/io/loaders/AstrocyteLoader.h>
-#include <plugin/io/loaders/BrickLoader.h>
-#include <plugin/io/loaders/MeshCircuitLoader.h>
-#include <plugin/io/loaders/MorphologyCollageLoader.h>
-#include <plugin/io/loaders/MorphologyLoader.h>
-#include <plugin/io/loaders/PairSynapsesLoader.h>
-#include <plugin/io/loaders/SynapseCircuitLoader.h>
-#include <plugin/io/loaders/SynapseJSONLoader.h>
-#include <plugin/io/loaders/VasculatureLoader.h>
+#include <plugin/io/filesystem/BrickLoader.h>
+#include <plugin/neuroscience/astrocyte/AstrocyteLoader.h>
+#include <plugin/neuroscience/common/MorphologyLoader.h>
+#include <plugin/neuroscience/neuron/AdvancedCircuitLoader.h>
+#include <plugin/neuroscience/neuron/MeshCircuitLoader.h>
+#include <plugin/neuroscience/neuron/MorphologyCollageLoader.h>
+#include <plugin/neuroscience/neuron/PairSynapsesLoader.h>
+#include <plugin/neuroscience/neuron/SynapseCircuitLoader.h>
+#include <plugin/neuroscience/vasculature/VasculatureLoader.h>
 
-#include <plugin/io/handlers/CellGrowthHandler.h>
-#include <plugin/io/handlers/VasculatureHandler.h>
-#include <plugin/io/handlers/VoltageSimulationHandler.h>
+#include <plugin/neuroscience/neuron/CellGrowthHandler.h>
+#include <plugin/neuroscience/neuron/VoltageSimulationHandler.h>
+#include <plugin/neuroscience/vasculature/VasculatureHandler.h>
 
 #include <plugin/meshing/PointCloudMesher.h>
 
@@ -91,10 +90,14 @@ typedef CGAL::Union_of_balls_3<Traits> Union_of_balls_3;
 namespace circuitexplorer
 {
 using namespace brayns;
+using namespace api;
 using namespace io;
 using namespace loader;
-using namespace handler;
-using namespace api;
+using namespace neuroscience;
+using namespace common;
+using namespace neuron;
+using namespace astrocyte;
+using namespace vasculature;
 
 #define REGISTER_LOADER(LOADER, FUNC) \
     registry.registerLoader({std::bind(&LOADER::getSupportedDataTypes), FUNC});
@@ -324,10 +327,6 @@ void CircuitExplorerPlugin::init()
     registry.registerLoader(
         std::make_unique<BrickLoader>(scene, BrickLoader::getCLIProperties()));
 
-    registry.registerLoader(
-        std::make_unique<SynapseJSONLoader>(scene,
-                                            std::move(_synapseAttributes)));
-
     registry.registerLoader(std::make_unique<SynapseCircuitLoader>(
         scene, pm.getApplicationParameters(),
         SynapseCircuitLoader::getCLIProperties()));
@@ -414,13 +413,6 @@ void CircuitExplorerPlugin::init()
                 _setMaterialExtraAttributes(param);
             });
 
-        endPoint = PLUGIN_API_PREFIX + "set-synapses-attributes";
-        PLUGIN_INFO("Registering '" + endPoint + "' endpoint");
-        actionInterface->registerNotification<SynapseAttributes>(
-            endPoint, [&](const SynapseAttributes& param) {
-                _setSynapseAttributes(param);
-            });
-
         endPoint = PLUGIN_API_PREFIX + "save-model-to-cache";
         PLUGIN_INFO("Registering '" + endPoint + "' endpoint");
         actionInterface->registerNotification<ExportModelToFile>(
@@ -439,16 +431,6 @@ void CircuitExplorerPlugin::init()
             endPoint, [&](const ConnectionsPerValue& param) {
                 _setConnectionsPerValue(param);
             });
-
-        endPoint = PLUGIN_API_PREFIX + "set-odu-camera";
-        PLUGIN_INFO("Registering '" + endPoint + "' endpoint");
-        _api->getActionInterface()->registerNotification<CameraDefinition>(
-            endPoint, [&](const CameraDefinition& s) { _setCamera(s); });
-
-        endPoint = PLUGIN_API_PREFIX + "get-odu-camera";
-        PLUGIN_INFO("Registering '" + endPoint + "' endpoint");
-        _api->getActionInterface()->registerRequest<CameraDefinition>(
-            endPoint, [&]() -> CameraDefinition { return _getCamera(); });
 
         endPoint = PLUGIN_API_PREFIX + "attach-cell-growth-handler";
         PLUGIN_INFO("Registering '" + endPoint + "' endpoint");
@@ -836,48 +818,6 @@ MaterialIds CircuitExplorerPlugin::_getMaterialIds(const ModelId& modelId)
     return materialIds;
 }
 
-void CircuitExplorerPlugin::_setSynapseAttributes(
-    const SynapseAttributes& param)
-{
-    try
-    {
-        _synapseAttributes = param;
-        SynapseJSONLoader loader(_api->getScene(), _synapseAttributes);
-        Vector3fs colors;
-        for (const auto& htmlColor : _synapseAttributes.htmlColors)
-        {
-            auto hexCode = htmlColor;
-            if (hexCode.at(0) == '#')
-            {
-                hexCode = hexCode.erase(0, 1);
-            }
-            int r, g, b;
-            std::istringstream(hexCode.substr(0, 2)) >> std::hex >> r;
-            std::istringstream(hexCode.substr(2, 2)) >> std::hex >> g;
-            std::istringstream(hexCode.substr(4, 2)) >> std::hex >> b;
-
-            Vector3f color{r / 255.f, g / 255.f, b / 255.f};
-            colors.push_back(color);
-        }
-        const auto modelDescriptor =
-            loader.importSynapsesFromGIDs(_synapseAttributes, colors);
-
-        _api->getScene().addModel(modelDescriptor);
-
-        PLUGIN_INFO("Synapses successfully added for GID "
-                    << _synapseAttributes.gid);
-        _dirty = true;
-    }
-    catch (const std::runtime_error& e)
-    {
-        PLUGIN_ERROR(e.what());
-    }
-    catch (...)
-    {
-        PLUGIN_ERROR("Unexpected exception occured in _updateMaterialFromJson");
-    }
-}
-
 void CircuitExplorerPlugin::_exportModelToFile(
     const ExportModelToFile& saveModel)
 {
@@ -992,59 +932,6 @@ void CircuitExplorerPlugin::_setConnectionsPerValue(
         PLUGIN_INFO("Model " << cpv.modelId << " is not registered");
 }
 
-void CircuitExplorerPlugin::_setCamera(const CameraDefinition& payload)
-{
-    auto& camera = _api->getCamera();
-
-    // Origin
-    const auto& o = payload.origin;
-    Vector3f origin{o[0], o[1], o[2]};
-    camera.setPosition(origin);
-
-    // Target
-    const auto& d = payload.direction;
-    Vector3f direction{d[0], d[1], d[2]};
-    camera.setTarget(origin + direction);
-
-    // Up
-    const auto& u = payload.up;
-    Vector3f up{u[0], u[1], u[2]};
-
-    // Orientation
-    const glm::quat q = glm::inverse(
-        glm::lookAt(origin, origin + direction,
-                    up)); // Not quite sure why this should be inverted?!?
-    camera.setOrientation(q);
-
-    // Aperture
-    camera.updateProperty("apertureRadius", payload.apertureRadius);
-
-    // Focus distance
-    camera.updateProperty("focusDistance", payload.focusDistance);
-
-    _api->getCamera().markModified();
-
-    PLUGIN_DEBUG("SET: " << origin << ", " << direction << ", " << up << ", "
-                         << glm::inverse(q) << "," << payload.apertureRadius
-                         << "," << payload.focusDistance);
-}
-
-CameraDefinition CircuitExplorerPlugin::_getCamera()
-{
-    const auto& camera = _api->getCamera();
-
-    CameraDefinition cd;
-    const auto& p = camera.getPosition();
-    cd.origin = {p.x, p.y, p.z};
-    const auto d = glm::rotate(camera.getOrientation(), Vector3d(0., 0., -1.));
-    cd.direction = {d.x, d.y, d.z};
-    const auto u = glm::rotate(camera.getOrientation(), Vector3d(0., 1., 0.));
-    cd.up = {u.x, u.y, u.z};
-    PLUGIN_DEBUG("GET: " << p << ", " << d << ", " << u << ", "
-                         << camera.getOrientation());
-    return cd;
-}
-
 void CircuitExplorerPlugin::_attachCellGrowthHandler(
     const AttachCellGrowthHandler& payload)
 {
@@ -1068,7 +955,7 @@ void CircuitExplorerPlugin::_attachCircuitSimulationHandler(
         const brion::BlueConfig blueConfiguration(payload.circuitConfiguration);
         const brain::Circuit circuit(blueConfiguration);
         auto gids = circuit.getGIDs();
-        auto handler = std::make_shared<io::handler::VoltageSimulationHandler>(
+        auto handler = std::make_shared<VoltageSimulationHandler>(
             blueConfiguration.getReportSource(payload.reportName).getPath(),
             gids, payload.synchronousMode);
         auto& model = modelDescriptor->getModel();
@@ -1089,8 +976,7 @@ void CircuitExplorerPlugin::_attachVasculatureHandler(
     auto modelDescriptor = _api->getScene().getModel(payload.modelId);
     if (modelDescriptor)
     {
-        auto handler =
-            std::make_shared<io::handler::VasculatureHandler>(payload);
+        auto handler = std::make_shared<VasculatureHandler>(payload);
         auto& model = modelDescriptor->getModel();
         model.setSimulationHandler(handler);
         AdvancedCircuitLoader::setSimulationTransferFunction(
