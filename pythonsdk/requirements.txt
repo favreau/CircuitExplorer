@@ -18,7 +18,10 @@
 # All rights reserved. Do not distribute without further notice.
 
 
-brayns==1.0.0
+Cython~=0.29.24
+numpy~=1.21.4
+packaging~=21.2
+bioexplorer==1.1.1
 stringcase~=1.2.0
 pyquaternion~=0.9.9
 webcolors~=1.8.1

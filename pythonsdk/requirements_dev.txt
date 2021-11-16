@@ -18,7 +18,9 @@
 # All rights reserved. Do not distribute without further notice.
 
 
-brayns==1.0.0
+Cython~=0.29.24
+numpy~=1.21.4
+packaging~=2.4.7
 stringcase~=1.2.0
 pygments~=2.4.1
 pylint~=2.6.0
