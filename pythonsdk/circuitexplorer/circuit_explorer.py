@@ -70,7 +70,8 @@ class CircuitExplorer:
 
     # Morphology color schemes
     MORPHOLOGY_COLOR_SCHEME_NONE = 'None'
-    MORPHOLOGY_COLOR_SCHEME_BY_SECTION_TYPE = 'By segment type'
+    MORPHOLOGY_COLOR_SCHEME_BY_SEGMENT = 'By segment'
+    MORPHOLOGY_COLOR_SCHEME_BY_SECTION = 'By section'
 
     # Morphology types
     MORPHOLOGY_SECTION_TYPE_ALL = 255
@@ -229,9 +230,9 @@ class CircuitExplorer:
         props['060UseSdfgeometry'] = use_sdf
         props['061DampenBranchThicknessChangerate'] = dampen_branch_thickness_changerate
 
-        props['080MorphologyColorScheme'] = morphology_color_scheme
+        props['080AssetColorScheme'] = morphology_color_scheme
 
-        props['090MorphologyQuality'] = morphology_quality
+        props['090AssetQuality'] = morphology_quality
         props['091MaxDistanceToSoma'] = max_distance_to_soma
         props['100CellClipping'] = cell_clipping
         props['101AreasOfInterest'] = 0
@@ -302,9 +303,9 @@ class CircuitExplorer:
         props['060UseSdfgeometry'] = use_sdf
         props['061DampenBranchThicknessChangerate'] = dampen_branch_thickness_changerate
 
-        props['080MorphologyColorScheme'] = morphology_color_scheme
+        props['080AssetColorScheme'] = morphology_color_scheme
 
-        props['090MorphologyQuality'] = morphology_quality
+        props['090AssetQuality'] = morphology_quality
         props['091MaxDistanceToSoma'] = 1e6
         props['100CellClipping'] = False
         props['101AreasOfInterest'] = 0
@@ -374,9 +375,9 @@ class CircuitExplorer:
         props['060UseSdfgeometry'] = use_sdf
         props['061DampenBranchThicknessChangerate'] = dampen_branch_thickness_changerate
 
-        props['080MorphologyColorScheme'] = morphology_color_scheme
+        props['080AssetColorScheme'] = morphology_color_scheme
 
-        props['090MorphologyQuality'] = morphology_quality
+        props['090AssetQuality'] = morphology_quality
         props['091MaxDistanceToSoma'] = 1e6
         props['100CellClipping'] = False
         props['101AreasOfInterest'] = 0
@@ -390,11 +391,13 @@ class CircuitExplorer:
         return self._core.add_model(name=name, path=path, load_properties=props)
 
     def load_vasculature(self, name, path, use_sdf=False, radius_multiplier=1.0,
-                         geometry_quality=GEOMETRY_QUALITY_LOW):
+                         geometry_quality=GEOMETRY_QUALITY_LOW,
+                         color_scheme=MORPHOLOGY_COLOR_SCHEME_NONE):
         props = dict()
         props['060UseSdfgeometry'] = use_sdf
         props['050RadiusMultiplier'] = radius_multiplier
-        props['090MorphologyQuality'] = geometry_quality
+        props['090AssetQuality'] = geometry_quality
+        props['080AssetColorScheme'] = color_scheme
         return self._core.add_model(
             name=name, path=path, loader_name='Vasculature', loader_properties=props)
 
@@ -476,7 +479,16 @@ class CircuitExplorer:
             diffuse_colors=diffuse_colors, specular_colors=specular_colors,
             specular_exponents=specular_exponents, glossinesses=glossinesses,
             refraction_indices=refraction_indices)
-        self._core.set_renderer()            
+        self._core.set_renderer()     
+
+
+    def set_vasculature_section_color(self, model_id, section_id, color):
+        return self.set_material(
+            model_id=model_id, material_id=section_id, diffuse_color=color, specular_color=color)
+
+    def set_vasculature_segment_color(self, model_id, segment_id, color):
+        return self.set_material(
+            model_id=model_id, material_id=segment_id, diffuse_color=color, specular_color=color)
 
     # pylint: disable=R0913, R0914
     def set_material(self, model_id, material_id, diffuse_color=(1.0, 1.0, 1.0),

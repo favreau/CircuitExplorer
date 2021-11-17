@@ -116,14 +116,14 @@ void DBConnector::importMorphology(Scene& scene, const uint64_t guid,
     PLUGIN_INFO("Importing morphology " << guid << " from " << filename);
     PropertyMap props;
     props.setProperty({"070RealisticSoma", false});
-    props.setProperty({"090MorphologyQuality", enumToString<MorphologyQuality>(
-                                                   MorphologyQuality::high)});
+    props.setProperty(
+        {"090AssetQuality", enumToString<AssetQuality>(AssetQuality::high)});
     props.setProperty(
         {"022UserDataType", enumToString(UserDataType::undefined)});
     props.setProperty({"060UseSdfgeometry", false});
     props.setProperty({"061DampenBranchThicknessChangerate", false});
     props.setProperty(
-        {"080MorphologyColorScheme", enumToString(CircuitColorScheme::none)});
+        {"080AssetColorScheme", enumToString(CircuitColorScheme::none)});
     props.setProperty({"051RadiusCorrection", 0.});
     props.setProperty({"050RadiusMultiplier", 1.});
     props.setProperty({"052SectionTypeSoma", false});
@@ -207,14 +207,14 @@ void DBConnector::importMorphologyAsSDF(Scene& scene, const uint64_t guid,
     PLUGIN_INFO("Importing morphology " << guid << " as SDF from " << filename);
     PropertyMap props;
     props.setProperty({"070RealisticSoma", false});
-    props.setProperty({"090MorphologyQuality", enumToString<MorphologyQuality>(
-                                                   MorphologyQuality::high)});
+    props.setProperty(
+        {"090AssetQuality", enumToString<AssetQuality>(AssetQuality::high)});
     props.setProperty(
         {"022UserDataType", enumToString(UserDataType::distance_to_soma)});
     props.setProperty({"060UseSdfgeometry", true});
     props.setProperty({"061DampenBranchThicknessChangerate", true});
     props.setProperty(
-        {"080MorphologyColorScheme", enumToString(CircuitColorScheme::none)});
+        {"080AssetColorScheme", enumToString(CircuitColorScheme::none)});
     props.setProperty({"051RadiusCorrection", 0.});
     props.setProperty({"050RadiusMultiplier", 1.});
     props.setProperty({"052SectionTypeSoma", true});

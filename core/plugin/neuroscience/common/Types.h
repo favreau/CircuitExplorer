@@ -96,8 +96,8 @@ struct SDFMorphologyData
     std::unordered_map<int, std::vector<size_t>> sectionGeometries;
 };
 
-// Geometry quality
-enum class MorphologyQuality
+// Asset quality
+enum class AssetQuality
 {
     low = 0,
     medium = 1,
@@ -105,11 +105,27 @@ enum class MorphologyQuality
 };
 
 template <>
-inline std::vector<std::pair<std::string, MorphologyQuality>> enumerateMap()
+inline std::vector<std::pair<std::string, AssetQuality>> enumerateMap()
 {
-    return {{"Low", MorphologyQuality::low},
-            {"Medium", MorphologyQuality::medium},
-            {"High", MorphologyQuality::high}};
+    return {{"Low", AssetQuality::low},
+            {"Medium", AssetQuality::medium},
+            {"High", AssetQuality::high}};
+}
+
+/** Asset color scheme */
+enum class AssetColorScheme
+{
+    none = 0,
+    by_segment = 1,
+    by_section = 2
+};
+
+template <>
+inline std::vector<std::pair<std::string, AssetColorScheme>> enumerateMap()
+{
+    return {{"None", AssetColorScheme::none},
+            {"By segment", AssetColorScheme::by_segment},
+            {"By section", AssetColorScheme::by_section}};
 }
 
 #ifdef USE_MORPHOLOGIES
@@ -173,25 +189,7 @@ enum class SynapseType
     efferent
 };
 
-/** Morphology color scheme */
-enum class MorphologyColorScheme
-{
-    none = 0,
-    neuron_by_segment_type = 1
-};
-
 const std::string CIRCUIT_ON_OFF[2] = {"off", "on"};
-
-template <>
-inline std::vector<std::pair<std::string, CircuitColorScheme>> enumerateMap()
-{
-    return {{"None", CircuitColorScheme::none},
-            {"By id", CircuitColorScheme::by_id},
-            {"By layer", CircuitColorScheme::by_layer},
-            {"By mtype", CircuitColorScheme::by_mtype},
-            {"By etype", CircuitColorScheme::by_etype},
-            {"By target", CircuitColorScheme::by_target}};
-}
 
 template <>
 inline std::vector<std::pair<std::string, ReportType>> enumerateMap()
@@ -210,10 +208,14 @@ inline std::vector<std::pair<std::string, UserDataType>> enumerateMap()
 }
 
 template <>
-inline std::vector<std::pair<std::string, MorphologyColorScheme>> enumerateMap()
+inline std::vector<std::pair<std::string, CircuitColorScheme>> enumerateMap()
 {
-    return {{"None", MorphologyColorScheme::none},
-            {"By segment type", MorphologyColorScheme::neuron_by_segment_type}};
+    return {{"None", CircuitColorScheme::none},
+            {"By id", CircuitColorScheme::by_id},
+            {"By layer", CircuitColorScheme::by_layer},
+            {"By mtype", CircuitColorScheme::by_mtype},
+            {"By etype", CircuitColorScheme::by_etype},
+            {"By target", CircuitColorScheme::by_target}};
 }
 
 template <>
@@ -278,11 +280,6 @@ const brayns::Property PROP_SECTION_TYPE_DENDRITE = {"054SectionTypeDendrite",
                                                      {"Dendrite"}};
 const brayns::Property PROP_SECTION_TYPE_APICAL_DENDRITE = {
     "055SectionTypeApicalDendrite", true, {"Apical Dendrite"}};
-const brayns::Property PROP_MORPHOLOGY_COLOR_SCHEME = {
-    "080MorphologyColorScheme",
-    enumToString(MorphologyColorScheme::none),
-    enumerateNames<MorphologyColorScheme>(),
-    {"Color scheme to be applied to the morphology"}};
 const brayns::Property PROP_MORPHOLOGY_MAX_DISTANCE_TO_SOMA = {
     "091MaxDistanceToSoma",
     std::numeric_limits<double>::max(),
@@ -319,11 +316,15 @@ const brayns::Property PROP_DAMPEN_BRANCH_THICKNESS_CHANGERATE = {
     "061DampenBranchThicknessChangerate",
     true,
     {"Dampen branch thickness changerate"}};
-const brayns::Property PROP_MORPHOLOGY_QUALITY = {
-    "090MorphologyQuality",
-    enumToString(MorphologyQuality::high),
-    enumerateNames<MorphologyQuality>(),
-    {"Quality of the morphology"}};
+const brayns::Property PROP_ASSET_QUALITY = {"090AssetQuality",
+                                             enumToString(AssetQuality::high),
+                                             enumerateNames<AssetQuality>(),
+                                             {"Quality of the asset"}};
+const brayns::Property PROP_ASSET_COLOR_SCHEME = {
+    "080AssetColorScheme",
+    enumToString(AssetColorScheme::none),
+    enumerateNames<AssetColorScheme>(),
+    {"Color scheme to be applied to the asset"}};
 
 } // namespace common
 } // namespace neuroscience

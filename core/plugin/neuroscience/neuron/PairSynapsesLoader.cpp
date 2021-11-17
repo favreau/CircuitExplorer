@@ -92,8 +92,8 @@ PropertyMap PairSynapsesLoader::getCLIProperties()
     pm.setProperty(PROP_SECTION_TYPE_DENDRITE);
     pm.setProperty(PROP_SECTION_TYPE_APICAL_DENDRITE);
     pm.setProperty(PROP_USE_SDF_GEOMETRY);
-    pm.setProperty(PROP_MORPHOLOGY_COLOR_SCHEME);
-    pm.setProperty(PROP_MORPHOLOGY_QUALITY);
+    pm.setProperty(PROP_ASSET_COLOR_SCHEME);
+    pm.setProperty(PROP_ASSET_QUALITY);
     return pm;
 }
 } // namespace neuron

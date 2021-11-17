@@ -77,8 +77,9 @@ std::vector<std::string> AbstractCircuitLoader::getSupportedExtensions() const
 bool AbstractCircuitLoader::isSupported(const std::string &filename,
                                         const std::string & /*extension*/) const
 {
-    const auto ends_with = [](const std::string &value,
-                              const std::string &ending) {
+    const auto ends_with =
+        [](const std::string &value, const std::string &ending)
+    {
         if (ending.size() > value.size())
             return false;
         return std::equal(ending.rbegin(), ending.rend(), value.rbegin());
@@ -88,8 +89,9 @@ bool AbstractCircuitLoader::isSupported(const std::string &filename,
         if (ends_with(filename, name))
             return true;
 
-    const auto contains = [](const std::string &value,
-                             const std::string &keyword) {
+    const auto contains =
+        [](const std::string &value, const std::string &keyword)
+    {
         if (value.size() < keyword.size())
             return false;
 
@@ -357,8 +359,8 @@ ModelDescriptorPtr AbstractCircuitLoader::importCircuit(
 {
     const auto colorScheme = stringToEnum<CircuitColorScheme>(
         properties.getProperty<std::string>(PROP_CIRCUIT_COLOR_SCHEME.name));
-    const auto morphologyQuality = stringToEnum<MorphologyQuality>(
-        properties.getProperty<std::string>(PROP_MORPHOLOGY_QUALITY.name));
+    const auto morphologyQuality = stringToEnum<AssetQuality>(
+        properties.getProperty<std::string>(PROP_ASSET_QUALITY.name));
     const auto meshFolder =
         properties.getProperty<std::string>(PROP_MESH_FOLDER.name);
     const auto meshFilenamePattern =
@@ -497,8 +499,7 @@ ModelDescriptorPtr AbstractCircuitLoader::importCircuit(
         {"Use simulation model", enumToString<bool>(!meshFolder.empty())},
         {"Mesh filename pattern", meshFilenamePattern},
         {"Mesh folder", meshFolder},
-        {"Morphology quality",
-         enumToString<MorphologyQuality>(morphologyQuality)},
+        {"Morphology quality", enumToString<AssetQuality>(morphologyQuality)},
         {"Number of neurons", std::to_string(allGids.size())},
         {"Density",
          std::to_string(properties.getProperty<double>(PROP_DENSITY.name))},
@@ -626,8 +627,8 @@ void AbstractCircuitLoader::_importMeshes(
     const size_ts &electrophysiologyTypes, const LoaderProgress &callback) const
 {
     MeshLoader meshLoader(_scene);
-    const auto morphologyQuality = stringToEnum<MorphologyQuality>(
-        properties.getProperty<std::string>(PROP_MORPHOLOGY_QUALITY.name));
+    const auto morphologyQuality = stringToEnum<AssetQuality>(
+        properties.getProperty<std::string>(PROP_ASSET_QUALITY.name));
     const auto meshTransformation =
         properties.getProperty<bool>(PROP_MESH_TRANSFORMATION.name);
 
@@ -647,10 +648,10 @@ void AbstractCircuitLoader::_importMeshes(
         GeometryQuality quality;
         switch (morphologyQuality)
         {
-        case MorphologyQuality::low:
+        case AssetQuality::low:
             quality = GeometryQuality::low;
             break;
-        case MorphologyQuality::medium:
+        case AssetQuality::medium:
             quality = GeometryQuality::medium;
             break;
         default:

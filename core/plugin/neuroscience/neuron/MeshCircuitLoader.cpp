@@ -55,10 +55,10 @@ MeshCircuitLoader::MeshCircuitLoader(
         {PROP_DAMPEN_BRANCH_THICKNESS_CHANGERATE.name, false});
     _fixedDefaults.setProperty({PROP_USER_DATA_TYPE.name,
                                 enumToString(UserDataType::simulation_offset)});
-    _fixedDefaults.setProperty({PROP_MORPHOLOGY_COLOR_SCHEME.name,
-                                enumToString(MorphologyColorScheme::none)});
     _fixedDefaults.setProperty(
-        {PROP_MORPHOLOGY_QUALITY.name, enumToString(MorphologyQuality::high)});
+        {PROP_ASSET_COLOR_SCHEME.name, enumToString(AssetColorScheme::none)});
+    _fixedDefaults.setProperty(
+        {PROP_ASSET_QUALITY.name, enumToString(AssetQuality::high)});
     _fixedDefaults.setProperty({PROP_MORPHOLOGY_MAX_DISTANCE_TO_SOMA.name,
                                 std::numeric_limits<double>::max()});
     _fixedDefaults.setProperty({PROP_CELL_CLIPPING.name, false});

@@ -67,7 +67,8 @@ PropertyMap VasculatureLoader::getCLIProperties()
     PropertyMap pm(LOADER_NAME);
     pm.setProperty(PROP_USE_SDF_GEOMETRY);
     pm.setProperty(PROP_RADIUS_MULTIPLIER);
-    pm.setProperty(PROP_MORPHOLOGY_QUALITY);
+    pm.setProperty(PROP_ASSET_QUALITY);
+    pm.setProperty(PROP_ASSET_COLOR_SCHEME);
     return pm;
 }
 
@@ -187,6 +188,7 @@ ModelDescriptorPtr VasculatureLoader::importFromFile(
     const std::string& filename, const LoaderProgress& callback,
     const PropertyMap& properties) const
 {
+    std::set<size_t> materialIds;
     ModelDescriptorPtr modelDescriptor{nullptr};
     try
     {
@@ -198,8 +200,10 @@ ModelDescriptorPtr VasculatureLoader::importFromFile(
             props.getProperty<bool>(PROP_USE_SDF_GEOMETRY.name);
         const double radiusMultiplier =
             props.getProperty<double>(PROP_RADIUS_MULTIPLIER.name);
-        const auto morphologyQuality = stringToEnum<MorphologyQuality>(
-            properties.getProperty<std::string>(PROP_MORPHOLOGY_QUALITY.name));
+        const auto morphologyQuality = stringToEnum<AssetQuality>(
+            properties.getProperty<std::string>(PROP_ASSET_QUALITY.name));
+        const auto colorScheme = stringToEnum<AssetColorScheme>(
+            properties.getProperty<std::string>(PROP_ASSET_COLOR_SCHEME.name));
 
         std::unique_ptr<HighFive::File> file = std::unique_ptr<HighFive::File>(
             new HighFive::File(filename, HighFive::File::ReadOnly));
@@ -222,7 +226,7 @@ ModelDescriptorPtr VasculatureLoader::importFromFile(
         start_s.read(ss);
 
         std::vector<double> ex, ey, ez, ed;
-        if (morphologyQuality != MorphologyQuality::low)
+        if (morphologyQuality != AssetQuality::low)
         {
             const auto& end_x = zero.getDataSet("end_x");
             end_x.read(ex);
@@ -236,11 +240,6 @@ ModelDescriptorPtr VasculatureLoader::importFromFile(
 
         auto model = _scene.createModel();
 
-        auto nodeMaterial = model->createMaterial(DEFAULT_MATERIAL, "Node");
-        nodeMaterial->setDiffuseColor({1.f, 1.f, 1.f});
-        nodeMaterial->setSpecularColor({1.f, 1.f, 1.f});
-        nodeMaterial->setSpecularExponent(100.f);
-
         const uint64_t nbSegments = sx.size();
         PLUGIN_INFO("Added vasculature made of " << nbSegments << " segments");
         for (uint64_t i = 0; i < nbSegments; ++i)
@@ -251,9 +250,24 @@ ModelDescriptorPtr VasculatureLoader::importFromFile(
             const Vector3f start{sx[i], sy[i], sz[i]};
             const float start_radius = sd[i] * 0.5f * radiusMultiplier;
 
+            size_t materialId = DEFAULT_MATERIAL;
+
+            switch (colorScheme)
+            {
+            case AssetColorScheme::by_segment:
+                materialId = i;
+                break;
+            case AssetColorScheme::by_section:
+                materialId = sectionId;
+                break;
+            default:
+                materialId = DEFAULT_MATERIAL;
+            }
+            materialIds.insert(materialId);
+
             const Vector3f displacementParams = {std::min(start_radius, 0.2f),
                                                  0.75f, 1.0f};
-            if (morphologyQuality != MorphologyQuality::medium)
+            if (morphologyQuality != AssetQuality::medium)
                 if (useSDFGeometry)
                 {
                     const size_t idx =
@@ -261,13 +275,13 @@ ModelDescriptorPtr VasculatureLoader::importFromFile(
                                         createSDFSphere(start, start_radius,
                                                         userData,
                                                         displacementParams),
-                                        {}, DEFAULT_MATERIAL, sectionId);
+                                        {}, materialId, sectionId);
                 }
                 else
-                    model->addSphere(DEFAULT_MATERIAL,
+                    model->addSphere(materialId,
                                      {start, start_radius, userData});
 
-            if (morphologyQuality != MorphologyQuality::low)
+            if (morphologyQuality != AssetQuality::low)
             {
                 const Vector3f end{ex[i], ey[i], ez[i]};
                 const float end_radius = ed[i] * 0.5f * radiusMultiplier;
@@ -275,26 +289,35 @@ ModelDescriptorPtr VasculatureLoader::importFromFile(
                 if (useSDFGeometry)
                 {
                     _addStepConeGeometry(useSDFGeometry, start, start_radius,
-                                         end, end_radius, DEFAULT_MATERIAL,
-                                         userData, *model, sdfMorphologyData,
-                                         sectionId, displacementParams);
+                                         end, end_radius, materialId, userData,
+                                         *model, sdfMorphologyData, sectionId,
+                                         displacementParams);
                 }
                 else
                 {
                     if (almost_equal(start_radius, end_radius, 100000))
-                        model->addCylinder(DEFAULT_MATERIAL,
+                        model->addCylinder(materialId,
                                            {start, end, start_radius,
                                             userData});
                     else
-                        model->addCone(DEFAULT_MATERIAL,
-                                       {start, end, start_radius, end_radius,
-                                        userData});
+                        model->addCone(materialId, {start, end, start_radius,
+                                                    end_radius, userData});
                 }
             }
         }
 
         if (useSDFGeometry)
             _finalizeSDFGeometries(*model, sdfMorphologyData);
+
+        // Materials
+        for (const auto materialId : materialIds)
+        {
+            auto nodeMaterial =
+                model->createMaterial(materialId, std::to_string(materialId));
+            nodeMaterial->setDiffuseColor({1.f, 1.f, 1.f});
+            nodeMaterial->setSpecularColor({1.f, 1.f, 1.f});
+            nodeMaterial->setSpecularExponent(100.f);
+        }
 
         modelDescriptor =
             std::make_shared<brayns::ModelDescriptor>(std::move(model),

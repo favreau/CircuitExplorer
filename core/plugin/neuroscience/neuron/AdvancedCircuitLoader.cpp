@@ -82,8 +82,8 @@ PropertyMap AdvancedCircuitLoader::getCLIProperties()
     pm.setProperty(PROP_USE_SDF_GEOMETRY);
     pm.setProperty(PROP_DAMPEN_BRANCH_THICKNESS_CHANGERATE);
     pm.setProperty(PROP_USER_DATA_TYPE);
-    pm.setProperty(PROP_MORPHOLOGY_COLOR_SCHEME);
-    pm.setProperty(PROP_MORPHOLOGY_QUALITY);
+    pm.setProperty(PROP_ASSET_COLOR_SCHEME);
+    pm.setProperty(PROP_ASSET_QUALITY);
     pm.setProperty(PROP_MORPHOLOGY_MAX_DISTANCE_TO_SOMA);
     pm.setProperty(PROP_CELL_CLIPPING);
     pm.setProperty(PROP_AREAS_OF_INTEREST);

@@ -224,31 +224,29 @@ void MorphologyLoader::_connectSDFBifurcations(
         // Function for connecting overlapping geometries with current
         // bifurcation
         const auto connectGeometriesToBifurcation =
-            [&](const std::vector<size_t>& geometries) {
-                const auto& bifGeom =
-                    sdfMorphologyData.geometries[bifurcationId];
+            [&](const std::vector<size_t>& geometries)
+        {
+            const auto& bifGeom = sdfMorphologyData.geometries[bifurcationId];
 
-                for (size_t geomIdx : geometries)
+            for (size_t geomIdx : geometries)
+            {
+                // Do not blend yourself
+                if (geomIdx == bifurcationId)
+                    continue;
+
+                const auto& geom = sdfMorphologyData.geometries[geomIdx];
+                const double dist0 = glm::distance2(geom.p0, bifGeom.p0);
+                const double dist1 = glm::distance2(geom.p1, bifGeom.p0);
+                const double radiusSum = geom.r0 + bifGeom.r0;
+                const double radiusSumSq = radiusSum * radiusSum;
+
+                if (dist0 < radiusSumSq || dist1 < radiusSumSq)
                 {
-                    // Do not blend yourself
-                    if (geomIdx == bifurcationId)
-                        continue;
-
-                    const auto& geom = sdfMorphologyData.geometries[geomIdx];
-                    const double dist0 = glm::distance2(geom.p0, bifGeom.p0);
-                    const double dist1 = glm::distance2(geom.p1, bifGeom.p0);
-                    const double radiusSum = geom.r0 + bifGeom.r0;
-                    const double radiusSumSq = radiusSum * radiusSum;
-
-                    if (dist0 < radiusSumSq || dist1 < radiusSumSq)
-                    {
-                        sdfMorphologyData.neighbours[bifurcationId].insert(
-                            geomIdx);
-                        sdfMorphologyData.neighbours[geomIdx].insert(
-                            bifurcationId);
-                    }
+                    sdfMorphologyData.neighbours[bifurcationId].insert(geomIdx);
+                    sdfMorphologyData.neighbours[geomIdx].insert(bifurcationId);
                 }
-            };
+            }
+        };
 
         // Connect all child sections
         for (const size_t sectionChild : mts.sectionChildren[section])
@@ -382,7 +380,8 @@ MorphologyTreeStructure MorphologyLoader::_calculateMorphologyTreeStructure(
     }
 
     const auto overlaps = [](const std::pair<double, Vector3f>& p0,
-                             const std::pair<double, Vector3f>& p1) {
+                             const std::pair<double, Vector3f>& p1)
+    {
         const double d = (p0.second - p1.second).length();
         const double r = p0.first + p1.first;
 
@@ -619,8 +618,8 @@ void MorphologyLoader::_importMorphologyFromURI(
 
     // Soma
     const auto sectionTypes = getSectionTypesFromProperties(properties);
-    const auto morphologyQuality = stringToEnum<MorphologyQuality>(
-        properties.getProperty<std::string>(PROP_MORPHOLOGY_QUALITY.name));
+    const auto morphologyQuality = stringToEnum<AssetQuality>(
+        properties.getProperty<std::string>(PROP_ASSET_QUALITY.name));
     const auto userDataType = stringToEnum<UserDataType>(
         properties.getProperty<std::string>(PROP_USER_DATA_TYPE.name));
     const auto useSDFGeometry =
@@ -696,10 +695,10 @@ void MorphologyLoader::_importMorphologyFromURI(
         size_t step = 1;
         switch (morphologyQuality)
         {
-        case MorphologyQuality::low:
+        case AssetQuality::low:
             step = nbSamples - 1;
             break;
-        case MorphologyQuality::medium:
+        case AssetQuality::medium:
             step = nbSamples / 2;
             step = (step == 0) ? 1 : step;
             break;
@@ -1188,11 +1187,11 @@ size_t MorphologyLoader::_getMaterialIdFromColorScheme(
     const brain::neuron::SectionType& sectionType) const
 {
     size_t materialId;
-    const auto colorScheme = stringToEnum<MorphologyColorScheme>(
-        properties.getProperty<std::string>(PROP_MORPHOLOGY_COLOR_SCHEME.name));
+    const auto colorScheme = stringToEnum<AssetColorScheme>(
+        properties.getProperty<std::string>(PROP_ASSET_COLOR_SCHEME.name));
     switch (colorScheme)
     {
-    case MorphologyColorScheme::neuron_by_segment_type:
+    case AssetColorScheme::by_segment:
         switch (sectionType)
         {
         case brain::neuron::SectionType::soma:
@@ -1264,8 +1263,8 @@ PropertyMap MorphologyLoader::getCLIProperties()
     pm.setProperty(PROP_USE_SDF_GEOMETRY);
     pm.setProperty(PROP_DAMPEN_BRANCH_THICKNESS_CHANGERATE);
     pm.setProperty(PROP_USER_DATA_TYPE);
-    pm.setProperty(PROP_MORPHOLOGY_COLOR_SCHEME);
-    pm.setProperty(PROP_MORPHOLOGY_QUALITY);
+    pm.setProperty(PROP_ASSET_COLOR_SCHEME);
+    pm.setProperty(PROP_ASSET_QUALITY);
     pm.setProperty(PROP_MORPHOLOGY_MAX_DISTANCE_TO_SOMA);
     pm.setProperty(PROP_INTERNALS);
     return pm;
