@@ -20,6 +20,7 @@
 
 #include <common/CommonTypes.h>
 #include <common/Logs.h>
+#include <common/Utils.h>
 #include <plugin/neuroscience/common/Types.h>
 
 #include <brayns/engineapi/Material.h>
@@ -69,6 +70,7 @@ PropertyMap VasculatureLoader::getCLIProperties()
     pm.setProperty(PROP_RADIUS_MULTIPLIER);
     pm.setProperty(PROP_ASSET_QUALITY);
     pm.setProperty(PROP_ASSET_COLOR_SCHEME);
+    pm.setProperty(PROP_GIDS);
     return pm;
 }
 
@@ -99,6 +101,7 @@ typename std::enable_if<!std::numeric_limits<T>::is_integer, bool>::type
            || std::abs(x - y) < std::numeric_limits<T>::min();
 }
 
+// TODO: Generalise SDF for any type of asset
 size_t VasculatureLoader::_addSDFGeometry(SDFMorphologyData& sdfMorphologyData,
                                           const SDFGeometry& geometry,
                                           const std::set<size_t>& neighbours,
@@ -204,6 +207,11 @@ ModelDescriptorPtr VasculatureLoader::importFromFile(
             properties.getProperty<std::string>(PROP_ASSET_QUALITY.name));
         const auto colorScheme = stringToEnum<AssetColorScheme>(
             properties.getProperty<std::string>(PROP_ASSET_COLOR_SCHEME.name));
+        const auto gidsAsString =
+            properties.getProperty<std::string>(PROP_GIDS.name);
+
+        PLUGIN_ERROR("Section GIDs " << gidsAsString);
+        const auto gids = GIDsAsInts(gidsAsString);
 
         std::unique_ptr<HighFive::File> file = std::unique_ptr<HighFive::File>(
             new HighFive::File(filename, HighFive::File::ReadOnly));
@@ -242,11 +250,21 @@ ModelDescriptorPtr VasculatureLoader::importFromFile(
 
         const uint64_t nbSegments = sx.size();
         PLUGIN_INFO("Added vasculature made of " << nbSegments << " segments");
+        uint64_t nbLoadedSegments = 0;
+        std::set<uint32_t> nbLoadedSections;
+
         for (uint64_t i = 0; i < nbSegments; ++i)
         {
+            const uint32_t sectionId = ss[i];
+            if (!gids.empty() &&
+                std::find(gids.begin(), gids.end(), sectionId) == gids.end())
+                continue;
+
+            nbLoadedSections.insert(sectionId);
+            ++nbLoadedSegments;
+
             callback.updateProgress("Loading vasculature...", i / nbSegments);
             const uint64_t userData = i;
-            const uint32_t sectionId = ss[i];
             const Vector3f start{sx[i], sy[i], sz[i]};
             const float start_radius = sd[i] * 0.5f * radiusMultiplier;
 
@@ -319,9 +337,16 @@ ModelDescriptorPtr VasculatureLoader::importFromFile(
             nodeMaterial->setSpecularExponent(100.f);
         }
 
+        ModelMetadata metadata = {
+            {"GIDs", properties.getProperty<std::string>(PROP_GIDS.name)},
+            {"Color scheme", enumToString<AssetColorScheme>(colorScheme)},
+            {"Morphology quality",
+             enumToString<AssetQuality>(morphologyQuality)},
+            {"Number of sections", std::to_string(nbLoadedSections.size())},
+            {"Number of segments", std::to_string(nbLoadedSegments)}};
         modelDescriptor =
             std::make_shared<brayns::ModelDescriptor>(std::move(model),
-                                                      "Vasculature");
+                                                      "Vasculature", metadata);
     }
     catch (const HighFive::FileException& exc)
     {

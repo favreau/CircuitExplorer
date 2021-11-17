@@ -95,8 +95,6 @@ private:
     std::vector<std::string> _getTargetsAsStrings(
         const std::string &targets) const;
 
-    std::vector<uint64_t> _getGIDsAsInts(const std::string &gids) const;
-
     brain::GIDSet _getGids(const PropertyMap &properties,
                            const brion::BlueConfig &blueConfiguration,
                            const brain::Circuit &circuit,

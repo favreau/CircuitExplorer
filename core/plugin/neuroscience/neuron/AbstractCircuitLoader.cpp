@@ -120,17 +120,6 @@ std::vector<std::string> AbstractCircuitLoader::_getTargetsAsStrings(
     return result;
 }
 
-std::vector<uint64_t> AbstractCircuitLoader::_getGIDsAsInts(
-    const std::string &gids) const
-{
-    std::vector<uint64_t> result;
-    std::string split;
-    std::istringstream ss(gids);
-    while (std::getline(ss, split, ','))
-        result.push_back(atoi(split.c_str()));
-    return result;
-}
-
 brain::GIDSet AbstractCircuitLoader::_getGids(
     const PropertyMap &properties, const brion::BlueConfig &blueConfiguration,
     const brain::Circuit &circuit, GIDOffsets &targetGIDOffsets) const
@@ -138,7 +127,7 @@ brain::GIDSet AbstractCircuitLoader::_getGids(
     const auto circuitTargets = _getTargetsAsStrings(
         properties.getProperty<std::string>(PROP_TARGETS.name));
     const auto circuitGids =
-        _getGIDsAsInts(properties.getProperty<std::string>(PROP_GIDS.name));
+        GIDsAsInts(properties.getProperty<std::string>(PROP_GIDS.name));
     const auto circuitDensity =
         properties.getProperty<double>(PROP_DENSITY.name);
     const auto randomSeed =

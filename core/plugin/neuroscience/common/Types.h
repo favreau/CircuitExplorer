@@ -232,10 +232,6 @@ const brayns::Property PROP_TARGETS = {
     "010Targets",
     std::string(""),
     {"Circuit targets [comma separated list of labels]"}};
-const brayns::Property PROP_GIDS = {
-    "011Gids",
-    std::string(""),
-    {"Circuit GIDs [comma separated list of GIDs]"}};
 const brayns::Property PROP_PRESYNAPTIC_NEURON_GID = {
     "012PreNeuron", std::string(""), {"Pre-synaptic neuron GID"}};
 const brayns::Property PROP_POSTSYNAPTIC_NEURON_GID = {
@@ -302,6 +298,9 @@ const brayns::Property PROP_DB_CONNECTION_STRING = {
     "000DbConnectionString",
     std::string(""),
     {"Connection string to the database"}};
+const brayns::Property PROP_GIDS = {"011Gids",
+                                    std::string(""),
+                                    {"GIDs [comma separated list of GIDs]"}};
 const brayns::Property PROP_RADIUS_MULTIPLIER = {
     "050RadiusMultiplier",
     double(1.0),

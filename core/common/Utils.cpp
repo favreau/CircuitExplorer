@@ -100,4 +100,15 @@ float capsuleVolume(const float height, const float radius)
 {
     return sphereVolume(radius) + cylinderVolume(height, radius);
 }
+
+std::vector<uint64_t> GIDsAsInts(const std::string& gids)
+{
+    std::vector<uint64_t> result;
+    std::string split;
+    std::istringstream ss(gids);
+    while (std::getline(ss, split, ','))
+        result.push_back(atoi(split.c_str()));
+    return result;
+}
+
 } // namespace circuitexplorer

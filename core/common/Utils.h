@@ -31,6 +31,8 @@ brayns::Vector3f get_translation(const brayns::Matrix4f& matrix);
 brayns::Vector3f transformVector3f(const brayns::Vector3f& v,
                                    const brayns::Matrix4f& transformation);
 
+std::vector<uint64_t> GIDsAsInts(const std::string& gids);
+
 // Containers
 bool inBox(const brayns::Vector3f& point, const brayns::Boxf& box);
 brayns::Vector3f getPointInSphere(const float innerRadius);

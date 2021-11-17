@@ -392,12 +392,20 @@ class CircuitExplorer:
 
     def load_vasculature(self, name, path, use_sdf=False, radius_multiplier=1.0,
                          geometry_quality=GEOMETRY_QUALITY_LOW,
-                         color_scheme=MORPHOLOGY_COLOR_SCHEME_NONE):
+                         color_scheme=MORPHOLOGY_COLOR_SCHEME_NONE,
+                         section_gids=list()):
+        section_gids_as_string = ''
+        for gid in section_gids:
+            if (section_gids_as_string != ''):
+                section_gids_as_string += ','
+            section_gids_as_string += str(gid)
+        
         props = dict()
         props['060UseSdfgeometry'] = use_sdf
         props['050RadiusMultiplier'] = radius_multiplier
         props['090AssetQuality'] = geometry_quality
         props['080AssetColorScheme'] = color_scheme
+        props['011Gids'] = section_gids_as_string
         return self._core.add_model(
             name=name, path=path, loader_name='Vasculature', loader_properties=props)
 
