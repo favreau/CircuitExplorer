@@ -242,7 +242,7 @@ class CircuitExplorer:
 
         props['120Internals'] = generate_internals
 
-        return self._core.add_model(name=name, path=path, load_properties=props)
+        return self._core.add_model(name=name, path=path, loader_properties=props)
 
     def load_pair_synapses_usecase(self, path, pre_synaptic_neuron, post_synaptic_neuron,
                                    radius_multiplier=1, radius_correction=0,
@@ -317,7 +317,7 @@ class CircuitExplorer:
 
         return self._core.add_model(
             name='Pair-symapses (%d, %d)' % (pre_synaptic_neuron, post_synaptic_neuron),
-            path=path, load_properties=props)
+            path=path, loader_properties=props)
 
     def load_astrocytes(self, path, name='Astrocytes', radius_multiplier=1.0, radius_correction=0.0,
                         load_soma=True, load_dendrite=True, load_end_foot=False,
@@ -388,7 +388,7 @@ class CircuitExplorer:
 
         props['120Internals'] = generate_internals
 
-        return self._core.add_model(name=name, path=path, load_properties=props)
+        return self._core.add_model(name=name, path=path, loader_properties=props)
 
     def load_vasculature(self, name, path, use_sdf=False, radius_multiplier=1.0,
                          geometry_quality=GEOMETRY_QUALITY_LOW,
