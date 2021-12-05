@@ -134,7 +134,8 @@ class CircuitExplorer:
                      circuit_color_scheme=CIRCUIT_COLOR_SCHEME_NONE, mesh_folder='',
                      mesh_filename_pattern='', mesh_transformation=False, radius_multiplier=1,
                      radius_correction=0, load_soma=True, load_axon=True, load_dendrite=True,
-                     load_apical_dendrite=True, use_sdf=False,
+                     load_apical_dendrite=True, use_sdf_soma=False, use_sdf_branches=False,
+                     use_sdf_nucleus=False, use_sdf_mitochonria=False, use_sdf_synapses=False,
                      dampen_branch_thickness_changerate=True, 
                      morphology_color_scheme=MORPHOLOGY_COLOR_SCHEME_NONE,
                      morphology_quality=GEOMETRY_QUALITY_HIGH, max_distance_to_soma=1e6,
@@ -171,7 +172,11 @@ class CircuitExplorer:
         :param bool load_axon: Defines if the axons should be loaded
         :param bool load_dendrite: Defines if the dendrites should be loaded
         :param bool load_apical_dendrite: Defines if the apical dendrites should be loaded
-        :param bool use_sdf: Defines if signed distance field geometries should be used
+        :param bool use_sdf_soma: Defines if signed distance field technique should be used for the soma
+        :param bool use_sdf_branches: Defines if signed distance field technique should be used for the branches (dendrites and axon)
+        :param bool use_sdf_nucleus: Defines if signed distance field technique should be used for the nucleus
+        :param bool use_sdf_morphology: Defines if signed distance field technique should be used for the mitochondria
+        :param bool use_sdf_synapses: Defines if signed distance field technique should be used for the synapses
         :param bool dampen_branch_thickness_changerate: Defines if the dampen branch
         thicknesschangerate option should be used (Only application is use_sdf is True)
         :param int morphology_color_scheme: Defines the color scheme to apply to the morphologies (
@@ -227,8 +232,12 @@ class CircuitExplorer:
         props['054SectionTypeDendrite'] = load_dendrite
         props['055SectionTypeApicalDendrite'] = load_apical_dendrite
 
-        props['060UseSdfgeometry'] = use_sdf
-        props['061DampenBranchThicknessChangerate'] = dampen_branch_thickness_changerate
+        props['060UseSdfSoma'] = use_sdf_soma
+        props['061UseSdfBranches'] = use_sdf_branches
+        props['062UseSdfNucleus'] = use_sdf_nucleus
+        props['063UseSdfMitochondria'] = use_sdf_mitochonria
+        props['064UseSdfSynapses'] = use_sdf_synapses
+        props['065DampenBranchThicknessChangerate'] = dampen_branch_thickness_changerate
 
         props['080AssetColorScheme'] = morphology_color_scheme
 
@@ -247,7 +256,7 @@ class CircuitExplorer:
     def load_pair_synapses_usecase(self, path, pre_synaptic_neuron, post_synaptic_neuron,
                                    radius_multiplier=1, radius_correction=0,
                                    load_soma=True, load_axon=True, load_dendrite=True,
-                                   load_apical_dendrite=True, use_sdf=False,
+                                   load_apical_dendrite=True, use_sdf_soma=False, use_sdf_branches=False,
                                    dampen_branch_thickness_changerate=True,
                                    morphology_color_scheme=MORPHOLOGY_COLOR_SCHEME_NONE,
                                    morphology_quality=GEOMETRY_QUALITY_HIGH):
@@ -262,7 +271,8 @@ class CircuitExplorer:
         :param bool load_axon: Defines if the axons should be loaded
         :param bool load_dendrite: Defines if the dendrites should be loaded
         :param bool load_apical_dendrite: Defines if the apical dendrites should be loaded
-        :param bool use_sdf: Defines if signed distance field geometries should be used
+        :param bool use_sdf_soma: Defines if signed distance field technique should be used for the soma
+        :param bool use_sdf_branches: Defines if signed distance field technique should be used for the branches (dendrites and axon)
         :param bool dampen_branch_thickness_changerate: Defines if the dampen branch
         thicknesschangerate option should be used (Only application is use_sdf is True)
         :param int morphology_color_scheme: Defines the color scheme to apply to the morphologies (
@@ -300,8 +310,9 @@ class CircuitExplorer:
         props['054SectionTypeDendrite'] = load_dendrite
         props['055SectionTypeApicalDendrite'] = load_apical_dendrite
 
-        props['060UseSdfgeometry'] = use_sdf
-        props['061DampenBranchThicknessChangerate'] = dampen_branch_thickness_changerate
+        props['060UseSdfSoma'] = use_sdf_soma
+        props['061UseSdfBranches'] = use_sdf_branches
+        props['065DampenBranchThicknessChangerate'] = dampen_branch_thickness_changerate
 
         props['080AssetColorScheme'] = morphology_color_scheme
 
@@ -321,7 +332,7 @@ class CircuitExplorer:
 
     def load_astrocytes(self, path, name='Astrocytes', radius_multiplier=1.0, radius_correction=0.0,
                         load_soma=True, load_dendrite=True, load_end_foot=False,
-                        use_sdf=False, dampen_branch_thickness_changerate=True,
+                        use_sdf_soma=False, use_sdf_branches=False,dampen_branch_thickness_changerate=True,
                         morphology_color_scheme=MORPHOLOGY_COLOR_SCHEME_NONE,
                         morphology_quality=GEOMETRY_QUALITY_HIGH, generate_internals=False):
         """
@@ -334,7 +345,7 @@ class CircuitExplorer:
         :param bool load_soma: Defines if the somas should be loaded
         :param bool load_dendrite: Defines if the dendrites should be loaded
         :param bool load_end_foot: Defines if the end foot should be loaded
-        :param bool use_sdf: Defines if signed distance field geometries should be used
+        :param bool use_sdf_morphology: Defines if signed distance field geometries should be used
         :param bool dampen_branch_thickness_changerate: Defines if the dampen branch
         thicknesschangerate option should be used (Only application is use_sdf is True)
         :param int morphology_color_scheme: Defines the color scheme to apply to the morphologies (
@@ -372,8 +383,9 @@ class CircuitExplorer:
         props['054SectionTypeDendrite'] = load_dendrite
         props['055SectionTypeApicalDendrite'] = load_end_foot
 
-        props['060UseSdfgeometry'] = use_sdf
-        props['061DampenBranchThicknessChangerate'] = dampen_branch_thickness_changerate
+        props['060UseSdfSoma'] = use_sdf_soma
+        props['061UseSdfBranches'] = use_sdf_branches
+        props['065DampenBranchThicknessChangerate'] = dampen_branch_thickness_changerate
 
         props['080AssetColorScheme'] = morphology_color_scheme
 
@@ -401,7 +413,7 @@ class CircuitExplorer:
             section_gids_as_string += str(gid)
         
         props = dict()
-        props['060UseSdfgeometry'] = use_sdf
+        props['061UseSdfBranches'] = use_sdf
         props['050RadiusMultiplier'] = radius_multiplier
         props['090AssetQuality'] = geometry_quality
         props['080AssetColorScheme'] = color_scheme

@@ -62,6 +62,9 @@ PairSynapsesLoader::PairSynapsesLoader(
     _fixedDefaults.setProperty({PROP_LOAD_AFFERENT_SYNAPSES.name, true});
     _fixedDefaults.setProperty({PROP_LOAD_EFFERENT_SYNAPSES.name, true});
     _fixedDefaults.setProperty({PROP_INTERNALS.name, false});
+    _fixedDefaults.setProperty({PROP_USE_SDF_NUCLEUS.name, false});
+    _fixedDefaults.setProperty({PROP_USE_SDF_MITOCHONDRIA.name, false});
+    _fixedDefaults.setProperty({PROP_USE_SDF_SYNAPSES.name, false});
 }
 
 ModelDescriptorPtr PairSynapsesLoader::importFromFile(
@@ -91,7 +94,8 @@ PropertyMap PairSynapsesLoader::getCLIProperties()
     pm.setProperty(PROP_SECTION_TYPE_AXON);
     pm.setProperty(PROP_SECTION_TYPE_DENDRITE);
     pm.setProperty(PROP_SECTION_TYPE_APICAL_DENDRITE);
-    pm.setProperty(PROP_USE_SDF_GEOMETRY);
+    pm.setProperty(PROP_USE_SDF_SOMA);
+    pm.setProperty(PROP_USE_SDF_BRANCHES);
     pm.setProperty(PROP_ASSET_COLOR_SCHEME);
     pm.setProperty(PROP_ASSET_QUALITY);
     return pm;

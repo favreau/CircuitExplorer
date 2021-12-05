@@ -309,10 +309,22 @@ const brayns::Property PROP_RADIUS_CORRECTION = {
     "051RadiusCorrection",
     double(0.0),
     {"Value overrideing the radius of the morphology"}};
-const brayns::Property PROP_USE_SDF_GEOMETRY = {
-    "060UseSdfgeometry", true, {"Use signed distance field geometry"}};
+const brayns::Property PROP_USE_SDF_SOMA = {
+    "060UseSdfSoma", true, {"Use signed distance field for the soma"}};
+const brayns::Property PROP_USE_SDF_BRANCHES = {
+    "061UseSdfBranches",
+    true,
+    {"Use signed distance field for the branches (dendrites and axon)"}};
+const brayns::Property PROP_USE_SDF_NUCLEUS = {
+    "062UseSdfNucleus", true, {"Use signed distance field for the nucleus"}};
+const brayns::Property PROP_USE_SDF_MITOCHONDRIA = {
+    "063UseSdfMitochondria",
+    true,
+    {"Use signed distance field for the mitochondria"}};
+const brayns::Property PROP_USE_SDF_SYNAPSES = {
+    "064UseSdfSynapses", true, {"Use signed distance field for the synapses"}};
 const brayns::Property PROP_DAMPEN_BRANCH_THICKNESS_CHANGERATE = {
-    "061DampenBranchThicknessChangerate",
+    "065DampenBranchThicknessChangerate",
     true,
     {"Dampen branch thickness changerate"}};
 const brayns::Property PROP_ASSET_QUALITY = {"090AssetQuality",

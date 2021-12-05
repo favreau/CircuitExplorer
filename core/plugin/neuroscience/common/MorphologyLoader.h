@@ -118,8 +118,8 @@ private:
      * @param radius Radius to be corrected
      * @return Corrected value of a radius according to geometry parameters
      */
-    double _getCorrectedRadius(const PropertyMap& properties,
-                               const double radius) const;
+    float _getCorrectedRadius(const PropertyMap& properties,
+                              const float radius) const;
 
     void _importMorphology(const Gid& gid, const PropertyMap& properties,
                            const std::string& source, const uint64_t index,
@@ -255,7 +255,8 @@ private:
     float _distanceToSoma(const brain::neuron::Section& section,
                           const size_t sampleId) const;
 
-    void _addSynapse(const bool useSDF, const brain::Synapse& synapse,
+    void _addSynapse(const PropertyMap& properties,
+                     const brain::Synapse& synapse,
                      const SynapseType synapseType,
                      const brain::neuron::Sections& sections,
                      const Vector3f& somaPosition, const float somaRadius,
@@ -264,19 +265,19 @@ private:
                      SDFMorphologyData& sdfMorphologyData,
                      uint32_t& sdfGroupId) const;
 
-    void _addSomaInternals(const uint64_t index, ParallelModelContainer& model,
+    void _addSomaInternals(const PropertyMap& properties, const uint64_t index,
+                           ParallelModelContainer& model,
                            const size_t materialId, const float somaRadius,
                            const float mitochondriaDensity,
-                           const bool useSDFGeometry,
                            SDFMorphologyData& sdfMorphologyData,
                            uint32_t& sdfGroupId) const;
 
     void _addSectionInternals(
-        const PropertyMap& properties, const bool useSDFGeometry,
-        const float sectionLength, const float sectionVolume,
-        const brion::Vector4fs& samples, const float mitochondriaDensity,
-        const size_t materialId, SDFMorphologyData& sdfMorphologyData,
-        uint32_t& sdfGroupId, ParallelModelContainer& model) const;
+        const PropertyMap& properties, const float sectionLength,
+        const float sectionVolume, const brion::Vector4fs& samples,
+        const float mitochondriaDensity, const size_t materialId,
+        SDFMorphologyData& sdfMorphologyData, uint32_t& sdfGroupId,
+        ParallelModelContainer& model) const;
 
     size_t _getNbMitochondrionSegments() const;
 

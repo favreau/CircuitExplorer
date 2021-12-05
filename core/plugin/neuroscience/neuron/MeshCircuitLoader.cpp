@@ -38,7 +38,6 @@ MeshCircuitLoader::MeshCircuitLoader(
     PLUGIN_INFO("Registering " << LOADER_NAME);
     _fixedDefaults.setProperty(
         {PROP_DB_CONNECTION_STRING.name, std::string("")});
-    _fixedDefaults.setProperty({PROP_USE_SDF_GEOMETRY.name, false});
     _fixedDefaults.setProperty(
         {PROP_PRESYNAPTIC_NEURON_GID.name, std::string("")});
     _fixedDefaults.setProperty(
@@ -50,7 +49,11 @@ MeshCircuitLoader::MeshCircuitLoader(
     _fixedDefaults.setProperty(
         {PROP_RADIUS_MULTIPLIER.name, DEFAULT_RADIUS_MULTIPLIER});
     _fixedDefaults.setProperty({PROP_RADIUS_CORRECTION.name, 0.0});
-    _fixedDefaults.setProperty({PROP_USE_SDF_GEOMETRY.name, false});
+    _fixedDefaults.setProperty({PROP_USE_SDF_SOMA.name, false});
+    _fixedDefaults.setProperty({PROP_USE_SDF_BRANCHES.name, false});
+    _fixedDefaults.setProperty({PROP_USE_SDF_NUCLEUS.name, false});
+    _fixedDefaults.setProperty({PROP_USE_SDF_MITOCHONDRIA.name, false});
+    _fixedDefaults.setProperty({PROP_USE_SDF_SYNAPSES.name, false});
     _fixedDefaults.setProperty(
         {PROP_DAMPEN_BRANCH_THICKNESS_CHANGERATE.name, false});
     _fixedDefaults.setProperty({PROP_USER_DATA_TYPE.name,

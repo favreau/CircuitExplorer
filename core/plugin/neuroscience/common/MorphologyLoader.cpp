@@ -118,12 +118,12 @@ void MorphologyLoader::_importMorphology(
                                  mitochondriaDensity);
 }
 
-double MorphologyLoader::_getCorrectedRadius(const PropertyMap& properties,
-                                             const double radius) const
+float MorphologyLoader::_getCorrectedRadius(const PropertyMap& properties,
+                                            const float radius) const
 {
-    const double radiusCorrection =
+    const float radiusCorrection =
         properties.getProperty<double>(PROP_RADIUS_CORRECTION.name);
-    const double radiusMultiplier =
+    const float radiusMultiplier =
         properties.getProperty<double>(PROP_RADIUS_MULTIPLIER.name);
     return (radiusCorrection != 0.0 ? radiusCorrection
                                     : radius * radiusMultiplier * 0.5);
@@ -224,29 +224,31 @@ void MorphologyLoader::_connectSDFBifurcations(
         // Function for connecting overlapping geometries with current
         // bifurcation
         const auto connectGeometriesToBifurcation =
-            [&](const std::vector<size_t>& geometries)
-        {
-            const auto& bifGeom = sdfMorphologyData.geometries[bifurcationId];
+            [&](const std::vector<size_t>& geometries) {
+                const auto& bifGeom =
+                    sdfMorphologyData.geometries[bifurcationId];
 
-            for (size_t geomIdx : geometries)
-            {
-                // Do not blend yourself
-                if (geomIdx == bifurcationId)
-                    continue;
-
-                const auto& geom = sdfMorphologyData.geometries[geomIdx];
-                const double dist0 = glm::distance2(geom.p0, bifGeom.p0);
-                const double dist1 = glm::distance2(geom.p1, bifGeom.p0);
-                const double radiusSum = geom.r0 + bifGeom.r0;
-                const double radiusSumSq = radiusSum * radiusSum;
-
-                if (dist0 < radiusSumSq || dist1 < radiusSumSq)
+                for (size_t geomIdx : geometries)
                 {
-                    sdfMorphologyData.neighbours[bifurcationId].insert(geomIdx);
-                    sdfMorphologyData.neighbours[geomIdx].insert(bifurcationId);
+                    // Do not blend yourself
+                    if (geomIdx == bifurcationId)
+                        continue;
+
+                    const auto& geom = sdfMorphologyData.geometries[geomIdx];
+                    const double dist0 = glm::distance2(geom.p0, bifGeom.p0);
+                    const double dist1 = glm::distance2(geom.p1, bifGeom.p0);
+                    const double radiusSum = geom.r0 + bifGeom.r0;
+                    const double radiusSumSq = radiusSum * radiusSum;
+
+                    if (dist0 < radiusSumSq || dist1 < radiusSumSq)
+                    {
+                        sdfMorphologyData.neighbours[bifurcationId].insert(
+                            geomIdx);
+                        sdfMorphologyData.neighbours[geomIdx].insert(
+                            bifurcationId);
+                    }
                 }
-            }
-        };
+            };
 
         // Connect all child sections
         for (const size_t sectionChild : mts.sectionChildren[section])
@@ -380,8 +382,7 @@ MorphologyTreeStructure MorphologyLoader::_calculateMorphologyTreeStructure(
     }
 
     const auto overlaps = [](const std::pair<double, Vector3f>& p0,
-                             const std::pair<double, Vector3f>& p1)
-    {
+                             const std::pair<double, Vector3f>& p1) {
         const double d = (p0.second - p1.second).length();
         const double r = p0.first + p1.first;
 
@@ -464,12 +465,12 @@ void MorphologyLoader::_addSomaGeometry(
     model.getMorphologyInfo().somaPosition = soma.getCentroid();
     const double somaRadius =
         _getCorrectedRadius(properties, soma.getMeanRadius());
-    const bool useSDFGeometry =
-        properties.getProperty<bool>(PROP_USE_SDF_GEOMETRY.name);
+    const bool useSDFSoma =
+        properties.getProperty<bool>(PROP_USE_SDF_SOMA.name);
 
     const auto& children = soma.getChildren();
 
-    if (useSDFGeometry)
+    if (useSDFSoma)
         _connectSDFSomaChildren(properties,
                                 model.getMorphologyInfo().somaPosition,
                                 somaRadius, materialId, offset, children,
@@ -502,9 +503,8 @@ void MorphologyLoader::_addSomaGeometry(
     {
         materialId = _getMaterialIdFromColorScheme(
             properties, brain::neuron::SectionType::undefined);
-        _addSomaInternals(index, model, materialId, somaRadius,
-                          mitochondriaDensity, useSDFGeometry,
-                          sdfMorphologyData, sdfGroupId);
+        _addSomaInternals(properties, index, model, materialId, somaRadius,
+                          mitochondriaDensity, sdfMorphologyData, sdfGroupId);
     }
 }
 
@@ -622,8 +622,17 @@ void MorphologyLoader::_importMorphologyFromURI(
         properties.getProperty<std::string>(PROP_ASSET_QUALITY.name));
     const auto userDataType = stringToEnum<UserDataType>(
         properties.getProperty<std::string>(PROP_USER_DATA_TYPE.name));
-    const auto useSDFGeometry =
-        properties.getProperty<bool>(PROP_USE_SDF_GEOMETRY.name);
+    const auto useSdfSoma =
+        properties.getProperty<bool>(PROP_USE_SDF_SOMA.name);
+    const auto useSdfBranches =
+        properties.getProperty<bool>(PROP_USE_SDF_BRANCHES.name);
+    const auto useSdfNucleus =
+        properties.getProperty<bool>(PROP_USE_SDF_NUCLEUS.name);
+    const auto useSdfMitochondria =
+        properties.getProperty<bool>(PROP_USE_SDF_MITOCHONDRIA.name);
+    const auto useSdfSynapses =
+        properties.getProperty<bool>(PROP_USE_SDF_SYNAPSES.name);
+
     const auto dampenBranchThicknessChangerate = properties.getProperty<bool>(
         PROP_DAMPEN_BRANCH_THICKNESS_CHANGERATE.name);
     const auto maxDistanceToSoma = properties.getProperty<double>(
@@ -794,14 +803,14 @@ void MorphologyLoader::_importMorphologyFromURI(
             model.getMorphologyInfo().bounds.merge(position);
             model.getMorphologyInfo().bounds.merge(target);
 
-            auto radius = _getCorrectedRadius(properties, sample.w * 0.5f);
-            const double maxRadiusChange = 0.1f;
+            float radius = _getCorrectedRadius(properties, sample.w * 0.5f);
+            const float maxRadiusChange = 0.1f;
 
-            const double dist = glm::length(target - position);
+            const float dist = glm::length(target - position);
             if (dist > 0.0001f && s != samples.size() - 1 &&
                 dampenBranchThicknessChangerate)
             {
-                const double radiusChange =
+                const float radiusChange =
                     std::min(std::abs(previousRadius - radius),
                              dist * maxRadiusChange);
                 if (radius < previousRadius)
@@ -811,22 +820,31 @@ void MorphologyLoader::_importMorphologyFromURI(
             }
 
             // Add Geometry
-            if (radius > 0.f)
+            if (useSdfBranches)
             {
-                _addStepSphereGeometry(useSDFGeometry, done, position, radius,
+                _addStepSphereGeometry(useSdfBranches, done, position, radius,
                                        materialId, userDataOffset, model,
                                        sdfMorphologyData,
                                        sectionId + sdfGroupId);
 
                 if (position != target && previousRadius > 0.f)
-                    _addStepConeGeometry(useSDFGeometry, position, radius,
+                    _addStepConeGeometry(useSdfBranches, position, radius,
                                          target, previousRadius, materialId,
                                          userDataOffset, model,
                                          sdfMorphologyData,
                                          sectionId + sdfGroupId);
-                sectionVolume += coneVolume(length(position - target),
-                                            previousRadius, radius);
             }
+            else
+            {
+                model.addSphere(materialId, {position, radius});
+                if (radius == previousRadius)
+                    model.addCylinder(materialId, {position, target, radius});
+                else
+                    model.addCone(materialId,
+                                  {position, target, radius, previousRadius});
+            }
+            sectionVolume +=
+                coneVolume(length(position - target), previousRadius, radius);
 
             previousSample = sample;
             previousRadius = radius;
@@ -837,9 +855,9 @@ void MorphologyLoader::_importMorphologyFromURI(
             section.getType() == brain::neuron::SectionType::axon)
         {
             uint32_t groupId = sectionId + sdfGroupId;
-            _addSectionInternals(properties, useSDFGeometry, sectionLength,
-                                 sectionVolume, samples, mitochondriaDensity,
-                                 materialId, sdfMorphologyData, groupId, model);
+            _addSectionInternals(properties, sectionLength, sectionVolume,
+                                 samples, mitochondriaDensity, materialId,
+                                 sdfMorphologyData, groupId, model);
             sdfGroupId = groupId;
         }
     }
@@ -861,20 +879,19 @@ void MorphologyLoader::_importMorphologyFromURI(
                 if (synapse.getPresynapticGID() != synapsesInfo.preGid)
                     continue;
 
-            _addSynapse(useSDFGeometry, synapse, SynapseType::afferent,
-                        sections, somaPosition, somaRadius,
-                        inverseTransformation, materialId, model,
-                        sdfMorphologyData, sdfGroupId);
+            _addSynapse(properties, synapse, SynapseType::afferent, sections,
+                        somaPosition, somaRadius, inverseTransformation,
+                        materialId, model, sdfMorphologyData, sdfGroupId);
         }
     if (synapsesInfo.efferentSynapses && !synapsesInfo.prePostSynapticUsecase)
         for (const auto& synapse : *synapsesInfo.efferentSynapses)
-            _addSynapse(useSDFGeometry, synapse, SynapseType::efferent,
-                        sections, somaPosition, somaRadius,
-                        inverseTransformation, materialId, model,
-                        sdfMorphologyData, sdfGroupId);
+            _addSynapse(properties, synapse, SynapseType::efferent, sections,
+                        somaPosition, somaRadius, inverseTransformation,
+                        materialId, model, sdfMorphologyData, sdfGroupId);
 
     // Finalization
-    if (useSDFGeometry)
+    if (useSdfBranches || useSdfSoma || useSdfNucleus || useSdfMitochondria ||
+        useSdfSynapses)
     {
         _connectSDFBifurcations(sdfMorphologyData, morphologyTree);
         _finalizeSDFGeometries(model, sdfMorphologyData);
@@ -882,7 +899,7 @@ void MorphologyLoader::_importMorphologyFromURI(
 }
 
 void MorphologyLoader::_addSynapse(
-    const bool useSDFGeometry, const brain::Synapse& synapse,
+    const PropertyMap& properties, const brain::Synapse& synapse,
     const SynapseType synapseType, const brain::neuron::Sections& sections,
     const Vector3f& somaPosition, const float somaRadius,
     const Matrix4f& transformation, const size_t materialId,
@@ -947,6 +964,9 @@ void MorphologyLoader::_addSynapse(
     }
 
     // Spine geometry
+    const auto useSDFSynapses =
+        properties.getProperty<bool>(PROP_USE_SDF_SYNAPSES.name);
+
     const float spineRadiusRatio = 0.75f;
     const float spineSmallRadius = radius * 0.15f;
     const float spineBaseRadius = radius * 0.25f;
@@ -962,22 +982,22 @@ void MorphologyLoader::_addSynapse(
                  d * (rand() % 1000 / 1000.f));
     const float spineMiddleRadius =
         spineSmallRadius + d * 0.1f * (rand() % 1000 / 1000.f);
-    if (useSDFGeometry)
+    if (useSDFSynapses)
     {
         const float spineDisplacementRatio = 5.f;
-        _addStepSphereGeometry(useSDFGeometry, true, origin, spineLargeRadius,
+        _addStepSphereGeometry(useSDFSynapses, true, origin, spineLargeRadius,
                                synapseMaterialId, -1, model, sdfMorphologyData,
                                sdfGroupId, spineDisplacementRatio);
-        _addStepSphereGeometry(useSDFGeometry, true, middle, spineMiddleRadius,
+        _addStepSphereGeometry(useSDFSynapses, true, middle, spineMiddleRadius,
                                synapseMaterialId, -1, model, sdfMorphologyData,
                                sdfGroupId, spineDisplacementRatio);
         if (origin != middle)
-            _addStepConeGeometry(useSDFGeometry, origin, spineSmallRadius,
+            _addStepConeGeometry(useSDFSynapses, origin, spineSmallRadius,
                                  middle, spineMiddleRadius, synapseMaterialId,
                                  -1, model, sdfMorphologyData, sdfGroupId,
                                  spineDisplacementRatio);
         if (middle != surfaceTarget)
-            _addStepConeGeometry(useSDFGeometry, middle, spineMiddleRadius,
+            _addStepConeGeometry(useSDFSynapses, middle, spineMiddleRadius,
                                  surfaceTarget, spineBaseRadius,
                                  synapseMaterialId, -1, model,
                                  sdfMorphologyData, sdfGroupId,
@@ -999,11 +1019,16 @@ void MorphologyLoader::_addSynapse(
 }
 
 void MorphologyLoader::_addSomaInternals(
-    const uint64_t index, ParallelModelContainer& model,
-    const size_t materialId, const float somaRadius,
-    const float mitochondriaDensity, const bool useSDFGeometry,
+    const PropertyMap& properties, const uint64_t index,
+    ParallelModelContainer& model, const size_t materialId,
+    const float somaRadius, const float mitochondriaDensity,
     SDFMorphologyData& sdfMorphologyData, uint32_t& sdfGroupId) const
 {
+    const bool useSDFNucleus =
+        properties.getProperty<bool>(PROP_USE_SDF_NUCLEUS.name);
+    const bool useSDFMitochondria =
+        properties.getProperty<bool>(PROP_USE_SDF_MITOCHONDRIA.name);
+
     const float mitochondrionRadiusRatio = 0.025f;
     const float mitochondrionDisplacementRatio = 5.f;
     const float nucleusRadius =
@@ -1018,11 +1043,11 @@ void MorphologyLoader::_addSomaInternals(
     // Soma nucleus
     const auto somaPosition = Vector3f(model.getMorphologyInfo().somaPosition);
     const size_t nucleusMaterialId = materialId + MATERIAL_OFFSET_NUCLEUS;
-    if (useSDFGeometry)
+    if (useSDFNucleus)
     {
-        _addStepSphereGeometry(useSDFGeometry, true, somaPosition,
-                               nucleusRadius, nucleusMaterialId, -1, model,
-                               sdfMorphologyData, sdfGroupId);
+        _addStepSphereGeometry(useSDFNucleus, true, somaPosition, nucleusRadius,
+                               nucleusMaterialId, -1, model, sdfMorphologyData,
+                               sdfGroupId);
         ++sdfGroupId;
     }
     else
@@ -1044,8 +1069,8 @@ void MorphologyLoader::_addSomaInternals(
             const float radius =
                 (1.f + (rand() % 500 / 1000.f)) * mitochondrionRadius;
             const auto p2 = somaPosition + somaRadius * pointsInSphere[i];
-            if (useSDFGeometry)
-                _addStepSphereGeometry(useSDFGeometry, true, p2, radius,
+            if (useSDFMitochondria)
+                _addStepSphereGeometry(useSDFMitochondria, true, p2, radius,
                                        mitochondrionMaterialId, -1, model,
                                        sdfMorphologyData, sdfGroupId,
                                        mitochondrionDisplacementRatio);
@@ -1058,10 +1083,11 @@ void MorphologyLoader::_addSomaInternals(
             {
                 const auto p1 =
                     somaPosition + somaRadius * pointsInSphere[i - 1];
-                if (useSDFGeometry)
-                    _addStepConeGeometry(useSDFGeometry, p1, previousRadius, p2,
-                                         radius, mitochondrionMaterialId, -1,
-                                         model, sdfMorphologyData, sdfGroupId,
+                if (useSDFMitochondria)
+                    _addStepConeGeometry(useSDFMitochondria, p1, previousRadius,
+                                         p2, radius, mitochondrionMaterialId,
+                                         -1, model, sdfMorphologyData,
+                                         sdfGroupId,
                                          mitochondrionDisplacementRatio);
 
                 else
@@ -1072,7 +1098,7 @@ void MorphologyLoader::_addSomaInternals(
             }
             previousRadius = radius;
         }
-        if (useSDFGeometry)
+        if (useSDFMitochondria)
             ++sdfGroupId;
     }
 }
@@ -1083,12 +1109,15 @@ size_t MorphologyLoader::_getNbMitochondrionSegments() const
 }
 
 void MorphologyLoader::_addSectionInternals(
-    const PropertyMap& properties, const bool useSDFGeometry,
-    const float sectionLength, const float sectionVolume,
-    const brion::Vector4fs& samples, const float mitochondriaDensity,
-    const size_t materialId, SDFMorphologyData& sdfMorphologyData,
-    uint32_t& sdfGroupId, ParallelModelContainer& model) const
+    const PropertyMap& properties, const float sectionLength,
+    const float sectionVolume, const brion::Vector4fs& samples,
+    const float mitochondriaDensity, const size_t materialId,
+    SDFMorphologyData& sdfMorphologyData, uint32_t& sdfGroupId,
+    ParallelModelContainer& model) const
 {
+    const bool useSDFMitochondria =
+        properties.getProperty<bool>(PROP_USE_SDF_MITOCHONDRIA.name);
+
     // Add mitochondria (density is per section, not for the full axon)
     const float mitochondrionSegmentSize = 0.25f;
     const float mitochondrionRadiusRatio = 0.25f;
@@ -1140,8 +1169,8 @@ void MorphologyLoader::_addSectionInternals(
 
                 const size_t mitochondrionMaterialId =
                     materialId + MATERIAL_OFFSET_MITOCHONDRION;
-                if (useSDFGeometry)
-                    _addStepSphereGeometry(useSDFGeometry, true, position,
+                if (useSDFMitochondria)
+                    _addStepSphereGeometry(useSDFMitochondria, true, position,
                                            radius, mitochondrionMaterialId, -1,
                                            model, sdfMorphologyData, sdfGroupId,
                                            mitochondrionRadiusRatio);
@@ -1152,9 +1181,10 @@ void MorphologyLoader::_addSectionInternals(
 
                 if (mitochondrionSegment > 0)
                 {
-                    if (useSDFGeometry)
-                        _addStepConeGeometry(useSDFGeometry, position, radius,
-                                             previousPosition, previousRadius,
+                    if (useSDFMitochondria)
+                        _addStepConeGeometry(useSDFMitochondria, position,
+                                             radius, previousPosition,
+                                             previousRadius,
                                              mitochondrionMaterialId, -1, model,
                                              sdfMorphologyData, sdfGroupId,
                                              mitochondrionRadiusRatio);
@@ -1260,7 +1290,11 @@ PropertyMap MorphologyLoader::getCLIProperties()
     pm.setProperty(PROP_SECTION_TYPE_AXON);
     pm.setProperty(PROP_SECTION_TYPE_DENDRITE);
     pm.setProperty(PROP_SECTION_TYPE_APICAL_DENDRITE);
-    pm.setProperty(PROP_USE_SDF_GEOMETRY);
+    pm.setProperty(PROP_USE_SDF_SOMA);
+    pm.setProperty(PROP_USE_SDF_BRANCHES);
+    pm.setProperty(PROP_USE_SDF_NUCLEUS);
+    pm.setProperty(PROP_USE_SDF_MITOCHONDRIA);
+    pm.setProperty(PROP_USE_SDF_SYNAPSES);
     pm.setProperty(PROP_DAMPEN_BRANCH_THICKNESS_CHANGERATE);
     pm.setProperty(PROP_USER_DATA_TYPE);
     pm.setProperty(PROP_ASSET_COLOR_SCHEME);

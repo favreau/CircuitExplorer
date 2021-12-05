@@ -66,7 +66,7 @@ PropertyMap VasculatureLoader::getProperties() const
 PropertyMap VasculatureLoader::getCLIProperties()
 {
     PropertyMap pm(LOADER_NAME);
-    pm.setProperty(PROP_USE_SDF_GEOMETRY);
+    pm.setProperty(PROP_USE_SDF_BRANCHES);
     pm.setProperty(PROP_RADIUS_MULTIPLIER);
     pm.setProperty(PROP_ASSET_QUALITY);
     pm.setProperty(PROP_ASSET_COLOR_SCHEME);
@@ -118,13 +118,13 @@ size_t VasculatureLoader::_addSDFGeometry(SDFMorphologyData& sdfMorphologyData,
 }
 
 void VasculatureLoader::_addStepConeGeometry(
-    const bool useSDFGeometry, const Vector3f& position, const double radius,
+    const bool useSDF, const Vector3f& position, const double radius,
     const Vector3f& target, const double previousRadius,
     const size_t materialId, const uint64_t& userDataOffset, Model& model,
     SDFMorphologyData& sdfMorphologyData, const uint32_t sdfGroupId,
     const Vector3f& displacementParams) const
 {
-    if (useSDFGeometry)
+    if (useSDF)
     {
         const auto geom =
             (almost_equal(radius, previousRadius, 100000))
@@ -199,8 +199,7 @@ ModelDescriptorPtr VasculatureLoader::importFromFile(
         props.merge(properties);
 
         SDFMorphologyData sdfMorphologyData;
-        const bool useSDFGeometry =
-            props.getProperty<bool>(PROP_USE_SDF_GEOMETRY.name);
+        const bool useSDF = props.getProperty<bool>(PROP_USE_SDF_BRANCHES.name);
         const double radiusMultiplier =
             props.getProperty<double>(PROP_RADIUS_MULTIPLIER.name);
         const auto morphologyQuality = stringToEnum<AssetQuality>(
@@ -286,7 +285,7 @@ ModelDescriptorPtr VasculatureLoader::importFromFile(
             const Vector3f displacementParams = {std::min(start_radius, 0.2f),
                                                  0.75f, 1.0f};
             if (morphologyQuality != AssetQuality::medium)
-                if (useSDFGeometry)
+                if (useSDF)
                 {
                     const size_t idx =
                         _addSDFGeometry(sdfMorphologyData,
@@ -304,10 +303,10 @@ ModelDescriptorPtr VasculatureLoader::importFromFile(
                 const Vector3f end{ex[i], ey[i], ez[i]};
                 const float end_radius = ed[i] * 0.5f * radiusMultiplier;
 
-                if (useSDFGeometry)
+                if (useSDF)
                 {
-                    _addStepConeGeometry(useSDFGeometry, start, start_radius,
-                                         end, end_radius, materialId, userData,
+                    _addStepConeGeometry(useSDF, start, start_radius, end,
+                                         end_radius, materialId, userData,
                                          *model, sdfMorphologyData, sectionId,
                                          displacementParams);
                 }
@@ -324,7 +323,7 @@ ModelDescriptorPtr VasculatureLoader::importFromFile(
             }
         }
 
-        if (useSDFGeometry)
+        if (useSDF)
             _finalizeSDFGeometries(*model, sdfMorphologyData);
 
         // Materials

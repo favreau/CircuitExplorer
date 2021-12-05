@@ -21,6 +21,7 @@
 Cython~=0.29.24
 numpy~=1.21.4
 packaging~=2.4.7
+bioexplorer~=1.1.2
 stringcase~=1.2.0
 pygments~=2.4.1
 pylint~=2.6.0

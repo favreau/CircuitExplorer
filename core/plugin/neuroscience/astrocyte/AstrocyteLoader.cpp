@@ -82,6 +82,9 @@ AstrocyteLoader::AstrocyteLoader(
         {PROP_PRESYNAPTIC_NEURON_GID.name, std::string("")});
     _fixedDefaults.setProperty(
         {PROP_POSTSYNAPTIC_NEURON_GID.name, std::string("")});
+    _fixedDefaults.setProperty({PROP_USE_SDF_NUCLEUS.name, false});
+    _fixedDefaults.setProperty({PROP_USE_SDF_MITOCHONDRIA.name, false});
+    _fixedDefaults.setProperty({PROP_USE_SDF_SYNAPSES.name, false});
 }
 
 std::vector<std::string> AstrocyteLoader::getSupportedExtensions() const
@@ -144,7 +147,10 @@ PropertyMap AstrocyteLoader::getCLIProperties()
     pm.setProperty(PROP_SECTION_TYPE_AXON);
     pm.setProperty(PROP_SECTION_TYPE_DENDRITE);
     pm.setProperty(PROP_SECTION_TYPE_APICAL_DENDRITE);
-    pm.setProperty(PROP_USE_SDF_GEOMETRY);
+    pm.setProperty(PROP_USE_SDF_SOMA);
+    pm.setProperty(PROP_USE_SDF_BRANCHES);
+    pm.setProperty(PROP_USE_SDF_NUCLEUS);
+    pm.setProperty(PROP_USE_SDF_MITOCHONDRIA);
     pm.setProperty(PROP_CIRCUIT_COLOR_SCHEME);
     pm.setProperty(PROP_ASSET_COLOR_SCHEME);
     pm.setProperty(PROP_ASSET_QUALITY);

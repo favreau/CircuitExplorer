@@ -57,6 +57,9 @@ SynapseCircuitLoader::SynapseCircuitLoader(
     _fixedDefaults.setProperty({PROP_MESH_TRANSFORMATION.name, false});
     _fixedDefaults.setProperty({PROP_CELL_CLIPPING.name, false});
     _fixedDefaults.setProperty({PROP_AREAS_OF_INTEREST.name, 0});
+    _fixedDefaults.setProperty({PROP_USE_SDF_NUCLEUS.name, false});
+    _fixedDefaults.setProperty({PROP_USE_SDF_MITOCHONDRIA.name, false});
+    _fixedDefaults.setProperty({PROP_USE_SDF_SYNAPSES.name, false});
 }
 
 ModelDescriptorPtr SynapseCircuitLoader::importFromFile(
@@ -89,7 +92,8 @@ PropertyMap SynapseCircuitLoader::getCLIProperties()
     pm.setProperty(PROP_SECTION_TYPE_AXON);
     pm.setProperty(PROP_SECTION_TYPE_DENDRITE);
     pm.setProperty(PROP_SECTION_TYPE_APICAL_DENDRITE);
-    pm.setProperty(PROP_USE_SDF_GEOMETRY);
+    pm.setProperty(PROP_USE_SDF_SOMA);
+    pm.setProperty(PROP_USE_SDF_BRANCHES);
     pm.setProperty(PROP_ASSET_COLOR_SCHEME);
     pm.setProperty(PROP_ASSET_QUALITY);
     pm.setProperty(PROP_LOAD_AFFERENT_SYNAPSES);

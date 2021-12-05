@@ -72,9 +72,8 @@ private:
                            const std::set<size_t>& neighbours,
                            const size_t materialId, const int section) const;
 
-    void _addStepConeGeometry(const bool useSDFGeometry,
-                              const Vector3f& position, const double radius,
-                              const Vector3f& target,
+    void _addStepConeGeometry(const bool useSDF, const Vector3f& position,
+                              const double radius, const Vector3f& target,
                               const double previousRadius,
                               const size_t materialId,
                               const uint64_t& userDataOffset, Model& model,
