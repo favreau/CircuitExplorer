@@ -1221,7 +1221,7 @@ size_t MorphologyLoader::_getMaterialIdFromColorScheme(
         properties.getProperty<std::string>(PROP_ASSET_COLOR_SCHEME.name));
     switch (colorScheme)
     {
-    case AssetColorScheme::by_segment:
+    case AssetColorScheme::by_section:
         switch (sectionType)
         {
         case brain::neuron::SectionType::soma:
