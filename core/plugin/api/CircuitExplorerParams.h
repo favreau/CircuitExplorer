@@ -278,14 +278,6 @@ struct AddBox
 };
 bool from_json(AddBox& param, const std::string& payload);
 
-struct AddShapeResult
-{
-    size_t id;
-    int error;
-    std::string message;
-};
-std::string to_json(const AddShapeResult& addResult);
-
 #ifdef USE_PQXX
 struct ImportMorphology
 {

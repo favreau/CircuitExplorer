@@ -89,6 +89,14 @@ typedef CGAL::Skin_surface_3<Traits> Skin_surface_3;
 typedef CGAL::Union_of_balls_3<Traits> Union_of_balls_3;
 #endif
 
+#define CATCH_STD_EXCEPTION()           \
+    catch (const std::runtime_error& e) \
+    {                                   \
+        response.status = false;        \
+        response.contents = e.what();   \
+        PLUGIN_ERROR(e.what());         \
+    }
+
 namespace circuitexplorer
 {
 using namespace brayns;
@@ -140,8 +148,11 @@ void _addAdvancedSimulationRenderer(Engine& engine)
                             1.,
                             100.,
                             {"Volume specular exponent"}});
-    properties.setProperty(
-        {"volumeAlphaCorrection", 0.5, 0.001, 1., {"Volume alpha correction"}});
+    properties.setProperty({"voludetailslphaCorrection",
+                            0.5,
+                            0.001,
+                            1.,
+                            {"Volume alpha correction"}});
     properties.setProperty({"maxDistanceToSecondaryModel",
                             30.,
                             0.1,
@@ -472,8 +483,8 @@ void CircuitExplorerPlugin::init()
         _api->getActionInterface()
             ->registerRequest<ImportCompartmentSimulation, Response>(
                 endPoint,
-                [&](const ImportCompartmentSimulation& payload) -> Response {
-                    return _importCompartmentSimulation(payload);
+                [&](const ImportCompartmentSimulation& details) -> Response {
+                    return _importCompartmentSimulation(details);
                 });
 
         endPoint = PLUGIN_API_PREFIX + "import-morphology";
@@ -506,52 +517,50 @@ void CircuitExplorerPlugin::init()
         PLUGIN_INFO("Registering '" + endPoint + "' endpoint");
         _api->getActionInterface()
             ->registerNotification<ApplyVasculatureGeometryReport>(
-                endPoint, [&](const ApplyVasculatureGeometryReport& payload) {
-                    return _applyVasculatureGeometryReport(payload);
+                endPoint, [&](const ApplyVasculatureGeometryReport& details) {
+                    return _applyVasculatureGeometryReport(details);
                 });
 #endif
-
-        endPoint = PLUGIN_API_PREFIX + "add-grid";
-        PLUGIN_INFO("Registering '" + endPoint + "' endpoint");
-        _api->getActionInterface()->registerNotification<AddGrid>(
-            endPoint, [&](const AddGrid& payload) { _addGrid(payload); });
 
         endPoint = PLUGIN_API_PREFIX + "add-column";
         PLUGIN_INFO("Registering '" + endPoint + "' endpoint");
         _api->getActionInterface()->registerNotification<AddColumn>(
-            endPoint, [&](const AddColumn& payload) { _addColumn(payload); });
+            endPoint, [&](const AddColumn& details) { _addColumn(details); });
 
         endPoint = PLUGIN_API_PREFIX + "add-sphere";
         PLUGIN_INFO("Registering '" + endPoint + "' endpoint");
-        _api->getActionInterface()->registerRequest<AddSphere, AddShapeResult>(
+        _api->getActionInterface()->registerRequest<AddSphere, Response>(
             endPoint,
-            [&](const AddSphere& payload) { return _addSphere(payload); });
+            [&](const AddSphere& details) { return _addSphere(details); });
 
         endPoint = PLUGIN_API_PREFIX + "add-pill";
         PLUGIN_INFO("Registering '" + endPoint + "' endpoint");
-        _api->getActionInterface()->registerRequest<AddPill, AddShapeResult>(
+        _api->getActionInterface()->registerRequest<AddPill, Response>(
             endPoint,
-            [&](const AddPill& payload) { return _addPill(payload); });
+            [&](const AddPill& details) { return _addPill(details); });
 
         endPoint = PLUGIN_API_PREFIX + "add-cylinder";
         PLUGIN_INFO("Registering '" + endPoint + "' endpoint");
-        _api->getActionInterface()
-            ->registerRequest<AddCylinder, AddShapeResult>(
-                endPoint, [&](const AddCylinder& payload) {
-                    return _addCylinder(payload);
-                });
+        _api->getActionInterface()->registerRequest<AddCylinder, Response>(
+            endPoint,
+            [&](const AddCylinder& details) { return _addCylinder(details); });
 
         endPoint = PLUGIN_API_PREFIX + "add-box";
         PLUGIN_INFO("Registering '" + endPoint + "' endpoint");
-        _api->getActionInterface()->registerRequest<AddBox, AddShapeResult>(
-            endPoint, [&](const AddBox& payload) { return _addBox(payload); });
+        _api->getActionInterface()->registerRequest<AddBox, Response>(
+            endPoint, [&](const AddBox& details) { return _addBox(details); });
     }
 }
 
 void CircuitExplorerPlugin::preRender()
 {
     if (_dirty)
-        _api->getScene().markModified();
+    {
+        auto& scene = _api->getScene();
+        auto& engine = _api->getEngine();
+        scene.markModified();
+        engine.triggerRender();
+    }
     _dirty = false;
 }
 
@@ -562,12 +571,15 @@ Response CircuitExplorerPlugin::_getVersion() const
     return response;
 }
 
-void CircuitExplorerPlugin::_setMaterialExtraAttributes(
-    const MaterialExtraAttributes& mea)
+Response CircuitExplorerPlugin::_setMaterialExtraAttributes(
+    const MaterialExtraAttributes& details)
 {
-    auto modelDescriptor = _api->getScene().getModel(mea.modelId);
-    if (modelDescriptor)
-        try
+    Response response;
+    try
+    {
+        auto& scene = _api->getScene();
+        auto modelDescriptor = scene.getModel(details.modelId);
+        if (modelDescriptor)
         {
             auto materials = modelDescriptor->getModel().getMaterials();
             for (auto& material : materials)
@@ -583,20 +595,24 @@ void CircuitExplorerPlugin::_setMaterialExtraAttributes(
                 props.setProperty({MATERIAL_PROPERTY_USER_PARAMETER, 1.0});
                 material.second->updateProperties(props);
             }
+            _markModified();
         }
-        catch (const std::runtime_error& e)
-        {
-            PLUGIN_INFO(e.what());
-        }
-    else
-        PLUGIN_INFO("Model " << mea.modelId << " is not registered");
+        else
+            PLUGIN_THROW("Model " + std::to_string(details.modelId) +
+                         " is not registered");
+    }
+    CATCH_STD_EXCEPTION()
+    return response;
 }
 
-void CircuitExplorerPlugin::_setMaterial(const MaterialDescriptor& md)
+Response CircuitExplorerPlugin::_setMaterial(const MaterialDescriptor& md)
 {
-    auto modelDescriptor = _api->getScene().getModel(md.modelId);
-    if (modelDescriptor)
-        try
+    Response response;
+    try
+    {
+        auto& scene = _api->getScene();
+        auto modelDescriptor = scene.getModel(md.modelId);
+        if (modelDescriptor)
         {
             auto material =
                 modelDescriptor->getModel().getMaterial(md.materialId);
@@ -623,147 +639,155 @@ void CircuitExplorerPlugin::_setMaterial(const MaterialDescriptor& md)
                                          md.clippingMode);
                 material->updateProperty(MATERIAL_PROPERTY_USER_PARAMETER,
                                          static_cast<double>(md.userParameter));
-                material->markModified(); // This is needed to apply
-                                          // propery modifications
+                material->markModified(); // This is needed to properly apply
+                                          // modifications
                 material->commit();
-
-                _dirty = true;
+                _markModified();
             }
             else
-                PLUGIN_INFO("Material " << md.materialId
-                                        << " is not registered in model "
-                                        << md.modelId);
-        }
-        catch (const std::runtime_error& e)
-        {
-            PLUGIN_INFO(e.what());
-        }
-    else
-        PLUGIN_INFO("Model " << md.modelId << " is not registered");
-}
-
-void CircuitExplorerPlugin::_setMaterials(const MaterialsDescriptor& md)
-{
-    for (const auto modelId : md.modelIds)
-    {
-        auto modelDescriptor = _api->getScene().getModel(modelId);
-        if (modelDescriptor)
-        {
-            size_t id = 0;
-            std::string materialIdsAsString;
-            for (const auto materialId : md.materialIds)
-            {
-                if (!materialIdsAsString.empty())
-                    materialIdsAsString += ",";
-                materialIdsAsString += std::to_string(materialId);
-            }
-            PLUGIN_INFO("Setting materials [" << materialIdsAsString << "]");
-
-            for (const auto materialId : md.materialIds)
-            {
-                try
-                {
-                    auto material =
-                        modelDescriptor->getModel().getMaterial(materialId);
-                    if (material)
-                    {
-                        if (!md.diffuseColors.empty())
-                        {
-                            const size_t index = id * 3;
-                            material->setDiffuseColor(
-                                {md.diffuseColors[index],
-                                 md.diffuseColors[index + 1],
-                                 md.diffuseColors[index + 2]});
-                            material->setSpecularColor(
-                                {md.specularColors[index],
-                                 md.specularColors[index + 1],
-                                 md.specularColors[index + 2]});
-                        }
-
-                        if (!md.specularExponents.empty())
-                            material->setSpecularExponent(
-                                md.specularExponents[id]);
-                        if (!md.reflectionIndices.empty())
-                            material->setReflectionIndex(
-                                md.reflectionIndices[id]);
-                        if (!md.opacities.empty())
-                            material->setOpacity(md.opacities[id]);
-                        if (!md.refractionIndices.empty())
-                            material->setRefractionIndex(
-                                md.refractionIndices[id]);
-                        if (!md.emissions.empty())
-                            material->setEmission(md.emissions[id]);
-                        if (!md.glossinesses.empty())
-                            material->setGlossiness(md.glossinesses[id]);
-                        if (!md.simulationDataCasts.empty())
-                        {
-                            const bool value = md.simulationDataCasts[id];
-                            material->updateProperty(
-                                MATERIAL_PROPERTY_CAST_USER_DATA, value);
-                        }
-                        if (!md.shadingModes.empty())
-                            material->updateProperty(
-                                MATERIAL_PROPERTY_SHADING_MODE,
-                                md.shadingModes[id]);
-                        if (!md.clippingModes.empty())
-                            material->updateProperty(
-                                MATERIAL_PROPERTY_CLIPPING_MODE,
-                                md.clippingModes[id]);
-                        if (!md.userParameters.empty())
-                            material->updateProperty(
-                                MATERIAL_PROPERTY_USER_PARAMETER,
-                                static_cast<double>(md.userParameters[id]));
-                        material->markModified(); // This is needed to apply
-                                                  // propery modifications
-                        material->commit();
-                    }
-                }
-                catch (const std::runtime_error& e)
-                {
-                    PLUGIN_INFO(e.what());
-                }
-                ++id;
-            }
-            _dirty = true;
+                PLUGIN_THROW("Material " + std::to_string(md.materialId) +
+                             " is not registered in model " +
+                             std::to_string(md.modelId));
         }
         else
-            PLUGIN_INFO("Model " << modelId << " is not registered");
+            PLUGIN_THROW("Model " + std::to_string(md.modelId) +
+                         " is not registered");
     }
+    CATCH_STD_EXCEPTION()
+    return response;
 }
 
-void CircuitExplorerPlugin::_setMaterialRange(
+Response CircuitExplorerPlugin::_setMaterials(const MaterialsDescriptor& md)
+{
+    Response response;
+    try
+    {
+        for (const auto modelId : md.modelIds)
+        {
+            auto& scene = _api->getScene();
+            auto modelDescriptor = scene.getModel(modelId);
+            if (modelDescriptor)
+            {
+                size_t id = 0;
+                std::string materialIdsAsString;
+                for (const auto materialId : md.materialIds)
+                {
+                    if (!materialIdsAsString.empty())
+                        materialIdsAsString += ",";
+                    materialIdsAsString += std::to_string(materialId);
+                }
+                PLUGIN_INFO("Setting materials [" << materialIdsAsString
+                                                  << "]");
+
+                for (const auto materialId : md.materialIds)
+                {
+                    try
+                    {
+                        auto material =
+                            modelDescriptor->getModel().getMaterial(materialId);
+                        if (material)
+                        {
+                            if (!md.diffuseColors.empty())
+                            {
+                                const size_t index = id * 3;
+                                material->setDiffuseColor(
+                                    {md.diffuseColors[index],
+                                     md.diffuseColors[index + 1],
+                                     md.diffuseColors[index + 2]});
+                                material->setSpecularColor(
+                                    {md.specularColors[index],
+                                     md.specularColors[index + 1],
+                                     md.specularColors[index + 2]});
+                            }
+
+                            if (!md.specularExponents.empty())
+                                material->setSpecularExponent(
+                                    md.specularExponents[id]);
+                            if (!md.reflectionIndices.empty())
+                                material->setReflectionIndex(
+                                    md.reflectionIndices[id]);
+                            if (!md.opacities.empty())
+                                material->setOpacity(md.opacities[id]);
+                            if (!md.refractionIndices.empty())
+                                material->setRefractionIndex(
+                                    md.refractionIndices[id]);
+                            if (!md.emissions.empty())
+                                material->setEmission(md.emissions[id]);
+                            if (!md.glossinesses.empty())
+                                material->setGlossiness(md.glossinesses[id]);
+                            if (!md.simulationDataCasts.empty())
+                            {
+                                const bool value = md.simulationDataCasts[id];
+                                material->updateProperty(
+                                    MATERIAL_PROPERTY_CAST_USER_DATA, value);
+                            }
+                            if (!md.shadingModes.empty())
+                                material->updateProperty(
+                                    MATERIAL_PROPERTY_SHADING_MODE,
+                                    md.shadingModes[id]);
+                            if (!md.clippingModes.empty())
+                                material->updateProperty(
+                                    MATERIAL_PROPERTY_CLIPPING_MODE,
+                                    md.clippingModes[id]);
+                            if (!md.userParameters.empty())
+                                material->updateProperty(
+                                    MATERIAL_PROPERTY_USER_PARAMETER,
+                                    static_cast<double>(md.userParameters[id]));
+                            material->markModified(); // This is needed to apply
+                                                      // propery modifications
+                            material->commit();
+                        }
+                    }
+                    catch (const std::runtime_error& e)
+                    {
+                        PLUGIN_INFO(e.what());
+                    }
+                    ++id;
+                }
+                _markModified();
+            }
+            else
+                PLUGIN_INFO("Model " << modelId << " is not registered");
+        }
+    }
+    CATCH_STD_EXCEPTION()
+    return response;
+}
+
+Response CircuitExplorerPlugin::_setMaterialRange(
     const MaterialRangeDescriptor& mrd)
 {
-    auto modelDescriptor = _api->getScene().getModel(mrd.modelId);
-    if (modelDescriptor)
+    Response response;
+    try
     {
-        std::vector<size_t> matIds;
-        if (mrd.materialIds.empty())
+        auto& scene = _api->getScene();
+        auto modelDescriptor = scene.getModel(mrd.modelId);
+        if (modelDescriptor)
         {
-            matIds.reserve(modelDescriptor->getModel().getMaterials().size());
-            for (const auto& mat : modelDescriptor->getModel().getMaterials())
-                matIds.push_back(mat.first);
-        }
-        else
-        {
-            matIds.reserve(mrd.materialIds.size());
-            for (const auto& id : mrd.materialIds)
-                matIds.push_back(static_cast<size_t>(id));
-        }
+            std::vector<size_t> matIds;
+            if (mrd.materialIds.empty())
+            {
+                matIds.reserve(
+                    modelDescriptor->getModel().getMaterials().size());
+                for (const auto& mat :
+                     modelDescriptor->getModel().getMaterials())
+                    matIds.push_back(mat.first);
+            }
+            else
+            {
+                matIds.reserve(mrd.materialIds.size());
+                for (const auto& id : mrd.materialIds)
+                    matIds.push_back(static_cast<size_t>(id));
+            }
 
-        if (mrd.diffuseColor.size() % 3 != 0)
-        {
-            PLUGIN_ERROR(
-                "set-material-range: The diffuse colors component "
-                "is not a multiple of 3");
-            return;
-        }
+            if (mrd.diffuseColor.size() % 3 != 0)
+                PLUGIN_THROW(
+                    "set-material-range: The diffuse colors component is not a "
+                    "multiple of 3");
 
-        const size_t numColors = mrd.diffuseColor.size() / 3;
+            const size_t numColors = mrd.diffuseColor.size() / 3;
 
-        for (const auto materialId : matIds)
-        {
-            try
+            for (const auto materialId : matIds)
             {
                 auto material =
                     modelDescriptor->getModel().getMaterial(materialId);
@@ -798,21 +822,20 @@ void CircuitExplorerPlugin::_setMaterialRange(
                     material->commit();
                 }
             }
-            catch (const std::runtime_error& e)
-            {
-                PLUGIN_INFO(e.what());
-            }
+            _markModified();
         }
-        _dirty = true;
+        else
+            PLUGIN_INFO("Model " << mrd.modelId << " is not registered");
     }
-    else
-        PLUGIN_INFO("Model " << mrd.modelId << " is not registered");
+    CATCH_STD_EXCEPTION()
+    return response;
 }
 
 MaterialIds CircuitExplorerPlugin::_getMaterialIds(const ModelId& modelId)
 {
     MaterialIds materialIds;
-    auto modelDescriptor = _api->getScene().getModel(modelId.modelId);
+    auto& scene = _api->getScene();
+    auto modelDescriptor = scene.getModel(modelId.modelId);
     if (modelDescriptor)
     {
         for (const auto& material : modelDescriptor->getModel().getMaterials())
@@ -825,156 +848,190 @@ MaterialIds CircuitExplorerPlugin::_getMaterialIds(const ModelId& modelId)
     return materialIds;
 }
 
-void CircuitExplorerPlugin::_exportModelToFile(
+Response CircuitExplorerPlugin::_exportModelToFile(
     const ExportModelToFile& saveModel)
 {
-    auto modelDescriptor = _api->getScene().getModel(saveModel.modelId);
-    if (modelDescriptor)
+    Response response;
+    try
     {
-        BrickLoader brickLoader(_api->getScene());
-        brickLoader.exportToFile(modelDescriptor, saveModel.path);
-    }
-    else
-        PLUGIN_ERROR("Model " << saveModel.modelId << " is not registered");
-}
-
-void CircuitExplorerPlugin::_exportModelToMesh(const ExportModelToMesh& payload)
-{
-    auto modelDescriptor = _api->getScene().getModel(payload.modelId);
-    if (modelDescriptor)
-    {
-        const auto& model = modelDescriptor->getModel();
-        std::list<Weighted_point> l;
-        for (const auto& spheres : model.getSpheres())
+        auto& scene = _api->getScene();
+        auto modelDescriptor = scene.getModel(saveModel.modelId);
+        if (modelDescriptor)
         {
-            uint64_t count = 0;
-            for (const auto& s : spheres.second)
-            {
-                if (count % payload.density == 0)
-                    l.push_front(
-                        Weighted_point(Point_3(s.center.x, s.center.y,
-                                               s.center.z),
-                                       payload.radiusMultiplier * s.radius));
-                ++count;
-            }
-        }
-
-        PLUGIN_INFO("Constructing skin surface from " << l.size()
-                                                      << " spheres");
-
-        Polyhedron polyhedron;
-        if (payload.skin)
-        {
-            Skin_surface_3 skinSurface(l.begin(), l.end(),
-                                       payload.shrinkFactor);
-
-            PLUGIN_INFO("Meshing skin surface...");
-            CGAL::mesh_skin_surface_3(skinSurface, polyhedron);
-            CGAL::Polygon_mesh_processing::triangulate_faces(polyhedron);
+            BrickLoader brickLoader(_api->getScene());
+            brickLoader.exportToFile(modelDescriptor, saveModel.path);
         }
         else
-        {
-            Union_of_balls_3 union_of_balls(l.begin(), l.end());
-            CGAL::mesh_union_of_balls_3(union_of_balls, polyhedron);
-        }
-
-        PLUGIN_INFO("Export mesh to " << payload.path);
-        std::ofstream out(payload.path);
-        out << polyhedron;
+            PLUGIN_ERROR("Model " << saveModel.modelId << " is not registered");
     }
-    else
-        PLUGIN_ERROR("Model " << payload.modelId << " is not registered");
+    CATCH_STD_EXCEPTION()
+    return response;
+}
+
+Response CircuitExplorerPlugin::_exportModelToMesh(
+    const ExportModelToMesh& details)
+{
+    Response response;
+    try
+    {
+        auto& scene = _api->getScene();
+        auto modelDescriptor = scene.getModel(details.modelId);
+        if (modelDescriptor)
+        {
+            const auto& model = modelDescriptor->getModel();
+            std::list<Weighted_point> l;
+            for (const auto& spheres : model.getSpheres())
+            {
+                uint64_t count = 0;
+                for (const auto& s : spheres.second)
+                {
+                    if (count % details.density == 0)
+                        l.push_front(Weighted_point(
+                            Point_3(s.center.x, s.center.y, s.center.z),
+                            details.radiusMultiplier * s.radius));
+                    ++count;
+                }
+            }
+
+            PLUGIN_INFO("Constructing skin surface from " << l.size()
+                                                          << " spheres");
+
+            Polyhedron polyhedron;
+            if (details.skin)
+            {
+                Skin_surface_3 skinSurface(l.begin(), l.end(),
+                                           details.shrinkFactor);
+
+                PLUGIN_INFO("Meshing skin surface...");
+                CGAL::mesh_skin_surface_3(skinSurface, polyhedron);
+                CGAL::Polygon_mesh_processing::triangulate_faces(polyhedron);
+            }
+            else
+            {
+                Union_of_balls_3 union_of_balls(l.begin(), l.end());
+                CGAL::mesh_union_of_balls_3(union_of_balls, polyhedron);
+            }
+
+            PLUGIN_INFO("Export mesh to " << details.path);
+            std::ofstream out(details.path);
+            out << polyhedron;
+        }
+        else
+            PLUGIN_THROW("Model " + std::to_string(details.modelId) +
+                         " is not registered");
+    }
+    CATCH_STD_EXCEPTION()
+    return response;
 }
 
 #ifdef USE_MORPHOLOGIES
-void CircuitExplorerPlugin::_setConnectionsPerValue(
+Response CircuitExplorerPlugin::_setConnectionsPerValue(
     const ConnectionsPerValue& cpv)
 {
-    meshing::PointCloud pointCloud;
-
-    auto modelDescriptor = _api->getScene().getModel(cpv.modelId);
-    if (modelDescriptor)
+    Response response;
+    try
     {
-        auto simulationHandler =
-            modelDescriptor->getModel().getSimulationHandler();
-        if (!simulationHandler)
-        {
-            PLUGIN_ERROR("Scene has not user data handler");
-            return;
-        }
+        meshing::PointCloud pointCloud;
 
-        auto& model = modelDescriptor->getModel();
-        for (const auto& spheres : model.getSpheres())
+        auto& scene = _api->getScene();
+        auto modelDescriptor = scene.getModel(cpv.modelId);
+        if (modelDescriptor)
         {
-            for (const auto& s : spheres.second)
+            auto simulationHandler =
+                modelDescriptor->getModel().getSimulationHandler();
+            if (!simulationHandler)
+                PLUGIN_THROW("Scene has not user data handler");
+
+            auto& model = modelDescriptor->getModel();
+            for (const auto& spheres : model.getSpheres())
             {
-                const float* data = static_cast<float*>(
-                    simulationHandler->getFrameData(cpv.frame));
+                for (const auto& s : spheres.second)
+                {
+                    const float* data = static_cast<float*>(
+                        simulationHandler->getFrameData(cpv.frame));
 
-                const float value = data[s.userData];
-                if (abs(value - cpv.value) < cpv.epsilon)
-                    pointCloud[spheres.first].push_back(
-                        {s.center.x, s.center.y, s.center.z, s.radius});
+                    const float value = data[s.userData];
+                    if (abs(value - cpv.value) < cpv.epsilon)
+                        pointCloud[spheres.first].push_back(
+                            {s.center.x, s.center.y, s.center.z, s.radius});
+                }
             }
-        }
 
-        if (!pointCloud.empty())
-        {
-            auto meshModel = _api->getScene().createModel();
-            meshing::PointCloudMesher mesher;
-            if (mesher.toConvexHull(*meshModel, pointCloud))
+            if (!pointCloud.empty())
             {
-                auto modelDesc = std::make_shared<ModelDescriptor>(
-                    std::move(meshModel),
-                    "Connection for value " + std::to_string(cpv.value));
-
-                _api->getScene().addModel(modelDesc);
-                _dirty = true;
+                auto meshModel = scene.createModel();
+                meshing::PointCloudMesher mesher;
+                if (mesher.toConvexHull(*meshModel, pointCloud))
+                {
+                    auto modelDesc = std::make_shared<ModelDescriptor>(
+                        std::move(meshModel),
+                        "Connection for value " + std::to_string(cpv.value));
+                    scene.addModel(modelDesc);
+                    _markModified();
+                }
             }
+            else
+                PLUGIN_INFO("No connections added for value "
+                            << std::to_string(cpv.value));
         }
         else
-            PLUGIN_INFO("No connections added for value "
-                        << std::to_string(cpv.value));
+            PLUGIN_INFO("Model " << cpv.modelId << " is not registered");
     }
-    else
-        PLUGIN_INFO("Model " << cpv.modelId << " is not registered");
+    CATCH_STD_EXCEPTION()
+    return response;
 }
 
-void CircuitExplorerPlugin::_attachCellGrowthHandler(
-    const AttachCellGrowthHandler& payload)
+Response CircuitExplorerPlugin::_attachCellGrowthHandler(
+    const AttachCellGrowthHandler& details)
 {
-    PLUGIN_INFO("Attaching Cell Growth Handler to model " << payload.modelId);
-    auto modelDescriptor = _api->getScene().getModel(payload.modelId);
-    if (modelDescriptor)
+    Response response;
+    try
     {
-        auto handler = std::make_shared<CellGrowthHandler>(payload.nbFrames);
-        modelDescriptor->getModel().setSimulationHandler(handler);
+        PLUGIN_INFO("Attaching Cell Growth Handler to model "
+                    << details.modelId);
+        auto& scene = _api->getScene();
+        auto modelDescriptor = scene.getModel(details.modelId);
+        if (modelDescriptor)
+        {
+            auto handler =
+                std::make_shared<CellGrowthHandler>(details.nbFrames);
+            modelDescriptor->getModel().setSimulationHandler(handler);
+        }
     }
+    CATCH_STD_EXCEPTION()
+    return response;
 }
 
-void CircuitExplorerPlugin::_attachCircuitSimulationHandler(
-    const AttachCircuitSimulationHandler& payload)
+Response CircuitExplorerPlugin::_attachCircuitSimulationHandler(
+    const AttachCircuitSimulationHandler& details)
 {
-    PLUGIN_INFO("Attaching Circuit Simulation Handler to model "
-                << payload.modelId);
-    auto modelDescriptor = _api->getScene().getModel(payload.modelId);
-    if (modelDescriptor)
+    Response response;
+    try
     {
-        const brion::BlueConfig blueConfiguration(payload.circuitConfiguration);
-        const brain::Circuit circuit(blueConfiguration);
-        auto gids = circuit.getGIDs();
-        auto handler = std::make_shared<VoltageSimulationHandler>(
-            blueConfiguration.getReportSource(payload.reportName).getPath(),
-            gids, payload.synchronousMode);
-        auto& model = modelDescriptor->getModel();
-        model.setSimulationHandler(handler);
-        AdvancedCircuitLoader::setSimulationTransferFunction(
-            model.getTransferFunction());
+        PLUGIN_INFO("Attaching Circuit Simulation Handler to model "
+                    << details.modelId);
+        auto& scene = _api->getScene();
+        auto modelDescriptor = scene.getModel(details.modelId);
+        if (modelDescriptor)
+        {
+            const brion::BlueConfig blueConfiguration(
+                details.circuitConfiguration);
+            const brain::Circuit circuit(blueConfiguration);
+            auto gids = circuit.getGIDs();
+            auto handler = std::make_shared<VoltageSimulationHandler>(
+                blueConfiguration.getReportSource(details.reportName).getPath(),
+                gids, details.synchronousMode);
+            auto& model = modelDescriptor->getModel();
+            model.setSimulationHandler(handler);
+            AdvancedCircuitLoader::setSimulationTransferFunction(
+                model.getTransferFunction());
+        }
+        else
+            PLUGIN_THROW("Model " + std::to_string(details.modelId) +
+                         " does not exist");
     }
-    else
-    {
-        PLUGIN_ERROR("Model " << payload.modelId << " does not exist");
-    }
+    CATCH_STD_EXCEPTION()
+    return response;
 }
 #endif
 
@@ -983,10 +1040,10 @@ void CircuitExplorerPlugin::_createShapeMaterial(ModelPtr& model,
                                                  const Vector3d& color,
                                                  const double& opacity)
 {
-    MaterialPtr mptr = model->createMaterial(id, std::to_string(id));
-    mptr->setDiffuseColor(color);
-    mptr->setOpacity(opacity);
-    mptr->setSpecularExponent(0.0);
+    MaterialPtr material = model->createMaterial(id, std::to_string(id));
+    material->setDiffuseColor(color);
+    material->setOpacity(opacity);
+    material->setSpecularExponent(0.0);
 
     PropertyMap props;
     props.setProperty({MATERIAL_PROPERTY_CAST_USER_DATA, false});
@@ -996,492 +1053,336 @@ void CircuitExplorerPlugin::_createShapeMaterial(ModelPtr& model,
     props.setProperty({MATERIAL_PROPERTY_CLIPPING_MODE,
                        static_cast<int>(MaterialClippingMode::no_clipping)});
 
-    mptr->updateProperties(props);
+    material->updateProperties(props);
 
-    mptr->markModified();
-    mptr->commit();
+    material->markModified();
+    material->commit();
 }
 
-AddShapeResult CircuitExplorerPlugin::_addSphere(const AddSphere& payload)
+Response CircuitExplorerPlugin::_addSphere(const AddSphere& details)
 {
-    AddShapeResult result;
-    result.error = 0;
-    result.message = "";
-
-    if (payload.center.size() < 3)
+    Response response;
+    try
     {
-        result.error = 1;
-        result.message =
-            "Sphere center has the wrong number of parameters (3 "
-            "necessary)";
-        return result;
+        if (details.center.size() < 3)
+            PLUGIN_THROW(
+                "Sphere center has the wrong number of parameters (3 "
+                "necessary)");
+        if (details.color.size() < 4)
+            PLUGIN_THROW(
+                "Sphere color has the wrong number of parameters (RGBA, 4 "
+                "necessary)");
+        if (details.radius < 0.f)
+            PLUGIN_THROW("Negative radius passed for sphere creation");
+
+        auto& scene = _api->getScene();
+        ModelPtr modelptr = scene.createModel();
+
+        const size_t matId = 1;
+        const Vector3d color(details.color[0], details.color[1],
+                             details.color[2]);
+        const double opacity = details.color[3];
+        _createShapeMaterial(modelptr, matId, color, opacity);
+
+        const Vector3f center(details.center[0], details.center[1],
+                              details.center[2]);
+        modelptr->addSphere(matId, {center, details.radius});
+
+        size_t numModels = scene.getNumModels();
+        const std::string name = details.name.empty()
+                                     ? "sphere_" + std::to_string(numModels)
+                                     : details.name;
+        scene.addModel(
+            std::make_shared<ModelDescriptor>(std::move(modelptr), name));
+        scene.markModified();
+        _markModified();
     }
-
-    if (payload.color.size() < 4)
-    {
-        result.error = 2;
-        result.message =
-            "Sphere color has the wrong number of parameters (RGBA, 4 "
-            "necessary)";
-        return result;
-    }
-
-    if (payload.radius < 0.0f)
-    {
-        result.error = 3;
-        result.message = "Negative radius passed for sphere creation";
-        return result;
-    }
-
-    ModelPtr modelptr = _api->getScene().createModel();
-
-    const size_t matId = 1;
-    const Vector3d color(payload.color[0], payload.color[1], payload.color[2]);
-    const double opacity = payload.color[3];
-    _createShapeMaterial(modelptr, matId, color, opacity);
-
-    const Vector3f center(payload.center[0], payload.center[1],
-                          payload.center[2]);
-    modelptr->addSphere(matId, {center, payload.radius});
-
-    size_t numModels = _api->getScene().getNumModels();
-    const std::string name = payload.name.empty()
-                                 ? "sphere_" + std::to_string(numModels)
-                                 : payload.name;
-    result.id = _api->getScene().addModel(
-        std::make_shared<ModelDescriptor>(std::move(modelptr), name));
-    _api->getScene().markModified();
-
-    _api->getEngine().triggerRender();
-
-    _dirty = true;
-    return result;
+    CATCH_STD_EXCEPTION()
+    return response;
 }
 
-AddShapeResult CircuitExplorerPlugin::_addPill(const AddPill& payload)
+Response CircuitExplorerPlugin::_addPill(const AddPill& details)
 {
-    AddShapeResult result;
-    result.error = 0;
-    result.message = "";
-
-    if (payload.p1.size() < 3)
+    Response response;
+    try
     {
-        result.error = 1;
-        result.message =
-            "Pill point 1 has the wrong number of parameters (3 necessary)";
-        return result;
-    }
-    if (payload.p2.size() < 3)
-    {
-        result.error = 2;
-        result.message =
-            "Pill point 2 has the wrong number of parameters (3 necessary)";
-        return result;
-    }
-    if (payload.color.size() < 4)
-    {
-        result.error = 3;
-        result.message =
-            "Pill color has the wrong number of parameters (RGBA, 4 "
-            "necessary)";
-        return result;
-    }
-    if (payload.type != "pill" && payload.type != "conepill" &&
-        payload.type != "sigmoidpill")
-    {
-        result.error = 4;
-        result.message =
-            "Unknown pill type parameter. Must be either \"pill\", "
-            "\"conepill\", or \"sigmoidpill\"";
-        return result;
-    }
-    if (payload.radius1 < 0.0f || payload.radius2 < 0.0f)
-    {
-        result.error = 5;
-        result.message = "Negative radius passed for the pill creation";
-        return result;
-    }
+        if (details.p1.size() < 3)
+            PLUGIN_THROW(
+                "Pill point 1 has the wrong number of parameters (3 "
+                "necessary)");
+        if (details.p2.size() < 3)
+            PLUGIN_THROW(
+                "Pill point 2 has the wrong number of parameters (3 "
+                "necessary)");
+        if (details.color.size() < 4)
+            PLUGIN_THROW(
+                "Pill color has the wrong number of parameters (RGBA, 4 "
+                "necessary)");
+        if (details.type != "pill" && details.type != "conepill" &&
+            details.type != "sigmoidpill")
+            PLUGIN_THROW(
+                "Unknown pill type parameter. Must be either \"pill\", "
+                "\"conepill\", or \"sigmoidpill\"");
+        if (details.radius1 < 0.f || details.radius2 < 0.f)
+            PLUGIN_THROW("Negative radius passed for the pill creation");
 
-    ModelPtr modelptr = _api->getScene().createModel();
+        auto& scene = _api->getScene();
+        auto modelptr = scene.createModel();
 
-    size_t matId = 1;
-    const Vector3d color(payload.color[0], payload.color[1], payload.color[2]);
-    const double opacity = payload.color[3];
-    _createShapeMaterial(modelptr, matId, color, opacity);
+        size_t matId = 1;
+        const Vector3d color(details.color[0], details.color[1],
+                             details.color[2]);
+        const double opacity = details.color[3];
+        _createShapeMaterial(modelptr, matId, color, opacity);
 
-    const Vector3f p0(payload.p1[0], payload.p1[1], payload.p1[2]);
-    const Vector3f p1(payload.p2[0], payload.p2[1], payload.p2[2]);
-    SDFGeometry sdf;
-    if (payload.type == "pill")
-    {
-        sdf = createSDFPill(p0, p1, payload.radius1);
+        const Vector3f p0(details.p1[0], details.p1[1], details.p1[2]);
+        const Vector3f p1(details.p2[0], details.p2[1], details.p2[2]);
+        SDFGeometry sdf;
+        if (details.type == "pill")
+        {
+            sdf = createSDFPill(p0, p1, details.radius1);
+        }
+        else if (details.type == "conepill")
+        {
+            sdf = createSDFConePill(p0, p1, details.radius1, details.radius2);
+        }
+        else if (details.type == "sigmoidpill")
+        {
+            sdf = createSDFConePillSigmoid(p0, p1, details.radius1,
+                                           details.radius2);
+        }
+
+        modelptr->addSDFGeometry(matId, sdf, {});
+        size_t numModels = scene.getNumModels();
+        const std::string name =
+            details.name.empty()
+                ? details.type + "_" + std::to_string(numModels)
+                : details.name;
+        scene.addModel(
+            std::make_shared<ModelDescriptor>(std::move(modelptr), name));
+        _markModified();
     }
-    else if (payload.type == "conepill")
-    {
-        sdf = createSDFConePill(p0, p1, payload.radius1, payload.radius2);
-    }
-    else if (payload.type == "sigmoidpill")
-    {
-        sdf =
-            createSDFConePillSigmoid(p0, p1, payload.radius1, payload.radius2);
-    }
-
-    modelptr->addSDFGeometry(matId, sdf, {});
-
-    size_t numModels = _api->getScene().getNumModels();
-    const std::string name =
-        payload.name.empty() ? payload.type + "_" + std::to_string(numModels)
-                             : payload.name;
-    result.id = _api->getScene().addModel(
-        std::make_shared<ModelDescriptor>(std::move(modelptr), name));
-    _api->getScene().markModified();
-    _api->getEngine().triggerRender();
-
-    _dirty = true;
-
-    return result;
+    CATCH_STD_EXCEPTION()
+    return response;
 }
 
-AddShapeResult CircuitExplorerPlugin::_addCylinder(const AddCylinder& payload)
+Response CircuitExplorerPlugin::_addCylinder(const AddCylinder& details)
 {
-    AddShapeResult result;
-    result.error = 0;
-    result.message = "";
-
-    if (payload.center.size() < 3)
+    Response response;
+    try
     {
-        result.error = 1;
-        result.message =
-            "Cylinder center has the wrong number of parameters (3 "
-            "necessary)";
-        return result;
-        ;
+        if (details.center.size() < 3)
+            PLUGIN_THROW(
+                "Cylinder center has the wrong number of parameters (3 "
+                "necessary)");
+        if (details.up.size() < 3)
+            PLUGIN_THROW(
+                "Cylinder up has the wrong number of parameters (3 "
+                "necessary)");
+        if (details.color.size() < 4)
+            PLUGIN_THROW(
+                "Cylinder color has the wrong number of parameters (RGBA, "
+                "4 "
+                "necessary)");
+        if (details.radius < 0.0f)
+            PLUGIN_THROW("Negative radius passed for cylinder creation");
+
+        auto& scene = _api->getScene();
+        ModelPtr modelptr = scene.createModel();
+
+        const size_t matId = 1;
+        const Vector3d color(details.color[0], details.color[1],
+                             details.color[2]);
+        const double opacity = details.color[3];
+        _createShapeMaterial(modelptr, matId, color, opacity);
+
+        const Vector3f center(details.center[0], details.center[1],
+                              details.center[2]);
+        const Vector3f up(details.up[0], details.up[1], details.up[2]);
+        modelptr->addCylinder(matId, {center, up, details.radius});
+
+        size_t numModels = scene.getNumModels();
+        const std::string name = details.name.empty()
+                                     ? "cylinder_" + std::to_string(numModels)
+                                     : details.name;
+        scene.addModel(
+            std::make_shared<ModelDescriptor>(std::move(modelptr), name));
+        _markModified();
     }
-    if (payload.up.size() < 3)
-    {
-        result.error = 2;
-        result.message =
-            "Cylinder up has the wrong number of parameters (3 necessary)";
-        return result;
-    }
-    if (payload.color.size() < 4)
-    {
-        result.error = 3;
-        result.message =
-            "Cylinder color has the wrong number of parameters (RGBA, 4 "
-            "necessary)";
-        return result;
-    }
-    if (payload.radius < 0.0f)
-    {
-        result.error = 4;
-        result.message = "Negative radius passed for cylinder creation";
-        return result;
-    }
-
-    ModelPtr modelptr = _api->getScene().createModel();
-
-    const size_t matId = 1;
-    const Vector3d color(payload.color[0], payload.color[1], payload.color[2]);
-    const double opacity = payload.color[3];
-    _createShapeMaterial(modelptr, matId, color, opacity);
-
-    const Vector3f center(payload.center[0], payload.center[1],
-                          payload.center[2]);
-    const Vector3f up(payload.up[0], payload.up[1], payload.up[2]);
-    modelptr->addCylinder(matId, {center, up, payload.radius});
-
-    size_t numModels = _api->getScene().getNumModels();
-    const std::string name = payload.name.empty()
-                                 ? "cylinder_" + std::to_string(numModels)
-                                 : payload.name;
-    result.id = _api->getScene().addModel(
-        std::make_shared<ModelDescriptor>(std::move(modelptr), name));
-    _api->getScene().markModified();
-    _api->getEngine().triggerRender();
-
-    _dirty = true;
-
-    return result;
+    CATCH_STD_EXCEPTION()
+    return response;
 }
 
-AddShapeResult CircuitExplorerPlugin::_addBox(const AddBox& payload)
+Response CircuitExplorerPlugin::_addBox(const AddBox& details)
 {
-    AddShapeResult result;
-    result.error = 0;
-    result.message = "";
-
-    if (payload.minCorner.size() < 3)
+    Response response;
+    try
     {
-        result.error = 1;
-        result.message =
-            "Box minCorner has the wrong number of parameters (3 "
-            "necessary)";
-        return result;
+        if (details.minCorner.size() < 3)
+            PLUGIN_THROW(
+                "Box minCorner has the wrong number of parameters (3 "
+                "necessary)");
+        if (details.maxCorner.size() < 3)
+            PLUGIN_THROW(
+                "Box maxCorner has the wrong number of parameters (3 "
+                "necesary)");
+        if (details.color.size() < 4)
+            PLUGIN_THROW(
+                "Box color has the wrong number of parameters (RGBA, 4 "
+                "necesary)");
+
+        auto& scene = _api->getScene();
+        auto modelptr = scene.createModel();
+
+        const size_t matId = 1;
+        const Vector3d color(details.color[0], details.color[1],
+                             details.color[2]);
+        const double opacity = details.color[3];
+        _createShapeMaterial(modelptr, matId, color, opacity);
+
+        const Vector3f minCorner(details.minCorner[0], details.minCorner[1],
+                                 details.minCorner[2]);
+        const Vector3f maxCorner(details.maxCorner[0], details.maxCorner[1],
+                                 details.maxCorner[2]);
+
+        TriangleMesh mesh = createBox(minCorner, maxCorner);
+
+        modelptr->getTriangleMeshes()[matId] = mesh;
+        modelptr->markInstancesDirty();
+
+        size_t numModels = scene.getNumModels();
+        const std::string name = details.name.empty()
+                                     ? "box_" + std::to_string(numModels)
+                                     : details.name;
+        scene.addModel(
+            std::make_shared<ModelDescriptor>(std::move(modelptr), name));
+        _markModified();
     }
-    if (payload.maxCorner.size() < 3)
-    {
-        result.error = 2;
-        result.message =
-            "Box maxCorner has the wrong number of parameters (3 necesary)";
-        return result;
-    }
-    if (payload.color.size() < 4)
-    {
-        result.error = 3;
-        result.message =
-            "Box color has the wrong number of parameters (RGBA, 4 "
-            "necesary)";
-        return result;
-    }
-
-    ModelPtr modelptr = _api->getScene().createModel();
-
-    const size_t matId = 1;
-    const Vector3d color(payload.color[0], payload.color[1], payload.color[2]);
-    const double opacity = payload.color[3];
-    _createShapeMaterial(modelptr, matId, color, opacity);
-
-    const Vector3f minCorner(payload.minCorner[0], payload.minCorner[1],
-                             payload.minCorner[2]);
-    const Vector3f maxCorner(payload.maxCorner[0], payload.maxCorner[1],
-                             payload.maxCorner[2]);
-
-    TriangleMesh mesh = createBox(minCorner, maxCorner);
-
-    modelptr->getTriangleMeshes()[matId] = mesh;
-    modelptr->markInstancesDirty();
-
-    size_t numModels = _api->getScene().getNumModels();
-    const std::string name = payload.name.empty()
-                                 ? "box_" + std::to_string(numModels)
-                                 : payload.name;
-    result.id = _api->getScene().addModel(
-        std::make_shared<ModelDescriptor>(std::move(modelptr), name));
-    _api->getScene().markModified();
-    _api->getEngine().triggerRender();
-
-    _dirty = true;
-
-    return result;
+    CATCH_STD_EXCEPTION()
+    return response;
 }
 
-void CircuitExplorerPlugin::_addGrid(const AddGrid& payload)
+Response CircuitExplorerPlugin::_addColumn(const AddColumn& details)
 {
-    PLUGIN_INFO("Building Grid scene");
-
-    auto& scene = _api->getScene();
-    auto model = scene.createModel();
-
-    const Vector3f red = {1, 0, 0};
-    const Vector3f green = {0, 1, 0};
-    const Vector3f blue = {0, 0, 1};
-    const Vector3f grey = {0.5, 0.5, 0.5};
-
-    PropertyMap props;
-    props.setProperty({MATERIAL_PROPERTY_CAST_USER_DATA, false});
-    props.setProperty({MATERIAL_PROPERTY_SHADING_MODE,
-                       static_cast<int>(MaterialShadingMode::none)});
-    props.setProperty({MATERIAL_PROPERTY_CLIPPING_MODE,
-                       static_cast<int>(MaterialClippingMode::no_clipping)});
-
-    auto material = model->createMaterial(0, "x");
-    material->setDiffuseColor(grey);
-    material->setProperties(props);
-
-    const float m = payload.minValue;
-    const float M = payload.maxValue;
-    const float s = payload.steps;
-    const float r = payload.radius;
-    for (float x = m; x <= M; x += s)
-        for (float y = m; y <= M; y += s)
-            if (fabs(x) < 0.001f || fabs(y) < 0.001f)
-            {
-                model->addCylinder(0, {{x, y, m}, {x, y, M}, r});
-                model->addCylinder(0, {{m, x, y}, {M, x, y}, r});
-                model->addCylinder(0, {{x, m, y}, {x, M, y}, r});
-            }
-
-    material = model->createMaterial(1, "plane_x");
-    material->setDiffuseColor(payload.useColors ? red : grey);
-    material->setOpacity(payload.planeOpacity);
-    material->setProperties(props);
-    auto& tmx = model->getTriangleMeshes()[1];
-    tmx.vertices.push_back({m, 0, m});
-    tmx.vertices.push_back({M, 0, m});
-    tmx.vertices.push_back({M, 0, M});
-    tmx.vertices.push_back({m, 0, M});
-    tmx.indices.push_back(Vector3ui(0, 1, 2));
-    tmx.indices.push_back(Vector3ui(2, 3, 0));
-
-    material = model->createMaterial(2, "plane_y");
-    material->setDiffuseColor(payload.useColors ? green : grey);
-    material->setOpacity(payload.planeOpacity);
-    material->setProperties(props);
-    auto& tmy = model->getTriangleMeshes()[2];
-    tmy.vertices.push_back({m, m, 0});
-    tmy.vertices.push_back({M, m, 0});
-    tmy.vertices.push_back({M, M, 0});
-    tmy.vertices.push_back({m, M, 0});
-    tmy.indices.push_back(Vector3ui(0, 1, 2));
-    tmy.indices.push_back(Vector3ui(2, 3, 0));
-
-    material = model->createMaterial(3, "plane_z");
-    material->setDiffuseColor(payload.useColors ? blue : grey);
-    material->setOpacity(payload.planeOpacity);
-    material->setProperties(props);
-    auto& tmz = model->getTriangleMeshes()[3];
-    tmz.vertices.push_back({0, m, m});
-    tmz.vertices.push_back({0, m, M});
-    tmz.vertices.push_back({0, M, M});
-    tmz.vertices.push_back({0, M, m});
-    tmz.indices.push_back(Vector3ui(0, 1, 2));
-    tmz.indices.push_back(Vector3ui(2, 3, 0));
-
-    if (payload.showAxis)
+    Response response;
+    try
     {
-        const float l = M;
-        const float smallRadius = payload.radius * 25.0;
-        const float largeRadius = payload.radius * 50.0;
-        const float l1 = l * 0.89;
-        const float l2 = l * 0.90;
+        PLUGIN_INFO("Building Column model");
 
-        PropertyMap diffuseProps;
-        diffuseProps.setProperty({MATERIAL_PROPERTY_CAST_USER_DATA, false});
-        diffuseProps.setProperty(
-            {MATERIAL_PROPERTY_SHADING_MODE,
-             static_cast<int>(MaterialShadingMode::diffuse)});
+        auto& scene = _api->getScene();
+        auto model = scene.createModel();
 
-        // X
-        material = model->createMaterial(4, "x_axis");
-        material->setDiffuseColor({1, 0, 0});
-        material->setProperties(diffuseProps);
+        const Vector3f white = {1.f, 1.f, 1.F};
 
-        model->addCylinder(4, {{0, 0, 0}, {l1, 0, 0}, smallRadius});
-        model->addCone(4, {{l1, 0, 0}, {l2, 0, 0}, smallRadius, largeRadius});
-        model->addCone(4, {{l2, 0, 0}, {M, 0, 0}, largeRadius, 0});
+        PropertyMap props;
+        props.setProperty({MATERIAL_PROPERTY_CAST_USER_DATA, false});
+        props.setProperty({MATERIAL_PROPERTY_SHADING_MODE,
+                           static_cast<int>(MaterialShadingMode::diffuse)});
+        props.setProperty(
+            {MATERIAL_PROPERTY_CLIPPING_MODE,
+             static_cast<int>(MaterialClippingMode::no_clipping)});
 
-        // Y
-        material = model->createMaterial(5, "y_axis");
-        material->setDiffuseColor({0, 1, 0});
-        material->setProperties(diffuseProps);
+        auto material = model->createMaterial(0, "column");
+        material->setDiffuseColor(white);
+        material->setProperties(props);
 
-        model->addCylinder(5, {{0, 0, 0}, {0, l1, 0}, smallRadius});
-        model->addCone(5, {{0, l1, 0}, {0, l2, 0}, smallRadius, largeRadius});
-        model->addCone(5, {{0, l2, 0}, {0, M, 0}, largeRadius, 0});
+        const Vector3fs verticesBottom = {
+            {-0.25f, -1.0f, -0.5f}, {0.25f, -1.0f, -0.5f},
+            {0.5f, -1.0f, -0.25f},  {0.5f, -1.0f, 0.25f},
+            {0.5f, -1.0f, -0.25f},  {0.5f, -1.0f, 0.25f},
+            {0.25f, -1.0f, 0.5f},   {-0.25f, -1.0f, 0.5f},
+            {-0.5f, -1.0f, 0.25f},  {-0.5f, -1.0f, -0.25f}};
+        const Vector3fs verticesTop = {
+            {-0.25f, 1.f, -0.5f}, {0.25f, 1.f, -0.5f}, {0.5f, 1.f, -0.25f},
+            {0.5f, 1.f, 0.25f},   {0.5f, 1.f, -0.25f}, {0.5f, 1.f, 0.25f},
+            {0.25f, 1.f, 0.5f},   {-0.25f, 1.f, 0.5f}, {-0.5f, 1.f, 0.25f},
+            {-0.5f, 1.f, -0.25f}};
 
-        // Z
-        material = model->createMaterial(6, "z_axis");
-        material->setDiffuseColor({0, 0, 1});
-        material->setProperties(diffuseProps);
+        const auto r = details.radius;
+        for (size_t i = 0; i < verticesBottom.size(); ++i)
+        {
+            model->addCylinder(0,
+                               {verticesBottom[i],
+                                verticesBottom[(i + 1) % verticesBottom.size()],
+                                r / 2.f});
+            model->addSphere(0, {verticesBottom[i], r});
+        }
 
-        model->addCylinder(6, {{0, 0, 0}, {0, 0, l1}, smallRadius});
-        model->addCone(6, {{0, 0, l1}, {0, 0, l2}, smallRadius, largeRadius});
-        model->addCone(6, {{0, 0, l2}, {0, 0, M}, largeRadius, 0});
+        for (size_t i = 0; i < verticesTop.size(); ++i)
+        {
+            model->addCylinder(0, {verticesTop[i],
+                                   verticesTop[(i + 1) % verticesTop.size()],
+                                   r / 2.f});
+            model->addSphere(0, {verticesTop[i], r});
+        }
 
-        // Origin
-        model->addSphere(0, {{0, 0, 0}, smallRadius});
+        for (size_t i = 0; i < verticesTop.size(); ++i)
+            model->addCylinder(0, {verticesBottom[i], verticesTop[i], r / 2.f});
+
+        scene.addModel(
+            std::make_shared<ModelDescriptor>(std::move(model), "Column"));
     }
-
-    scene.addModel(std::make_shared<ModelDescriptor>(std::move(model), "Grid"));
-}
-
-void CircuitExplorerPlugin::_addColumn(const AddColumn& payload)
-{
-    PLUGIN_INFO("Building Column model");
-
-    auto& scene = _api->getScene();
-    auto model = scene.createModel();
-
-    const Vector3f white = {1.f, 1.f, 1.F};
-
-    PropertyMap props;
-    props.setProperty({MATERIAL_PROPERTY_CAST_USER_DATA, false});
-    props.setProperty({MATERIAL_PROPERTY_SHADING_MODE,
-                       static_cast<int>(MaterialShadingMode::diffuse)});
-    props.setProperty({MATERIAL_PROPERTY_CLIPPING_MODE,
-                       static_cast<int>(MaterialClippingMode::no_clipping)});
-
-    auto material = model->createMaterial(0, "column");
-    material->setDiffuseColor(white);
-    material->setProperties(props);
-
-    const Vector3fs verticesBottom = {
-        {-0.25f, -1.0f, -0.5f}, {0.25f, -1.0f, -0.5f}, {0.5f, -1.0f, -0.25f},
-        {0.5f, -1.0f, 0.25f},   {0.5f, -1.0f, -0.25f}, {0.5f, -1.0f, 0.25f},
-        {0.25f, -1.0f, 0.5f},   {-0.25f, -1.0f, 0.5f}, {-0.5f, -1.0f, 0.25f},
-        {-0.5f, -1.0f, -0.25f}};
-    const Vector3fs verticesTop = {{-0.25f, 1.f, -0.5f}, {0.25f, 1.f, -0.5f},
-                                   {0.5f, 1.f, -0.25f},  {0.5f, 1.f, 0.25f},
-                                   {0.5f, 1.f, -0.25f},  {0.5f, 1.f, 0.25f},
-                                   {0.25f, 1.f, 0.5f},   {-0.25f, 1.f, 0.5f},
-                                   {-0.5f, 1.f, 0.25f},  {-0.5f, 1.f, -0.25f}};
-
-    const auto r = payload.radius;
-    for (size_t i = 0; i < verticesBottom.size(); ++i)
-    {
-        model->addCylinder(0, {verticesBottom[i],
-                               verticesBottom[(i + 1) % verticesBottom.size()],
-                               r / 2.f});
-        model->addSphere(0, {verticesBottom[i], r});
-    }
-
-    for (size_t i = 0; i < verticesTop.size(); ++i)
-    {
-        model->addCylinder(0, {verticesTop[i],
-                               verticesTop[(i + 1) % verticesTop.size()],
-                               r / 2.f});
-        model->addSphere(0, {verticesTop[i], r});
-    }
-
-    for (size_t i = 0; i < verticesTop.size(); ++i)
-        model->addCylinder(0, {verticesBottom[i], verticesTop[i], r / 2.f});
-
-    scene.addModel(
-        std::make_shared<ModelDescriptor>(std::move(model), "Column"));
+    CATCH_STD_EXCEPTION()
+    return response;
 }
 
 #ifdef USE_VASCULATURE
-void CircuitExplorerPlugin::_attachVasculatureHandler(
-    const AttachVasculatureHandler& payload)
+Response CircuitExplorerPlugin::_attachVasculatureHandler(
+    const AttachVasculatureHandler& details)
 {
-    PLUGIN_INFO("Attaching Vasculature Handler to model " << payload.modelId);
-    auto modelDescriptor = _api->getScene().getModel(payload.modelId);
-    if (modelDescriptor)
+    Response response;
+    try
     {
-        auto handler = std::make_shared<VasculatureHandler>(payload);
-        auto& model = modelDescriptor->getModel();
-        model.setSimulationHandler(handler);
+        PLUGIN_INFO("Attaching Vasculature Handler to model "
+                    << details.modelId);
+        auto& scene = _api->getScene();
+        auto modelDescriptor = scene.getModel(details.modelId);
+        if (modelDescriptor)
+        {
+            auto handler = std::make_shared<VasculatureHandler>(details);
+            auto& model = modelDescriptor->getModel();
+            model.setSimulationHandler(handler);
+        }
+        else
+            PLUGIN_THROW("Model " + std::to_string(details.modelId) +
+                         " does not exist");
     }
-    else
-        PLUGIN_ERROR("Model " << payload.modelId << " does not exist");
+    CATCH_STD_EXCEPTION()
+    return response;
 }
 
-void CircuitExplorerPlugin::_applyVasculatureGeometryReport(
-    const ApplyVasculatureGeometryReport& payload)
+Response CircuitExplorerPlugin::_applyVasculatureGeometryReport(
+    const ApplyVasculatureGeometryReport& details)
 {
-    auto& scene = _api->getScene();
-    auto modelDescriptor = scene.getModel(static_cast<size_t>(payload.modelId));
-    if (!modelDescriptor)
-        PLUGIN_THROW("Unknown model Id");
+    Response response;
+    try
+    {
+        auto& scene = _api->getScene();
+        auto modelDescriptor =
+            scene.getModel(static_cast<size_t>(details.modelId));
+        if (!modelDescriptor)
+            PLUGIN_THROW("Unknown model Id");
 
-    auto& model = modelDescriptor->getModel();
-    VasculatureLoader::applyGeometryReport(model, payload);
-    scene.markModified();
+        auto& model = modelDescriptor->getModel();
+        VasculatureLoader::applyGeometryReport(model, details);
+        _markModified();
+    }
+    CATCH_STD_EXCEPTION()
+    return response;
 }
 #endif
 
 #ifdef USE_MORPHOLOGIES
 #ifdef USE_PQXX
 Response CircuitExplorerPlugin::_importMorphology(
-    const ImportMorphology& payload)
+    const ImportMorphology& details)
 {
     Response response;
     try
     {
-        db::DBConnector connector(payload.connectionString, payload.schema);
-        connector.importMorphology(_api->getScene(), payload.guid,
-                                   payload.filename);
+        db::DBConnector connector(details.connectionString, details.schema);
+        connector.importMorphology(_api->getScene(), details.guid,
+                                   details.filename);
         response.status = true;
     }
     catch (const std::runtime_error& e)
@@ -1493,14 +1394,14 @@ Response CircuitExplorerPlugin::_importMorphology(
 }
 
 Response CircuitExplorerPlugin::_importMorphologyAsSDF(
-    const ImportMorphology& payload)
+    const ImportMorphology& details)
 {
     Response response;
     try
     {
-        db::DBConnector connector(payload.connectionString, payload.schema);
-        connector.importMorphologyAsSDF(_api->getScene(), payload.guid,
-                                        payload.filename);
+        db::DBConnector connector(details.connectionString, details.schema);
+        connector.importMorphologyAsSDF(_api->getScene(), details.guid,
+                                        details.filename);
         response.status = true;
     }
     catch (const std::runtime_error& e)
@@ -1511,16 +1412,16 @@ Response CircuitExplorerPlugin::_importMorphologyAsSDF(
     return response;
 }
 
-Response CircuitExplorerPlugin::_importVolume(const ImportVolume& payload)
+Response CircuitExplorerPlugin::_importVolume(const ImportVolume& details)
 {
     Response response;
     try
     {
-        db::DBConnector connector(payload.connectionString, payload.schema);
-        const auto& d{payload.dimensions};
-        const auto& s{payload.spacing};
-        connector.importVolume(payload.guid, {d[0], d[1], d[2]},
-                               {s[0], s[1], s[2]}, payload.rawFilename);
+        db::DBConnector connector(details.connectionString, details.schema);
+        const auto& d{details.dimensions};
+        const auto& s{details.spacing};
+        connector.importVolume(details.guid, {d[0], d[1], d[2]},
+                               {s[0], s[1], s[2]}, details.rawFilename);
     }
     catch (const std::runtime_error& e)
     {
@@ -1531,14 +1432,14 @@ Response CircuitExplorerPlugin::_importVolume(const ImportVolume& payload)
 }
 
 Response CircuitExplorerPlugin::_importCompartmentSimulation(
-    const ImportCompartmentSimulation& payload)
+    const ImportCompartmentSimulation& details)
 {
     Response response;
-    db::DBConnector connector(payload.connectionString, payload.schema);
+    db::DBConnector connector(details.connectionString, details.schema);
     try
     {
-        connector.importCompartmentSimulation(payload.blueConfig,
-                                              payload.reportName);
+        connector.importCompartmentSimulation(details.blueConfig,
+                                              details.reportName);
         response.status = true;
     }
     catch (const std::runtime_error& e)
@@ -1554,25 +1455,32 @@ extern "C" ExtensionPlugin* brayns_plugin_create(int /*argc*/, char** /*argv*/)
 {
     PLUGIN_INFO("");
     PLUGIN_INFO(
-        "   _|_|_|  _|                                _|    _|      _|_|_|_|   "
+        "   _|_|_|  _|                                _|    _|      "
+        "_|_|_|_|   "
         "                   _|                                          ");
     PLUGIN_INFO(
-        " _|            _|  _|_|    _|_|_|  _|    _|      _|_|_|_|  _|        "
+        " _|            _|  _|_|    _|_|_|  _|    _|      _|_|_|_|  _|     "
+        "   "
         "_|    _|  _|_|_|    _|    _|_|    _|  _|_|    _|_|    _|  _|_| ");
     PLUGIN_INFO(
-        " _|        _|  _|_|      _|        _|    _|  _|    _|      _|_|_|     "
+        " _|        _|  _|_|      _|        _|    _|  _|    _|      _|_|_| "
+        "    "
         " _|_|    _|    _|  _|  _|    _|  _|_|      _|_|_|_|  _|_|     ");
     PLUGIN_INFO(
-        " _|        _|  _|        _|        _|    _|  _|    _|      _|        "
+        " _|        _|  _|        _|        _|    _|  _|    _|      _|     "
+        "   "
         "_|    _|  _|    _|  _|  _|    _|  _|        _|        _|       ");
     PLUGIN_INFO(
-        "   _|_|_|  _|  _|          _|_|_|    _|_|_|  _|      _|_|  _|_|_|_|  "
+        "   _|_|_|  _|  _|          _|_|_|    _|_|_|  _|      _|_|  "
+        "_|_|_|_|  "
         "_|    _|  _|_|_|    _|    _|_|    _|          _|_|_|  _|        ");
     PLUGIN_INFO(
-        "                                                                      "
+        "                                                                  "
+        "    "
         "         _|                                                   ");
     PLUGIN_INFO(
-        "                                                                      "
+        "                                                                  "
+        "    "
         "         _|                                                   ");
     PLUGIN_INFO("");
     PLUGIN_INFO("Initializing CircuitExplorer plug-in");

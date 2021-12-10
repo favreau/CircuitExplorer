@@ -50,13 +50,14 @@ public:
 private:
     // Plug-in
     Response _getVersion() const;
+    void _markModified() { _dirty = true; };
 
 #ifdef USE_MORPHOLOGIES
     // Handlers
-    void _attachCellGrowthHandler(const AttachCellGrowthHandler& payload);
-    void _attachCircuitSimulationHandler(
+    Response _attachCellGrowthHandler(const AttachCellGrowthHandler& payload);
+    Response _attachCircuitSimulationHandler(
         const AttachCircuitSimulationHandler& payload);
-    void _setConnectionsPerValue(const ConnectionsPerValue&);
+    Response _setConnectionsPerValue(const ConnectionsPerValue&);
 
 #ifdef USE_PQXX
     // Database
@@ -71,33 +72,32 @@ private:
 
 #ifdef USE_VASCULATURE
     // Vasculature
-    void _attachVasculatureHandler(const AttachVasculatureHandler& payload);
-    void _applyVasculatureGeometryReport(
+    Response _attachVasculatureHandler(const AttachVasculatureHandler& payload);
+    Response _applyVasculatureGeometryReport(
         const ApplyVasculatureGeometryReport& payload);
 #endif
 
     // Rendering
-    void _setMaterial(const MaterialDescriptor&);
-    void _setMaterials(const MaterialsDescriptor&);
-    void _setMaterialRange(const MaterialRangeDescriptor&);
-    void _setMaterialExtraAttributes(const MaterialExtraAttributes&);
+    Response _setMaterial(const MaterialDescriptor&);
+    Response _setMaterials(const MaterialsDescriptor&);
+    Response _setMaterialRange(const MaterialRangeDescriptor&);
+    Response _setMaterialExtraAttributes(const MaterialExtraAttributes&);
     MaterialIds _getMaterialIds(const ModelId& modelId);
 
     // Experimental
-    void _exportModelToFile(const ExportModelToFile&);
-    void _exportModelToMesh(const ExportModelToMesh&);
+    Response _exportModelToFile(const ExportModelToFile&);
+    Response _exportModelToMesh(const ExportModelToMesh&);
 
     // Add geometry
     void _createShapeMaterial(ModelPtr& model, const size_t id,
                               const Vector3d& color, const double& opacity);
-    AddShapeResult _addSphere(const AddSphere& payload);
-    AddShapeResult _addPill(const AddPill& payload);
-    AddShapeResult _addCylinder(const AddCylinder& payload);
-    AddShapeResult _addBox(const AddBox& payload);
+    Response _addSphere(const AddSphere& payload);
+    Response _addPill(const AddPill& payload);
+    Response _addCylinder(const AddCylinder& payload);
+    Response _addBox(const AddBox& payload);
 
     // Predefined models
-    void _addGrid(const AddGrid& payload);
-    void _addColumn(const AddColumn& payload);
+    Response _addColumn(const AddColumn& payload);
 
     bool _dirty{false};
 };

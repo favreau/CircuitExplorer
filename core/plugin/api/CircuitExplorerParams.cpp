@@ -444,23 +444,6 @@ bool from_json(AddBox& param, const std::string& payload)
     return true;
 }
 
-std::string to_json(const AddShapeResult& addResult)
-{
-    try
-    {
-        nlohmann::json json;
-        TO_JSON(addResult, json, id);
-        TO_JSON(addResult, json, error);
-        TO_JSON(addResult, json, message);
-        return json.dump();
-    }
-    catch (...)
-    {
-        return "";
-    }
-    return "";
-}
-
 #ifdef USE_PQXX
 bool from_json(ImportMorphology& param, const std::string& payload)
 {
