@@ -173,7 +173,7 @@ private:
      */
     void _connectSDFSomaChildren(const PropertyMap& properties,
                                  const Vector3f& somaPosition,
-                                 const double somaRadius,
+                                 const float somaRadius,
                                  const size_t materialId,
                                  const uint64_t& userDataOffset,
                                  const brain::neuron::Sections& somaChildren,
@@ -217,7 +217,7 @@ private:
      * Adds the sphere between the steps in the sections
      */
     void _addStepSphereGeometry(const bool useSDFGeometry, const bool isDone,
-                                const Vector3f& position, const double radius,
+                                const Vector3f& position, const float radius,
                                 const size_t materialId,
                                 const uint64_t& userDataOffset,
                                 ParallelModelContainer& model,
@@ -228,13 +228,14 @@ private:
     /**
      * Adds the cone between the steps in the sections
      */
-    void _addStepConeGeometry(
-        const bool useSDFGeometry, const Vector3f& position,
-        const double radius, const Vector3f& target,
-        const double previousRadius, const size_t materialId,
-        const uint64_t& userDataOffset, ParallelModelContainer& model,
-        SDFMorphologyData& sdfMorphologyData, const uint32_t sdfGroupId,
-        const float displacementRatio = 1.f) const;
+    void _addStepConeGeometry(const bool useSDFGeometry, const Vector3f& source,
+                              const float sourceRadius, const Vector3f& target,
+                              const float targetRadius, const size_t materialId,
+                              const uint64_t& userDataOffset,
+                              ParallelModelContainer& model,
+                              SDFMorphologyData& sdfMorphologyData,
+                              const uint32_t sdfGroupId,
+                              const float displacementRatio = 1.f) const;
 
     /**
      * @brief _getMaterialIdFromColorScheme returns the material id
