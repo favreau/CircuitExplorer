@@ -51,6 +51,8 @@ void CircuitExplorerAdvancedRenderer::commit()
     _volumeSpecularExponent = getParam1f("volumeSpecularExponent", 20.f);
     _volumeAlphaCorrection = getParam1f("volumeAlphaCorrection", 0.5f);
 
+    _matrixFilter = getParam("matrixFilter", 0);
+
     const uint64 simulationDataSize =
         _simulationData ? _simulationData->size() : 0;
 
@@ -69,7 +71,7 @@ void CircuitExplorerAdvancedRenderer::commit()
         simulationDataSize, _samplingThreshold, _volumeSpecularExponent,
         _volumeAlphaCorrection, _exposure, _fogThickness, _fogStart,
         (const ispc::vec4f*)clipPlaneData, numClipPlanes, _maxBounces,
-        _epsilonFactor, _useHardwareRandomizer);
+        _epsilonFactor, _useHardwareRandomizer, _matrixFilter);
 }
 
 CircuitExplorerAdvancedRenderer::CircuitExplorerAdvancedRenderer()

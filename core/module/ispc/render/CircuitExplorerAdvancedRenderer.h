@@ -55,6 +55,8 @@ private:
 
     ospray::uint32 _randomNumber{0};
 
+    bool _matrixFilter{false};
+
     // Volumes
     float _samplingThreshold{1.f};
     ospray::int32 _volumeSamplesPerRay{32};

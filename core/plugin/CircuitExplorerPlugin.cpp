@@ -166,6 +166,7 @@ void _addAdvancedSimulationRenderer(Engine& engine)
     properties.setProperty({"useHardwareRandomizer",
                             false,
                             {"Use hardware accelerated randomizer"}});
+    properties.setProperty({"matrixFilter", false, {"Matrix filter"}});
     engine.addRendererType("circuit_explorer_advanced", properties);
 }
 

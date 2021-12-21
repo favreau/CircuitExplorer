@@ -31,6 +31,7 @@ struct CircuitExplorerAdvancedRenderer
     float giDistance;
     uint32 giSamples;
     float epsilonFactor;
+    bool matrixFilter;
 
     // Volumes
     uint32 volumeSamplesPerRay;
@@ -1217,9 +1218,16 @@ inline vec3f CircuitExplorerAdvancedRenderer_shadeRay(
     const float fog = 1.f - color.w * (1.f - fogAttenuation);
 
     // Final color
-    const vec3f finalColor = make_vec3f(color) * (1.f - fog) + fog * bgColor;
     sample.alpha = min(1.f, color.w);
-    return make_vec3f(finalColor * self->super.super.exposure);
+    vec3f finalColor = (make_vec3f(color) * (1.f - fog) + fog * bgColor) *
+                       self->super.super.exposure;
+
+    if (self->matrixFilter)
+        finalColor = make_vec3f(finalColor.x * 0.666f, finalColor.y * 0.8f,
+                                finalColor.z * 0.666f);
+
+    finalColor = clamp(finalColor, make_vec3f(0.f), make_vec3f(1.f));
+    return finalColor;
 }
 
 void CircuitExplorerAdvancedRenderer_renderSample(
@@ -1260,7 +1268,7 @@ export void CircuitExplorerAdvancedRenderer_set(
     const uniform float fogThickness, const uniform float fogStart,
     const uniform vec4f clipPlanes[], const uniform uint32 numClipPlanes,
     const uniform uint32 maxBounces, const uniform float epsilonFactor,
-    const uniform bool useHardwareRandomizer)
+    const uniform bool useHardwareRandomizer, const uniform bool matrixFilter)
 {
     uniform CircuitExplorerAdvancedRenderer* uniform self =
         (uniform CircuitExplorerAdvancedRenderer * uniform) _self;
@@ -1310,4 +1318,6 @@ export void CircuitExplorerAdvancedRenderer_set(
 
     self->clipPlanes = clipPlanes;
     self->numClipPlanes = numClipPlanes;
+
+    self->matrixFilter = matrixFilter;
 }
