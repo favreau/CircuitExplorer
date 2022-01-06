@@ -113,13 +113,14 @@ public:
 
 private:
     /**
-     * @brief _getCorrectedRadius Modifies the radius of the geometry according
-     * to --radius-multiplier and --radius-correction geometry parameters
-     * @param radius Radius to be corrected
+     * @brief _getCorrectedRadius Modifies the diameter of the geometry
+     * according to --radius-multiplier and --radius-correction geometry
+     * parameters
+     * @param diameter Diameter to be corrected and converted in to radius
      * @return Corrected value of a radius according to geometry parameters
      */
     float _getCorrectedRadius(const PropertyMap& properties,
-                              const float radius) const;
+                              const float diameter) const;
 
     void _importMorphology(const Gid& gid, const PropertyMap& properties,
                            const std::string& source, const uint64_t index,
@@ -273,14 +274,25 @@ private:
                            SDFMorphologyData& sdfMorphologyData,
                            uint32_t& sdfGroupId) const;
 
-    void _addSectionInternals(
+    void _addAxonInternals(const PropertyMap& properties,
+                           const float sectionLength, const float sectionVolume,
+                           const brion::Vector4fs& samples,
+                           const float mitochondriaDensity,
+                           const size_t materialId,
+                           SDFMorphologyData& sdfMorphologyData,
+                           uint32_t& sdfGroupId,
+                           ParallelModelContainer& model) const;
+
+    void _addAxonMyelinSheath(
         const PropertyMap& properties, const float sectionLength,
-        const float sectionVolume, const brion::Vector4fs& samples,
-        const float mitochondriaDensity, const size_t materialId,
-        SDFMorphologyData& sdfMorphologyData, uint32_t& sdfGroupId,
-        ParallelModelContainer& model) const;
+        const brion::Vector4fs& samples, const float mitochondriaDensity,
+        const size_t materialId, SDFMorphologyData& sdfMorphologyData,
+        uint32_t& sdfGroupId, ParallelModelContainer& model) const;
 
     size_t _getNbMitochondrionSegments() const;
+
+    Vector3f _getBezierPoint(const brion::Vector4fs& samples,
+                             const float t) const;
 
     size_t _baseMaterialId{NO_MATERIAL};
     PropertyMap _defaults;

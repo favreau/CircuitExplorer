@@ -85,6 +85,8 @@ AstrocyteLoader::AstrocyteLoader(
     _fixedDefaults.setProperty({PROP_USE_SDF_NUCLEUS.name, false});
     _fixedDefaults.setProperty({PROP_USE_SDF_MITOCHONDRIA.name, false});
     _fixedDefaults.setProperty({PROP_USE_SDF_SYNAPSES.name, false});
+    _fixedDefaults.setProperty({PROP_USE_SDF_MYELIN_STEATH.name, false});
+    _fixedDefaults.setProperty({PROP_EXTERNALS.name, false});
 }
 
 std::vector<std::string> AstrocyteLoader::getSupportedExtensions() const

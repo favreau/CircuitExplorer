@@ -61,6 +61,7 @@ MorphologyCollageLoader::MorphologyCollageLoader(
     _fixedDefaults.setProperty({PROP_LOAD_AFFERENT_SYNAPSES.name, false});
     _fixedDefaults.setProperty({PROP_LOAD_EFFERENT_SYNAPSES.name, false});
     _fixedDefaults.setProperty({PROP_INTERNALS.name, false});
+    _fixedDefaults.setProperty({PROP_EXTERNALS.name, false});
 }
 
 ModelDescriptorPtr MorphologyCollageLoader::importFromFile(
@@ -95,6 +96,7 @@ PropertyMap MorphologyCollageLoader::getCLIProperties()
     pm.setProperty(PROP_USE_SDF_BRANCHES);
     pm.setProperty(PROP_USE_SDF_NUCLEUS);
     pm.setProperty(PROP_USE_SDF_MITOCHONDRIA);
+    pm.setProperty(PROP_USE_SDF_MYELIN_STEATH);
     pm.setProperty(PROP_USE_SDF_SYNAPSES);
     pm.setProperty(PROP_ASSET_COLOR_SCHEME);
     pm.setProperty(PROP_ASSET_QUALITY);

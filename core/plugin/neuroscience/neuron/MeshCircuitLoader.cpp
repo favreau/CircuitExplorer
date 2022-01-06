@@ -54,6 +54,7 @@ MeshCircuitLoader::MeshCircuitLoader(
     _fixedDefaults.setProperty({PROP_USE_SDF_NUCLEUS.name, false});
     _fixedDefaults.setProperty({PROP_USE_SDF_MITOCHONDRIA.name, false});
     _fixedDefaults.setProperty({PROP_USE_SDF_SYNAPSES.name, false});
+    _fixedDefaults.setProperty({PROP_USE_SDF_MYELIN_STEATH.name, false});
     _fixedDefaults.setProperty(
         {PROP_DAMPEN_BRANCH_THICKNESS_CHANGERATE.name, false});
     _fixedDefaults.setProperty({PROP_USER_DATA_TYPE.name,
@@ -69,6 +70,7 @@ MeshCircuitLoader::MeshCircuitLoader(
     _fixedDefaults.setProperty({PROP_LOAD_AFFERENT_SYNAPSES.name, false});
     _fixedDefaults.setProperty({PROP_LOAD_EFFERENT_SYNAPSES.name, false});
     _fixedDefaults.setProperty({PROP_INTERNALS.name, false});
+    _fixedDefaults.setProperty({PROP_EXTERNALS.name, false});
 }
 
 ModelDescriptorPtr MeshCircuitLoader::importFromFile(

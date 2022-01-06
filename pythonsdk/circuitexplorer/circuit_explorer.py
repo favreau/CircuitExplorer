@@ -120,6 +120,7 @@ class CircuitExplorer:
     MATERIAL_OFFSET_EFFERENT_SYNPASE = 6
     MATERIAL_OFFSET_MITOCHONDRION = 7
     MATERIAL_OFFSET_NUCLEUS = 8
+    MATERIAL_OFFSET_MYELIN_STEATH = 9
 
     def __init__(self, client):
         """Create a new Circuit Explorer instance"""
@@ -136,11 +137,12 @@ class CircuitExplorer:
                      radius_correction=0, load_soma=True, load_axon=True, load_dendrite=True,
                      load_apical_dendrite=True, use_sdf_soma=False, use_sdf_branches=False,
                      use_sdf_nucleus=False, use_sdf_mitochonria=False, use_sdf_synapses=False,
-                     dampen_branch_thickness_changerate=True, 
+                     use_sdf_myelin_steath=False, dampen_branch_thickness_changerate=True, 
                      morphology_color_scheme=MORPHOLOGY_COLOR_SCHEME_NONE,
                      morphology_quality=GEOMETRY_QUALITY_HIGH, max_distance_to_soma=1e6,
                      cell_clipping=False, load_afferent_synapses=False,
-                     load_efferent_synapses=False, generate_internals=False):
+                     load_efferent_synapses=False, generate_internals=False, 
+                     generate_externals=False):
         """
         Load a circuit from a give Blue/Circuit configuration file
 
@@ -177,6 +179,7 @@ class CircuitExplorer:
         :param bool use_sdf_nucleus: Defines if signed distance field technique should be used for the nucleus
         :param bool use_sdf_morphology: Defines if signed distance field technique should be used for the mitochondria
         :param bool use_sdf_synapses: Defines if signed distance field technique should be used for the synapses
+        :param bool use_sdf_myelin_steath: Defines if signed distance field technique should be used for the myelin steath
         :param bool dampen_branch_thickness_changerate: Defines if the dampen branch
         thicknesschangerate option should be used (Only application is use_sdf is True)
         :param int morphology_color_scheme: Defines the color scheme to apply to the morphologies (
@@ -190,6 +193,7 @@ class CircuitExplorer:
         :param bool load_afferent_synapses: Load afferent synapses
         :param bool load_efferent_synapses: Load efferent synapses
         :param bool generate_internals: Generate cell internals (mitochondria and nucleus)
+        :param bool generate_externals: Generate cell externals (myelin steath)
         :return: Result of the request submission
         :rtype: str
         """
@@ -237,7 +241,8 @@ class CircuitExplorer:
         props['062UseSdfNucleus'] = use_sdf_nucleus
         props['063UseSdfMitochondria'] = use_sdf_mitochonria
         props['064UseSdfSynapses'] = use_sdf_synapses
-        props['065DampenBranchThicknessChangerate'] = dampen_branch_thickness_changerate
+        props['065UseSdfMyelinSteath'] = use_sdf_myelin_steath
+        props['066DampenBranchThicknessChangerate'] = dampen_branch_thickness_changerate
 
         props['080AssetColorScheme'] = morphology_color_scheme
 
@@ -250,6 +255,7 @@ class CircuitExplorer:
         props['111LoadEfferentSynapses'] = load_efferent_synapses
 
         props['120Internals'] = generate_internals
+        props['121Externals'] = generate_externals
 
         return self._core.add_model(name=name, path=path, loader_properties=props)
 
@@ -312,7 +318,7 @@ class CircuitExplorer:
 
         props['060UseSdfSoma'] = use_sdf_soma
         props['061UseSdfBranches'] = use_sdf_branches
-        props['065DampenBranchThicknessChangerate'] = dampen_branch_thickness_changerate
+        props['066DampenBranchThicknessChangerate'] = dampen_branch_thickness_changerate
 
         props['080AssetColorScheme'] = morphology_color_scheme
 
@@ -325,6 +331,7 @@ class CircuitExplorer:
         props['111LoadEfferentSynapses'] = False
 
         props['120Internals'] = False
+        props['121Externals'] = False
 
         return self._core.add_model(
             name='Pair-symapses (%d, %d)' % (pre_synaptic_neuron, post_synaptic_neuron),
@@ -334,7 +341,8 @@ class CircuitExplorer:
                         load_soma=True, load_dendrite=True, load_end_foot=False,
                         use_sdf_soma=False, use_sdf_branches=False,dampen_branch_thickness_changerate=True,
                         morphology_color_scheme=MORPHOLOGY_COLOR_SCHEME_NONE,
-                        morphology_quality=GEOMETRY_QUALITY_HIGH, generate_internals=False):
+                        morphology_quality=GEOMETRY_QUALITY_HIGH, generate_internals=False, 
+                        generate_externals=False):
         """
         Load a astrocyte from a give configuration file
 
@@ -352,6 +360,8 @@ class CircuitExplorer:
         MORPHOLOGY_COLOR_SCHEME_NONE, MORPHOLOGY_COLOR_SCHEME_BY_SECTION_TYPE)
         :param int morphology_quality: Defines the level of quality for each geometry (
         GEOMETRY_QUALITY_LOW, GEOMETRY_QUALITY_MEDIUM, GEOMETRY_QUALITY_HIGH)
+        :param bool generate_internals: Generate cell internals (mitochondria and nucleus)
+        :param bool generate_externals: Generate cell externals (myelin steath)
         :return: Result of the request submission
         :rtype: str
         """
@@ -385,7 +395,7 @@ class CircuitExplorer:
 
         props['060UseSdfSoma'] = use_sdf_soma
         props['061UseSdfBranches'] = use_sdf_branches
-        props['065DampenBranchThicknessChangerate'] = dampen_branch_thickness_changerate
+        props['066DampenBranchThicknessChangerate'] = dampen_branch_thickness_changerate
 
         props['080AssetColorScheme'] = morphology_color_scheme
 
@@ -399,6 +409,7 @@ class CircuitExplorer:
         props['112LoadEfferentSynapses'] = False
 
         props['120Internals'] = generate_internals
+        props['121Externals'] = generate_externals
 
         return self._core.add_model(name=name, path=path, loader_properties=props)
 

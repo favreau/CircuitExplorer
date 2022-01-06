@@ -60,6 +60,7 @@ SynapseCircuitLoader::SynapseCircuitLoader(
     _fixedDefaults.setProperty({PROP_USE_SDF_NUCLEUS.name, false});
     _fixedDefaults.setProperty({PROP_USE_SDF_MITOCHONDRIA.name, false});
     _fixedDefaults.setProperty({PROP_USE_SDF_SYNAPSES.name, false});
+    _fixedDefaults.setProperty({PROP_USE_SDF_MYELIN_STEATH.name, false});
 }
 
 ModelDescriptorPtr SynapseCircuitLoader::importFromFile(
@@ -99,6 +100,7 @@ PropertyMap SynapseCircuitLoader::getCLIProperties()
     pm.setProperty(PROP_LOAD_AFFERENT_SYNAPSES);
     pm.setProperty(PROP_LOAD_EFFERENT_SYNAPSES);
     pm.setProperty(PROP_INTERNALS);
+    pm.setProperty(PROP_EXTERNALS);
     return pm;
 }
 } // namespace neuron

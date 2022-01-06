@@ -139,6 +139,7 @@ const size_t MATERIAL_OFFSET_AFFERENT_SYNPASE = 5;
 const size_t MATERIAL_OFFSET_EFFERENT_SYNPASE = 6;
 const size_t MATERIAL_OFFSET_MITOCHONDRION = 7;
 const size_t MATERIAL_OFFSET_NUCLEUS = 8;
+const size_t MATERIAL_OFFSET_MYELIN_SHEATH = 9;
 
 enum class CircuitColorScheme
 {
@@ -292,6 +293,8 @@ const brayns::Property PROP_LOAD_EFFERENT_SYNAPSES = {
     "111LoadEfferentSynapses", false, {"Loads efferent synapses"}};
 const brayns::Property PROP_INTERNALS = {
     "120Internals", false, {"Generate internals (mitochondria and nucleus)"}};
+const brayns::Property PROP_EXTERNALS = {
+    "121Externals", false, {"Generate externals (myelin steath)"}};
 #endif
 
 const brayns::Property PROP_DB_CONNECTION_STRING = {
@@ -323,8 +326,12 @@ const brayns::Property PROP_USE_SDF_MITOCHONDRIA = {
     {"Use signed distance field for the mitochondria"}};
 const brayns::Property PROP_USE_SDF_SYNAPSES = {
     "064UseSdfSynapses", true, {"Use signed distance field for the synapses"}};
+const brayns::Property PROP_USE_SDF_MYELIN_STEATH = {
+    "065UseSdfMyelinSteath",
+    true,
+    {"Use signed distance field for the myelin steath"}};
 const brayns::Property PROP_DAMPEN_BRANCH_THICKNESS_CHANGERATE = {
-    "065DampenBranchThicknessChangerate",
+    "066DampenBranchThicknessChangerate",
     true,
     {"Dampen branch thickness changerate"}};
 const brayns::Property PROP_ASSET_QUALITY = {"090AssetQuality",

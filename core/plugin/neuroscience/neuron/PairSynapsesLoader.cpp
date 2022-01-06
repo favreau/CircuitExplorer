@@ -62,9 +62,11 @@ PairSynapsesLoader::PairSynapsesLoader(
     _fixedDefaults.setProperty({PROP_LOAD_AFFERENT_SYNAPSES.name, true});
     _fixedDefaults.setProperty({PROP_LOAD_EFFERENT_SYNAPSES.name, true});
     _fixedDefaults.setProperty({PROP_INTERNALS.name, false});
+    _fixedDefaults.setProperty({PROP_EXTERNALS.name, false});
     _fixedDefaults.setProperty({PROP_USE_SDF_NUCLEUS.name, false});
     _fixedDefaults.setProperty({PROP_USE_SDF_MITOCHONDRIA.name, false});
     _fixedDefaults.setProperty({PROP_USE_SDF_SYNAPSES.name, false});
+    _fixedDefaults.setProperty({PROP_USE_SDF_MYELIN_STEATH.name, false});
 }
 
 ModelDescriptorPtr PairSynapsesLoader::importFromFile(

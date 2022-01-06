@@ -46,7 +46,7 @@ const float DEFAULT_SYNAPSE_RADIUS = 0.1f;
 // From http://en.cppreference.com/w/cpp/types/numeric_limits/epsilon
 template <class T>
 typename std::enable_if<!std::numeric_limits<T>::is_integer, bool>::type
-    almost_equal(T x, T y, int ulp = 1e6)
+    almost_equal(T x, T y, int ulp = 2)
 {
     // the machine epsilon has to be scaled to the magnitude of the values used
     // and multiplied by the desired precision in ULPs (units in the last place)
@@ -56,9 +56,9 @@ typename std::enable_if<!std::numeric_limits<T>::is_integer, bool>::type
            || std::abs(x - y) < std::numeric_limits<T>::min();
 }
 
-inline float _getLastSampleRadius(const brain::neuron::Section& section)
+inline float _getLastSampleDiameter(const brain::neuron::Section& section)
 {
-    return section[-1][3] * 0.5f;
+    return section[-1][3];
 }
 
 MorphologyLoader::MorphologyLoader(Scene& scene, PropertyMap&& loaderParams)
@@ -119,14 +119,14 @@ void MorphologyLoader::_importMorphology(
 }
 
 float MorphologyLoader::_getCorrectedRadius(const PropertyMap& properties,
-                                            const float radius) const
+                                            const float diameter) const
 {
     const float radiusCorrection =
         properties.getProperty<double>(PROP_RADIUS_CORRECTION.name);
     const float radiusMultiplier =
         properties.getProperty<double>(PROP_RADIUS_MULTIPLIER.name);
     return (radiusCorrection != 0.0 ? radiusCorrection
-                                    : radius * radiusMultiplier * 0.5);
+                                    : 0.5f * diameter * radiusMultiplier);
 }
 
 void MorphologyLoader::_importMorphologyAsPoint(
@@ -181,7 +181,7 @@ void MorphologyLoader::_connectSDFSomaChildren(
 
         // Create a sigmoid cone with soma radius to center of soma to give it
         // an organic look.
-        const auto radiusEnd = _getCorrectedRadius(properties, sample.w * 0.5f);
+        const auto radiusEnd = _getCorrectedRadius(properties, sample.w);
 
         const size_t geomIdx = _addSDFGeometry(
             sdfMorphologyData,
@@ -362,8 +362,7 @@ MorphologyTreeStructure MorphologyLoader::_calculateMorphologyTreeStructure(
         { // Branch beginning
             const auto& sample = samples[0];
 
-            const auto radius =
-                _getCorrectedRadius(properties, sample.w * 0.5f);
+            const auto radius = _getCorrectedRadius(properties, sample.w);
 
             const Vector3f position(sample.x, sample.y, sample.z);
 
@@ -373,8 +372,7 @@ MorphologyTreeStructure MorphologyLoader::_calculateMorphologyTreeStructure(
 
         { // Branch end
             const auto& sample = samples.back();
-            const auto radius =
-                _getCorrectedRadius(properties, sample.w * 0.5f);
+            const auto radius = _getCorrectedRadius(properties, sample.w);
             const Vector3f position(sample.x, sample.y, sample.z);
             sectionEndPosition[sectionI].first = radius;
             sectionEndPosition[sectionI].second = position;
@@ -490,7 +488,7 @@ void MorphologyLoader::_addSomaGeometry(
 
             model.getMorphologyInfo().bounds.merge(sample);
             const float sampleRadius =
-                _getCorrectedRadius(properties, samples[0].w * 0.5f);
+                _getCorrectedRadius(properties, samples[0].w);
 
             model.addCone(materialId,
                           {model.getMorphologyInfo().somaPosition, sample,
@@ -522,8 +520,9 @@ void MorphologyLoader::_addStepSphereGeometry(
             // Since our cone pills already give us a sphere at the end
             // points we don't need to add any sphere between segments
             // except at the bifurcation
-            const Vector3f displacementParams = {std::min(radius, 0.2f), 1.75f,
-                                                 2.0f};
+            const Vector3f displacementParams = {displacementRatio *
+                                                     std::min(radius, 0.2f),
+                                                 1.75f, 2.0f};
             // DISPLACEMENT_PARAMS * displacementRatio;
             const size_t idx =
                 _addSDFGeometry(sdfMorphologyData,
@@ -554,7 +553,8 @@ void MorphologyLoader::_addStepConeGeometry(
     model.getMorphologyInfo().bounds.merge(target);
     if (useSDFGeometry)
     {
-        const Vector3f displacementParams = {std::min(sourceRadius, 0.2f),
+        const Vector3f displacementParams = {displacementRatio *
+                                                 std::min(sourceRadius, 0.2f),
                                              1.75f, 2.f};
         const auto geom =
             (almost_equal(sourceRadius, targetRadius))
@@ -633,6 +633,8 @@ void MorphologyLoader::_importMorphologyFromURI(
         properties.getProperty<bool>(PROP_USE_SDF_MITOCHONDRIA.name);
     const auto useSdfSynapses =
         properties.getProperty<bool>(PROP_USE_SDF_SYNAPSES.name);
+    const auto useSdfMyelinSteath =
+        properties.getProperty<bool>(PROP_USE_SDF_MYELIN_STEATH.name);
 
     const auto dampenBranchThicknessChangerate = properties.getProperty<bool>(
         PROP_DAMPEN_BRANCH_THICKNESS_CHANGERATE.name);
@@ -640,6 +642,8 @@ void MorphologyLoader::_importMorphologyFromURI(
         PROP_MORPHOLOGY_MAX_DISTANCE_TO_SOMA.name);
     const auto generateInternals =
         properties.getProperty<bool>(PROP_INTERNALS.name);
+    const auto generateExternals =
+        properties.getProperty<bool>(PROP_EXTERNALS.name);
 
     // If there is no compartment report, the offset in the simulation
     // buffer is the index of the morphology in the circuit
@@ -701,20 +705,20 @@ void MorphologyLoader::_importMorphologyFromURI(
 
         const size_t nbSamples = samples.size();
 
-        auto previousSample = samples[0];
-        size_t step = 1;
+        Vector3f dstPosition;
         switch (morphologyQuality)
         {
         case AssetQuality::low:
-            step = nbSamples - 1;
-            break;
         case AssetQuality::medium:
-            step = nbSamples / 2;
-            step = (step == 0) ? 1 : step;
+            dstPosition = Vector3f(samples[0]);
             break;
         default:
-            step = 1;
+            dstPosition = _getBezierPoint(samples, 0.f);
+            break;
         }
+        float dstDiameter =
+            (section.hasParent() ? _getLastSampleDiameter(section.getParent())
+                                 : samples[0].w);
 
         float segmentStep = 0.f;
         if (compartmentReport)
@@ -726,25 +730,12 @@ void MorphologyLoader::_importMorphologyFromURI(
                 counts[section.getID()] / static_cast<float>(nbSamples);
         }
 
-        auto previousRadius =
-            _getCorrectedRadius(properties,
-                                section.hasParent()
-                                    ? _getLastSampleRadius(section.getParent())
-                                    : samples[0].w * 0.5f);
-
-        bool done = false;
         float sectionVolume = 0.f;
         float sectionLength = 0.f;
 
         // Axon and dendrites
-        for (size_t s = step; !done && s < nbSamples + step; s += step)
+        for (uint64_t s = 1; s < nbSamples; ++s)
         {
-            if (s >= (nbSamples - 1))
-            {
-                s = nbSamples - 1;
-                done = true;
-            }
-
             const auto distanceToSoma = _distanceToSoma(section, s);
             if (distanceToSoma > maxDistanceToSoma)
                 continue;
@@ -758,7 +749,6 @@ void MorphologyLoader::_importMorphologyFromURI(
             case UserDataType::distance_to_soma:
                 userDataOffset = distanceToSoma;
                 break;
-
             case UserDataType::simulation_offset:
                 if (compartmentReport)
                 {
@@ -776,7 +766,7 @@ void MorphologyLoader::_importMorphologyFromURI(
                         if (counts[section.getID()] > 0)
                             userDataOffset =
                                 offsets[section.getID()] +
-                                static_cast<float>(s - step) * segmentStep;
+                                static_cast<float>(s - 1) * segmentStep;
                         else
                         {
                             if (section.getType() ==
@@ -797,56 +787,72 @@ void MorphologyLoader::_importMorphologyFromURI(
                 break;
             }
 
-            const auto& sample = samples[s];
-            const Vector3f position{sample.x, sample.y, sample.z};
-            const Vector3f target(previousSample.x, previousSample.y,
-                                  previousSample.z);
-            sectionLength += length(position - target);
+            Vector3f srcPosition;
+            switch (morphologyQuality)
+            {
+            case AssetQuality::low:
+            case AssetQuality::medium:
+                srcPosition = samples[s];
+                break;
+            default:
+                srcPosition =
+                    _getBezierPoint(samples, float(s) / float(nbSamples - 1));
+                break;
+            }
+            const float srcDiameter = samples[s].w;
 
-            model.getMorphologyInfo().bounds.merge(position);
-            model.getMorphologyInfo().bounds.merge(target);
+            model.getMorphologyInfo().bounds.merge(srcPosition);
+            model.getMorphologyInfo().bounds.merge(dstPosition);
 
-            float radius = _getCorrectedRadius(properties, sample.w * 0.5f);
+            const float sampleLength = length(dstPosition - srcPosition);
+            sectionLength += sampleLength;
+
+            float srcRadius = _getCorrectedRadius(properties, srcDiameter);
+            float dstRadius = _getCorrectedRadius(properties, dstDiameter);
+
             const float maxRadiusChange = 0.1f;
-
-            const float dist = glm::length(target - position);
-            if (dist > 0.0001f && s != samples.size() - 1 &&
+            if (sampleLength > 0.0001f && s != nbSamples - 1 &&
                 dampenBranchThicknessChangerate)
             {
                 const float radiusChange =
-                    std::min(std::abs(previousRadius - radius),
-                             dist * maxRadiusChange);
-                if (radius < previousRadius)
-                    radius = previousRadius - radiusChange;
+                    std::min(std::abs(dstRadius - srcRadius),
+                             sampleLength * maxRadiusChange);
+                if (srcRadius < dstRadius)
+                    srcRadius = dstRadius - radiusChange;
                 else
-                    radius = previousRadius + radiusChange;
+                    srcRadius = dstRadius + radiusChange;
             }
 
             // Add Geometry
-            _addStepSphereGeometry(useSdfBranches, done, position, radius,
-                                   materialId, userDataOffset, model,
-                                   sdfMorphologyData, sectionId + sdfGroupId);
+            _addStepSphereGeometry(useSdfBranches, (s == nbSamples - 1),
+                                   srcPosition, srcRadius, materialId,
+                                   userDataOffset, model, sdfMorphologyData,
+                                   sectionId + sdfGroupId);
 
-            if (position != target && previousRadius > 0.f)
-                _addStepConeGeometry(useSdfBranches, position, radius, target,
-                                     previousRadius, materialId, userDataOffset,
-                                     model, sdfMorphologyData,
+            if (srcPosition != dstPosition && dstRadius > 0.f)
+                _addStepConeGeometry(useSdfBranches, srcPosition, srcRadius,
+                                     dstPosition, dstRadius, materialId,
+                                     userDataOffset, model, sdfMorphologyData,
                                      sectionId + sdfGroupId);
-            sectionVolume +=
-                coneVolume(length(position - target), previousRadius, radius);
+            sectionVolume += coneVolume(sampleLength, srcRadius, dstRadius);
 
-            previousSample = sample;
-            previousRadius = radius;
+            dstPosition = srcPosition;
+            dstDiameter = srcDiameter;
         }
 
-        // Generate axon internals (Mitochondria)
-        if (generateInternals &&
-            section.getType() == brain::neuron::SectionType::axon)
+        // Generate axon internals
+        if (section.getType() == brain::neuron::SectionType::axon)
         {
             uint32_t groupId = sectionId + sdfGroupId;
-            _addSectionInternals(properties, sectionLength, sectionVolume,
-                                 samples, mitochondriaDensity, materialId,
-                                 sdfMorphologyData, groupId, model);
+            if (generateInternals)
+                _addAxonInternals(properties, sectionLength, sectionVolume,
+                                  samples, mitochondriaDensity, _baseMaterialId,
+                                  sdfMorphologyData, groupId, model);
+
+            if (generateExternals)
+                _addAxonMyelinSheath(properties, sectionLength, samples,
+                                     mitochondriaDensity, _baseMaterialId,
+                                     sdfMorphologyData, groupId, model);
             sdfGroupId = groupId;
         }
     }
@@ -870,17 +876,17 @@ void MorphologyLoader::_importMorphologyFromURI(
 
             _addSynapse(properties, synapse, SynapseType::afferent, sections,
                         somaPosition, somaRadius, inverseTransformation,
-                        materialId, model, sdfMorphologyData, sdfGroupId);
+                        _baseMaterialId, model, sdfMorphologyData, sdfGroupId);
         }
     if (synapsesInfo.efferentSynapses && !synapsesInfo.prePostSynapticUsecase)
         for (const auto& synapse : *synapsesInfo.efferentSynapses)
             _addSynapse(properties, synapse, SynapseType::efferent, sections,
                         somaPosition, somaRadius, inverseTransformation,
-                        materialId, model, sdfMorphologyData, sdfGroupId);
+                        _baseMaterialId, model, sdfMorphologyData, sdfGroupId);
 
     // Finalization
     if (useSdfBranches || useSdfSoma || useSdfNucleus || useSdfMitochondria ||
-        useSdfSynapses)
+        useSdfSynapses || useSdfMyelinSteath)
     {
         _connectSDFBifurcations(sdfMorphologyData, morphologyTree);
         _finalizeSDFGeometries(model, sdfMorphologyData);
@@ -1089,7 +1095,7 @@ size_t MorphologyLoader::_getNbMitochondrionSegments() const
     return 2 + rand() % 18;
 }
 
-void MorphologyLoader::_addSectionInternals(
+void MorphologyLoader::_addAxonInternals(
     const PropertyMap& properties, const float sectionLength,
     const float sectionVolume, const brion::Vector4fs& samples,
     const float mitochondriaDensity, const size_t materialId,
@@ -1129,13 +1135,13 @@ void MorphologyLoader::_addSectionInternals(
                 const auto& srcSample = samples[srcIndex];
                 const auto& dstSample = samples[dstIndex];
                 const float srcRadius =
-                    _getCorrectedRadius(properties, srcSample.w * 0.5f);
+                    _getCorrectedRadius(properties, srcSample.w);
                 const Vector3f srcPosition{
                     srcSample.x + srcRadius * (rand() % 100 - 50) / 500.f,
                     srcSample.y + srcRadius * (rand() % 100 - 50) / 500.f,
                     srcSample.z + srcRadius * (rand() % 100 - 50) / 500.f};
                 const float dstRadius =
-                    _getCorrectedRadius(properties, dstSample.w * 0.5f);
+                    _getCorrectedRadius(properties, dstSample.w);
                 const Vector3f dstPosition{
                     dstSample.x + dstRadius * (rand() % 100 - 50) / 500.f,
                     dstSample.y + dstRadius * (rand() % 100 - 50) / 500.f,
@@ -1183,6 +1189,66 @@ void MorphologyLoader::_addSectionInternals(
             ++sdfGroupId;
         }
     }
+}
+
+void MorphologyLoader::_addAxonMyelinSheath(
+    const PropertyMap& properties, const float sectionLength,
+    const brion::Vector4fs& samples, const float mitochondriaDensity,
+    const size_t materialId, SDFMorphologyData& sdfMorphologyData,
+    uint32_t& sdfGroupId, ParallelModelContainer& model) const
+{
+    if (sectionLength == 0.f || samples.empty())
+        return;
+
+    const bool useSDFMyelinSteath =
+        properties.getProperty<bool>(PROP_USE_SDF_MYELIN_STEATH.name);
+
+    const float myelinSteathSize = 10.f;
+    const float myelinSteathRadius = 0.7f;
+    const float myelinSteathRadiusRatio = 0.25f;
+
+    const auto nbSamples = samples.size();
+    const uint64_t nbMyelinSteath = sectionLength / myelinSteathSize;
+
+    if (nbMyelinSteath < 3) // Minimum 3 elements
+        return;
+
+    const float t = 1.f / float(nbMyelinSteath);
+
+    const float freeSpace =
+        (0.5f * (sectionLength - nbMyelinSteath * myelinSteathSize)) /
+        sectionLength;
+    const float randomSize = 0.6f + 0.2f * (rand() % 500 / 1000.f);
+
+    ++sdfGroupId;
+    for (uint64_t i = 0; i < nbMyelinSteath; ++i)
+    {
+        const Vector3f src = _getBezierPoint(samples, (i + freeSpace) * t);
+        const Vector3f dst =
+            _getBezierPoint(samples, (i + freeSpace + randomSize) * t);
+
+        const size_t myelinSteathMaterialId =
+            materialId + MATERIAL_OFFSET_MYELIN_SHEATH;
+        _addStepConeGeometry(useSDFMyelinSteath, src, myelinSteathRadius, dst,
+                             myelinSteathRadius, myelinSteathMaterialId, -1,
+                             model, sdfMorphologyData, sdfGroupId,
+                             myelinSteathRadiusRatio);
+        ++sdfGroupId;
+    }
+}
+
+Vector3f MorphologyLoader::_getBezierPoint(const brion::Vector4fs& samples,
+                                           const float t) const
+{
+    const uint64_t nbPoints = samples.size();
+    Vector3fs points;
+    points.reserve(nbPoints);
+    for (const auto& sample : samples)
+        points.push_back(sample);
+    for (int64_t i = nbPoints - 1; i >= 0; --i)
+        for (uint64_t j = 0; j < i; ++j)
+            points[j] += t * (points[j + 1] - points[j]);
+    return points[0];
 }
 
 size_t MorphologyLoader::_getMaterialIdFromColorScheme(
@@ -1268,12 +1334,14 @@ PropertyMap MorphologyLoader::getCLIProperties()
     pm.setProperty(PROP_USE_SDF_NUCLEUS);
     pm.setProperty(PROP_USE_SDF_MITOCHONDRIA);
     pm.setProperty(PROP_USE_SDF_SYNAPSES);
+    pm.setProperty(PROP_USE_SDF_MYELIN_STEATH);
     pm.setProperty(PROP_DAMPEN_BRANCH_THICKNESS_CHANGERATE);
     pm.setProperty(PROP_USER_DATA_TYPE);
     pm.setProperty(PROP_ASSET_COLOR_SCHEME);
     pm.setProperty(PROP_ASSET_QUALITY);
     pm.setProperty(PROP_MORPHOLOGY_MAX_DISTANCE_TO_SOMA);
     pm.setProperty(PROP_INTERNALS);
+    pm.setProperty(PROP_EXTERNALS);
     return pm;
 }
 

@@ -84,6 +84,7 @@ PropertyMap AdvancedCircuitLoader::getCLIProperties()
     pm.setProperty(PROP_USE_SDF_NUCLEUS);
     pm.setProperty(PROP_USE_SDF_MITOCHONDRIA);
     pm.setProperty(PROP_USE_SDF_SYNAPSES);
+    pm.setProperty(PROP_USE_SDF_MYELIN_STEATH);
     pm.setProperty(PROP_DAMPEN_BRANCH_THICKNESS_CHANGERATE);
     pm.setProperty(PROP_USER_DATA_TYPE);
     pm.setProperty(PROP_ASSET_COLOR_SCHEME);
