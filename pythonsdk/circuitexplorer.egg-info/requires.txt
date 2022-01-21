@@ -1,9 +1,1 @@
-Cython~=0.29.24
-numpy~=1.21.4
-packaging~=21.2
-bioexplorer~=1.1.2
-stringcase~=1.2.0
-pyquaternion~=0.9.9
-webcolors~=1.8.1
-seaborn~=0.11.1
-ipywidgets~=7.6.3
+bioexplorer~=1.2.0
