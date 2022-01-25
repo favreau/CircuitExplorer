@@ -117,7 +117,8 @@ enum class AssetColorScheme
 {
     none = 0,
     by_segment = 1,
-    by_section = 2
+    by_section = 2,
+    by_graph = 3
 };
 
 template <>
@@ -125,7 +126,8 @@ inline std::vector<std::pair<std::string, AssetColorScheme>> enumerateMap()
 {
     return {{"None", AssetColorScheme::none},
             {"By segment", AssetColorScheme::by_segment},
-            {"By section", AssetColorScheme::by_section}};
+            {"By section", AssetColorScheme::by_section},
+            {"By graph", AssetColorScheme::by_graph}};
 }
 
 #ifdef USE_MORPHOLOGIES

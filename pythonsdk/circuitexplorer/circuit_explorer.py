@@ -72,6 +72,7 @@ class CircuitExplorer:
     MORPHOLOGY_COLOR_SCHEME_NONE = 'None'
     MORPHOLOGY_COLOR_SCHEME_BY_SEGMENT = 'By segment'
     MORPHOLOGY_COLOR_SCHEME_BY_SECTION = 'By section'
+    MORPHOLOGY_COLOR_SCHEME_BY_GRAPH = 'By graph'
 
     # Morphology types
     MORPHOLOGY_SECTION_TYPE_ALL = 255

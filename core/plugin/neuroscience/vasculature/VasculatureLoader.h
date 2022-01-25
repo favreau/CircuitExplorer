@@ -36,6 +36,25 @@ using namespace brayns;
 using namespace api;
 using namespace common;
 
+enum class EdgeType
+{
+    artery = 0,
+    capilarity = 1,
+    vein = 2
+};
+
+typedef struct
+{
+    Vector3d start;
+    Vector3d end;
+    double startRadius;
+    double endRadius;
+    uint64_t sectionId;
+    uint64_t graphId;
+    uint64_t type; // Change to EdgeType?
+} Edge;
+typedef std::map<uint64_t, Edge> Edges;
+
 /**
  * Load vasculature from H5 file
  */
@@ -67,6 +86,9 @@ public:
         Model& model, const ApplyVasculatureGeometryReport& details);
 
 private:
+    Edges _loadEdges(const std::string& filename) const;
+    void _populateGraphIds(const std::string& filename, Edges& edges) const;
+
     size_t _addSDFGeometry(SDFMorphologyData& sdfMorphologyData,
                            const SDFGeometry& geometry,
                            const std::set<size_t>& neighbours,
