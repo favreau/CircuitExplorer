@@ -70,13 +70,6 @@ private:
     SynapseAttributes _synapseAttributes;
 #endif
 
-#ifdef USE_VASCULATURE
-    // Vasculature
-    Response _attachVasculatureHandler(const AttachVasculatureHandler& payload);
-    Response _applyVasculatureGeometryReport(
-        const ApplyVasculatureGeometryReport& payload);
-#endif
-
     // Rendering
     Response _setMaterial(const MaterialDescriptor&);
     Response _setMaterials(const MaterialsDescriptor&);

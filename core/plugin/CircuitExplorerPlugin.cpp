@@ -33,11 +33,6 @@
 #include <plugin/neuroscience/neuron/VoltageSimulationHandler.h>
 #endif
 
-#ifdef USE_VASCULATURE
-#include <plugin/neuroscience/vasculature/VasculatureHandler.h>
-#include <plugin/neuroscience/vasculature/VasculatureLoader.h>
-#endif
-
 #include <plugin/meshing/PointCloudMesher.h>
 
 #ifdef USE_PQXX
@@ -109,12 +104,6 @@ using namespace neuroscience;
 using namespace common;
 using namespace neuron;
 using namespace astrocyte;
-#endif
-
-#ifdef USE_VASCULATURE
-using namespace neuroscience;
-using namespace common;
-using namespace vasculature;
 #endif
 
 #define REGISTER_LOADER(LOADER, FUNC) \
@@ -374,11 +363,6 @@ void CircuitExplorerPlugin::init()
                                           AstrocyteLoader::getCLIProperties()));
 #endif
 
-#ifdef USE_VASCULATURE
-    registry.registerLoader(std::make_unique<VasculatureLoader>(
-        scene, VasculatureLoader::getCLIProperties()));
-#endif
-
     // Renderers
     auto& engine = _api->getEngine();
     _addAdvancedSimulationRenderer(engine);
@@ -503,24 +487,6 @@ void CircuitExplorerPlugin::init()
             });
 #endif
 
-#endif
-
-#ifdef USE_VASCULATURE
-        endPoint = PLUGIN_API_PREFIX + "attach-vasculature-report";
-        PLUGIN_INFO("Registering '" + endPoint + "' endpoint");
-        _api->getActionInterface()
-            ->registerNotification<AttachVasculatureHandler>(
-                endPoint, [&](const AttachVasculatureHandler& s) {
-                    _attachVasculatureHandler(s);
-                });
-
-        endPoint = PLUGIN_API_PREFIX + "apply-vasculature-geometry-report";
-        PLUGIN_INFO("Registering '" + endPoint + "' endpoint");
-        _api->getActionInterface()
-            ->registerNotification<ApplyVasculatureGeometryReport>(
-                endPoint, [&](const ApplyVasculatureGeometryReport& details) {
-                    return _applyVasculatureGeometryReport(details);
-                });
 #endif
 
         endPoint = PLUGIN_API_PREFIX + "add-column";
@@ -1326,52 +1292,6 @@ Response CircuitExplorerPlugin::_addColumn(const AddColumn& details)
     CATCH_STD_EXCEPTION()
     return response;
 }
-
-#ifdef USE_VASCULATURE
-Response CircuitExplorerPlugin::_attachVasculatureHandler(
-    const AttachVasculatureHandler& details)
-{
-    Response response;
-    try
-    {
-        PLUGIN_INFO("Attaching Vasculature Handler to model "
-                    << details.modelId);
-        auto& scene = _api->getScene();
-        auto modelDescriptor = scene.getModel(details.modelId);
-        if (modelDescriptor)
-        {
-            auto handler = std::make_shared<VasculatureHandler>(details);
-            auto& model = modelDescriptor->getModel();
-            model.setSimulationHandler(handler);
-        }
-        else
-            PLUGIN_THROW("Model " + std::to_string(details.modelId) +
-                         " does not exist");
-    }
-    CATCH_STD_EXCEPTION()
-    return response;
-}
-
-Response CircuitExplorerPlugin::_applyVasculatureGeometryReport(
-    const ApplyVasculatureGeometryReport& details)
-{
-    Response response;
-    try
-    {
-        auto& scene = _api->getScene();
-        auto modelDescriptor =
-            scene.getModel(static_cast<size_t>(details.modelId));
-        if (!modelDescriptor)
-            PLUGIN_THROW("Unknown model Id");
-
-        auto& model = modelDescriptor->getModel();
-        VasculatureLoader::applyGeometryReport(model, details);
-        _markModified();
-    }
-    CATCH_STD_EXCEPTION()
-    return response;
-}
-#endif
 
 #ifdef USE_MORPHOLOGIES
 #ifdef USE_PQXX

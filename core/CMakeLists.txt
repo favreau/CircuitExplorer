@@ -23,18 +23,11 @@ find_package(Brayns REQUIRED)
 find_package(ospray REQUIRED)
 
 option(${NAME}_USE_MORPHOLOGIES "Use morphologies features" ON)
-option(${NAME}_USE_VASCULATURE "Use vasculature features" ON)
 
 set(USE_MORPHOLOGIES 0)
 if(${NAME}_USE_MORPHOLOGIES)
   find_package(Brion REQUIRED)
   set(USE_MORPHOLOGIES 1)
-endif()
-
-set(USE_VASCULATURE 0)
-if(${NAME}_USE_VASCULATURE)
-  find_package(HighFive REQUIRED)
-  set(USE_VASCULATURE 1)
 endif()
 
 # OpenMP
@@ -124,17 +117,6 @@ if(${NAME}_USE_MORPHOLOGIES)
         )
 endif()
 
-if(${NAME}_USE_VASCULATURE)
-    list(APPEND CIRCUITEXPLORER_SOURCES
-        plugin/neuroscience/vasculature/VasculatureLoader.cpp
-        plugin/neuroscience/vasculature/VasculatureHandler.cpp
-    )
-    list(APPEND CIRCUITEXPLORER_PUBLIC_HEADERS
-        plugin/neuroscience/vasculature/VasculatureLoader.h
-        plugin/neuroscience/vasculature/VasculatureHandler.h
-    )
-endif()
-
 if(${CGAL_FOUND})
     list(APPEND ${NAME}_SOURCES plugin/meshing/PointCloudMesher.cpp)
     list(APPEND ${NAME}_PUBLIC_HEADERS plugin/meshing/PointCloudMesher.h)
@@ -195,10 +177,6 @@ set(${NAME}_LINK_LIBRARIES
 
 if(${NAME}_USE_MORPHOLOGIES)
     list(APPEND ${NAME}_LINK_LIBRARIES Brion Brain)
-endif()
-
-if(${NAME}_USE_VASCULATURE)
-    list(APPEND ${NAME}_LINK_LIBRARIES HighFive)
 endif()
 
 if(${CGAL_FOUND})
