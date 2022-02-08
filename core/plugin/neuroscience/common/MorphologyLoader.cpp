@@ -186,7 +186,7 @@ void MorphologyLoader::_connectSDFSomaChildren(
         const size_t geomIdx = _addSDFGeometry(
             sdfMorphologyData,
             createSDFConePillSigmoid(somaPosition, s, somaRadius, radiusEnd,
-                                     userDataOffset, {0.2f, 1.75f, 2.0f}),
+                                     userDataOffset, {0.05f, 1.2f, 2.f}),
             {}, materialId, -1);
         child_indices.insert(geomIdx);
     }
@@ -521,8 +521,8 @@ void MorphologyLoader::_addStepSphereGeometry(
             // points we don't need to add any sphere between segments
             // except at the bifurcation
             const Vector3f displacementParams = {displacementRatio *
-                                                     std::min(radius, 0.2f),
-                                                 1.75f, 2.0f};
+                                                     std::min(radius, 0.05f),
+                                                 1.2f, 2.f};
             // DISPLACEMENT_PARAMS * displacementRatio;
             const size_t idx =
                 _addSDFGeometry(sdfMorphologyData,
@@ -554,8 +554,8 @@ void MorphologyLoader::_addStepConeGeometry(
     if (useSDFGeometry)
     {
         const Vector3f displacementParams = {displacementRatio *
-                                                 std::min(sourceRadius, 0.2f),
-                                             1.75f, 2.f};
+                                                 std::min(sourceRadius, 0.05f),
+                                             1.2f, 2.f};
         const auto geom =
             (almost_equal(sourceRadius, targetRadius))
                 ? createSDFPill(source, target, sourceRadius, userDataOffset,
