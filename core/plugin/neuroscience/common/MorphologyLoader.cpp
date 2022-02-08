@@ -91,6 +91,9 @@ ParallelModelContainer MorphologyLoader::importMorphology(
     const Matrix4f& transformation, CompartmentReportPtr compartmentReport,
     const float mitochondriaDensity) const
 {
+    // Initialize randomizer for current neuron
+    srand(gid);
+
     ParallelModelContainer modelContainer;
     _importMorphology(gid, properties, source, index, transformation,
                       modelContainer, compartmentReport, synapsesInfo,
@@ -520,10 +523,8 @@ void MorphologyLoader::_addStepSphereGeometry(
             // Since our cone pills already give us a sphere at the end
             // points we don't need to add any sphere between segments
             // except at the bifurcation
-            const Vector3f displacementParams = {displacementRatio *
-                                                     std::min(radius, 0.05f),
-                                                 1.2f, 2.f};
-            // DISPLACEMENT_PARAMS * displacementRatio;
+            const Vector3f displacementParams = {std::min(radius, 0.05f),
+                                                 displacementRatio * 1.2f, 2.f};
             const size_t idx =
                 _addSDFGeometry(sdfMorphologyData,
                                 createSDFSphere(position, radius,
@@ -553,9 +554,8 @@ void MorphologyLoader::_addStepConeGeometry(
     model.getMorphologyInfo().bounds.merge(target);
     if (useSDFGeometry)
     {
-        const Vector3f displacementParams = {displacementRatio *
-                                                 std::min(sourceRadius, 0.05f),
-                                             1.2f, 2.f};
+        const Vector3f displacementParams = {std::min(sourceRadius, 0.05f),
+                                             displacementRatio * 1.2f, 2.f};
         const auto geom =
             (almost_equal(sourceRadius, targetRadius))
                 ? createSDFPill(source, target, sourceRadius, userDataOffset,
@@ -690,6 +690,7 @@ void MorphologyLoader::_importMorphologyFromURI(
         _calculateMorphologyTreeStructure(properties, sections);
 
     // Dendrites and axon
+    const float branchDisplacementRatio = 1.f;
     for (const size_t sectionId : morphologyTree.sectionTraverseOrder)
     {
         const auto& section = sections[sectionId];
@@ -734,7 +735,7 @@ void MorphologyLoader::_importMorphologyFromURI(
         float sectionLength = 0.f;
 
         // Axon and dendrites
-        for (uint64_t s = 1; s < nbSamples; ++s)
+        for (uint64_t s = 0; s < nbSamples; ++s)
         {
             const auto distanceToSoma = _distanceToSoma(section, s);
             if (distanceToSoma > maxDistanceToSoma)
@@ -799,10 +800,9 @@ void MorphologyLoader::_importMorphologyFromURI(
                     _getBezierPoint(samples, float(s) / float(nbSamples - 1));
                 break;
             }
-            const float srcDiameter = samples[s].w;
-
             model.getMorphologyInfo().bounds.merge(srcPosition);
-            model.getMorphologyInfo().bounds.merge(dstPosition);
+
+            const float srcDiameter = samples[s].w;
 
             const float sampleLength = length(dstPosition - srcPosition);
             sectionLength += sampleLength;
@@ -810,6 +810,7 @@ void MorphologyLoader::_importMorphologyFromURI(
             float srcRadius = _getCorrectedRadius(properties, srcDiameter);
             float dstRadius = _getCorrectedRadius(properties, dstDiameter);
 
+#if 0
             const float maxRadiusChange = 0.1f;
             if (sampleLength > 0.0001f && s != nbSamples - 1 &&
                 dampenBranchThicknessChangerate)
@@ -822,19 +823,26 @@ void MorphologyLoader::_importMorphologyFromURI(
                 else
                     srcRadius = dstRadius + radiusChange;
             }
+#endif
 
             // Add Geometry
-            _addStepSphereGeometry(useSdfBranches, (s == nbSamples - 1),
-                                   srcPosition, srcRadius, materialId,
-                                   userDataOffset, model, sdfMorphologyData,
-                                   sectionId + sdfGroupId);
+            if (s > 0)
+            {
+                _addStepSphereGeometry(useSdfBranches, (s == nbSamples - 1),
+                                       dstPosition, dstRadius, materialId,
+                                       userDataOffset, model, sdfMorphologyData,
+                                       sectionId + sdfGroupId,
+                                       branchDisplacementRatio);
 
-            if (srcPosition != dstPosition && dstRadius > 0.f)
-                _addStepConeGeometry(useSdfBranches, srcPosition, srcRadius,
-                                     dstPosition, dstRadius, materialId,
-                                     userDataOffset, model, sdfMorphologyData,
-                                     sectionId + sdfGroupId);
-            sectionVolume += coneVolume(sampleLength, srcRadius, dstRadius);
+                if (srcPosition != dstPosition && dstRadius > 0.f)
+                    _addStepConeGeometry(useSdfBranches, srcPosition, srcRadius,
+                                         dstPosition, dstRadius, materialId,
+                                         userDataOffset, model,
+                                         sdfMorphologyData,
+                                         sectionId + sdfGroupId,
+                                         branchDisplacementRatio);
+                sectionVolume += coneVolume(sampleLength, srcRadius, dstRadius);
+            }
 
             dstPosition = srcPosition;
             dstDiameter = srcDiameter;
@@ -955,7 +963,7 @@ void MorphologyLoader::_addSynapse(
     if (processRadius && segmentId < segments.size())
     {
         const auto& segment = segments[segmentId];
-        radius = segment.w * 0.1f;
+        radius = segment.w * 0.2f;
     }
 
     // Spine geometry
@@ -965,13 +973,15 @@ void MorphologyLoader::_addSynapse(
     const float spineRadiusRatio = 0.75f;
     const float spineSmallRadius = radius * 0.15f;
     const float spineBaseRadius = radius * 0.25f;
-    const Vector3f direction = target - origin;
-    const Vector3f surfaceTarget = origin + direction * 0.5f;
+    const Vector3f direction = origin - target;
+    const Vector3f surfaceOrigin = origin;
+
+    const Vector3f surfaceTarget = surfaceOrigin + direction;
     const float spineLargeRadius = radius * spineRadiusRatio;
 
     // Create random shape between origin and target
-    Vector3f middle = (surfaceTarget + origin) / 2.f;
-    const float d = length(surfaceTarget - origin) / 5.f;
+    Vector3f middle = (surfaceTarget + surfaceOrigin) / 2.f;
+    const float d = length(surfaceTarget - surfaceOrigin) / 5.f;
     middle +=
         Vector3f(d * (rand() % 1000 / 1000.f), d * (rand() % 1000 / 1000.f),
                  d * (rand() % 1000 / 1000.f));
@@ -979,17 +989,19 @@ void MorphologyLoader::_addSynapse(
         spineSmallRadius + d * 0.1f * (rand() % 1000 / 1000.f);
     if (useSDFSynapses)
     {
-        const float spineDisplacementRatio = 5.f;
-        _addStepSphereGeometry(useSDFSynapses, true, origin, spineLargeRadius,
-                               synapseMaterialId, -1, model, sdfMorphologyData,
-                               sdfGroupId, spineDisplacementRatio);
+        const float spineDisplacementRatio = 20.f;
+        _addStepSphereGeometry(useSDFSynapses, true, surfaceTarget,
+                               spineLargeRadius, synapseMaterialId, -1, model,
+                               sdfMorphologyData, sdfGroupId,
+                               spineDisplacementRatio);
         _addStepSphereGeometry(useSDFSynapses, true, middle, spineMiddleRadius,
                                synapseMaterialId, -1, model, sdfMorphologyData,
                                sdfGroupId, spineDisplacementRatio);
-        if (origin != middle)
-            _addStepConeGeometry(useSDFSynapses, origin, spineSmallRadius,
-                                 middle, spineMiddleRadius, synapseMaterialId,
-                                 -1, model, sdfMorphologyData, sdfGroupId,
+        if (surfaceOrigin != middle)
+            _addStepConeGeometry(useSDFSynapses, surfaceOrigin,
+                                 spineSmallRadius, middle, spineMiddleRadius,
+                                 synapseMaterialId, -1, model,
+                                 sdfMorphologyData, sdfGroupId,
                                  spineDisplacementRatio);
         if (middle != surfaceTarget)
             _addStepConeGeometry(useSDFSynapses, middle, spineMiddleRadius,
@@ -1025,7 +1037,8 @@ void MorphologyLoader::_addSomaInternals(
         properties.getProperty<bool>(PROP_USE_SDF_MITOCHONDRIA.name);
 
     const float mitochondrionRadiusRatio = 0.025f;
-    const float mitochondrionDisplacementRatio = 5.f;
+    const float mitochondrionDisplacementRatio = 20.f;
+    const float nucleusDisplacementRatio = 2.f;
     const float nucleusRadius =
         somaRadius * 0.8f; // 80% of the volume of the soma;
     const float mitochondrionRadius =
@@ -1042,7 +1055,7 @@ void MorphologyLoader::_addSomaInternals(
     {
         _addStepSphereGeometry(useSDFNucleus, true, somaPosition, nucleusRadius,
                                nucleusMaterialId, -1, model, sdfMorphologyData,
-                               sdfGroupId);
+                               sdfGroupId, nucleusDisplacementRatio);
         ++sdfGroupId;
     }
     else
