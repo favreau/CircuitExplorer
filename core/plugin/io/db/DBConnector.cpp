@@ -50,7 +50,8 @@ DBConnector::~DBConnector()
 }
 
 void DBConnector::importCompartmentSimulation(const std::string blueConfig,
-                                              const std::string reportName)
+                                              const std::string reportName,
+                                              const uint64_t reportId)
 {
     std::vector<pqxx::connection*> connections;
     for (size_t i = 0; i < NB_CONNECTIONS; ++i)
@@ -71,32 +72,94 @@ void DBConnector::importCompartmentSimulation(const std::string blueConfig,
 
     PLUGIN_INFO("Importing " << guids.size() << " guids");
 
-    std::vector<uint32_t> guidList;
-    for (const auto guid : guids)
-        guidList.push_back(guid);
+    // Open report
+    const brion::CompartmentReport report(bc.getReportSource(reportName),
+                                          brion::MODE_READ, guids);
+
+    uint64_ts morphologyIds;
+    {
+        pqxx::nontransaction transaction(*connections[0]);
+        std::string guidsAsStr;
+        for (const auto guid : guids)
+        {
+            if (!guidsAsStr.empty())
+                guidsAsStr += ",";
+            guidsAsStr += std::to_string(guid);
+        }
+        const std::string sql = "SELECT morphology_guid FROM " + _schema +
+                                ".node WHERE guid IN (" + guidsAsStr +
+                                ") ORDER BY guid";
+        auto res = transaction.exec(sql);
+        for (auto c = res.begin(); c != res.end(); ++c)
+            morphologyIds.push_back(c[0].as<uint64_t>());
+    }
+
+    std::map<uint64_t, std::vector<uint64_t>> morphologySectionNbPoints;
+    {
+        pqxx::nontransaction transaction(*connections[0]);
+        const std::string sql =
+            "SELECT morphology_guid, nb_points FROM " + _schema +
+            ".section ORDER BY morphology_guid, section_guid";
+        auto res = transaction.exec(sql);
+        for (auto c = res.begin(); c != res.end(); ++c)
+            morphologySectionNbPoints[c[0].as<uint64_t>()].push_back(
+                c[1].as<uint64_t>());
+    }
+
+    uint64_ts morphologyNbSections;
+    {
+        pqxx::nontransaction transaction(*connections[0]);
+        const std::string sql = "SELECT COUNT(section_guid) FROM " + _schema +
+                                ".section GROUP BY morphology_guid ORDER BY "
+                                "morphology_guid";
+        auto res = transaction.exec(sql);
+        for (auto c = res.begin(); c != res.end(); ++c)
+            morphologyNbSections.push_back(c[0].as<uint64_t>());
+    }
+
+    const auto& allOffsets = report.getOffsets();
 
     uint64_t i;
-#pragma omp parallel for num_threads(NB_CONNECTIONS)
+    // #pragma omp parallel for num_threads(NB_CONNECTIONS)
     for (i = 0; i < guids.size(); ++i)
     {
-        const auto guid = guidList[i];
-        const brain::GIDSet singleGuid{guid};
-        const brion::CompartmentReport report(bc.getReportSource(reportName),
-                                              brion::MODE_READ, singleGuid);
-
         try
         {
+            const auto morphologyId = morphologyIds[i];
+            auto it = guids.begin();
+            std::advance(it, i);
+            const auto neuronId = *(it);
+
             pqxx::work transaction(*connections[omp_get_thread_num()]);
+            std::map<uint64_t, floats> values;
+
             for (uint64_t frame = 0; frame < nbFrames; ++frame)
             {
                 const auto voltages = *report.loadFrame(frame * dt).get().data;
+                const auto& offsets = allOffsets[i];
+                const auto nbSections = morphologyNbSections[morphologyId];
+                uint64_t lastOffset = 0;
+                for (uint64_t o = 0; o < offsets.size(); ++o)
+                {
+                    const auto offset = offsets[o];
+                    if (offset > voltages.size())
+                        continue;
+                    for (uint64_t e = lastOffset; e < offset; ++e)
+                        values[o].push_back(voltages[e]); // TODO: o is one too
+                                                          // late
+                    lastOffset = offset;
+                }
+            }
 
-                const pqxx::binarystring data((void*)voltages.data(),
-                                              voltages.size() * sizeof(float));
+            for (const auto& value : values)
+            {
+                const pqxx::binarystring data((void*)value.second.data(),
+                                              value.second.size() *
+                                                  sizeof(float));
                 transaction.exec_params("INSERT INTO " + _schema +
-                                            ".simulation_compartments VALUES "
-                                            "($1,$2,$3)",
-                                        guid, frame, data);
+                                            ".compartment_report VALUES "
+                                            "($1, $2, $3, $4)",
+                                        reportId, neuronId, value.first, data);
             }
             transaction.commit();
         }

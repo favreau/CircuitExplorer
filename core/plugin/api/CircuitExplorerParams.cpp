@@ -453,6 +453,7 @@ bool from_json(ImportCompartmentSimulation& param, const std::string& payload)
         FROM_JSON(param, js, schema);
         FROM_JSON(param, js, blueConfig);
         FROM_JSON(param, js, reportName);
+        FROM_JSON(param, js, reportId);
     }
     catch (...)
     {

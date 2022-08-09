@@ -382,9 +382,8 @@ void CircuitExplorerPlugin::init()
     {
         std::string endPoint = PLUGIN_API_PREFIX + "get-version";
         PLUGIN_INFO("Registering '" + endPoint + "' endpoint");
-        actionInterface->registerRequest<Response>(endPoint, [&]() {
-            return _getVersion();
-        });
+        actionInterface->registerRequest<Response>(endPoint, [&]()
+                                                   { return _getVersion(); });
 
         endPoint = PLUGIN_API_PREFIX + "set-material";
         PLUGIN_INFO("Registering '" + endPoint + "' endpoint");
@@ -401,23 +400,21 @@ void CircuitExplorerPlugin::init()
         endPoint = PLUGIN_API_PREFIX + "set-material-range";
         PLUGIN_INFO("Registering '" + endPoint + "' endpoint");
         actionInterface->registerNotification<MaterialRangeDescriptor>(
-            endPoint, [&](const MaterialRangeDescriptor& param) {
-                _setMaterialRange(param);
-            });
+            endPoint, [&](const MaterialRangeDescriptor& param)
+            { _setMaterialRange(param); });
 
         endPoint = PLUGIN_API_PREFIX + "get-material-ids";
         PLUGIN_INFO("Registering '" + endPoint + "' endpoint");
         actionInterface->registerRequest<ModelId, MaterialIds>(
-            endPoint, [&](const ModelId& modelId) -> MaterialIds {
-                return _getMaterialIds(modelId);
-            });
+            endPoint,
+            [&](const ModelId& modelId) -> MaterialIds
+            { return _getMaterialIds(modelId); });
 
         endPoint = PLUGIN_API_PREFIX + "set-material-extra-attributes";
         PLUGIN_INFO("Registering '" + endPoint + "' endpoint");
         actionInterface->registerNotification<MaterialExtraAttributes>(
-            endPoint, [&](const MaterialExtraAttributes& param) {
-                _setMaterialExtraAttributes(param);
-            });
+            endPoint, [&](const MaterialExtraAttributes& param)
+            { _setMaterialExtraAttributes(param); });
 
         endPoint = PLUGIN_API_PREFIX + "save-model-to-cache";
         PLUGIN_INFO("Registering '" + endPoint + "' endpoint");
@@ -435,56 +432,52 @@ void CircuitExplorerPlugin::init()
         endPoint = PLUGIN_API_PREFIX + "set-connections-per-value";
         PLUGIN_INFO("Registering '" + endPoint + "' endpoint");
         actionInterface->registerNotification<ConnectionsPerValue>(
-            endPoint, [&](const ConnectionsPerValue& param) {
-                _setConnectionsPerValue(param);
-            });
+            endPoint, [&](const ConnectionsPerValue& param)
+            { _setConnectionsPerValue(param); });
 
         endPoint = PLUGIN_API_PREFIX + "attach-cell-growth-handler";
         PLUGIN_INFO("Registering '" + endPoint + "' endpoint");
         _api->getActionInterface()
             ->registerNotification<AttachCellGrowthHandler>(
-                endPoint, [&](const AttachCellGrowthHandler& s) {
-                    _attachCellGrowthHandler(s);
-                });
+                endPoint, [&](const AttachCellGrowthHandler& s)
+                { _attachCellGrowthHandler(s); });
 
         endPoint = PLUGIN_API_PREFIX + "attach-circuit-simulation-handler";
         PLUGIN_INFO("Registering '" + endPoint + "' endpoint");
         _api->getActionInterface()
             ->registerNotification<AttachCircuitSimulationHandler>(
-                endPoint, [&](const AttachCircuitSimulationHandler& s) {
-                    _attachCircuitSimulationHandler(s);
-                });
+                endPoint, [&](const AttachCircuitSimulationHandler& s)
+                { _attachCircuitSimulationHandler(s); });
 
 #ifdef USE_PQXX
         endPoint = PLUGIN_API_PREFIX + "import-volume";
         PLUGIN_INFO("Registering '" + endPoint + "' endpoint");
         actionInterface->registerRequest<ImportVolume, Response>(
-            endPoint, [&](const ImportVolume& param) -> Response {
-                return _importVolume(param);
-            });
+            endPoint,
+            [&](const ImportVolume& param) -> Response
+            { return _importVolume(param); });
 
         endPoint = PLUGIN_API_PREFIX + "import-compartment-simulation";
         PLUGIN_INFO("Registering '" + endPoint + "' endpoint");
         _api->getActionInterface()
             ->registerRequest<ImportCompartmentSimulation, Response>(
                 endPoint,
-                [&](const ImportCompartmentSimulation& details) -> Response {
-                    return _importCompartmentSimulation(details);
-                });
+                [&](const ImportCompartmentSimulation& details) -> Response
+                { return _importCompartmentSimulation(details); });
 
         endPoint = PLUGIN_API_PREFIX + "import-morphology";
         PLUGIN_INFO("Registering '" + endPoint + "' endpoint");
         actionInterface->registerRequest<ImportMorphology, Response>(
-            endPoint, [&](const ImportMorphology& param) -> Response {
-                return _importMorphology(param);
-            });
+            endPoint,
+            [&](const ImportMorphology& param) -> Response
+            { return _importMorphology(param); });
 
         endPoint = PLUGIN_API_PREFIX + "import-morphology-as-sdf";
         PLUGIN_INFO("Registering '" + endPoint + "' endpoint");
         actionInterface->registerRequest<ImportMorphology, Response>(
-            endPoint, [&](const ImportMorphology& param) -> Response {
-                return _importMorphologyAsSDF(param);
-            });
+            endPoint,
+            [&](const ImportMorphology& param) -> Response
+            { return _importMorphologyAsSDF(param); });
 #endif
 
 #endif
@@ -1360,7 +1353,8 @@ Response CircuitExplorerPlugin::_importCompartmentSimulation(
     try
     {
         connector.importCompartmentSimulation(details.blueConfig,
-                                              details.reportName);
+                                              details.reportName,
+                                              details.reportId);
         response.status = true;
     }
     catch (const std::runtime_error& e)

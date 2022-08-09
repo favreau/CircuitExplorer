@@ -42,8 +42,8 @@ public:
                       const std::string& filename);
 
     void importCompartmentSimulation(const std::string blueConfig,
-                                     const std::string reportName); // TO
-                                                                    // REMOVE???
+                                     const std::string reportName,
+                                     const uint64_t reportId);
 #if 0
     void clearCompartments();
     void insertCompartments(const uint64_t guid,

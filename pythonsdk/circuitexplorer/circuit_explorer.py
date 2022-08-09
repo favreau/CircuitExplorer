@@ -937,3 +937,14 @@ class CircuitExplorer:
         params['modelId'] = model_id
         return self._client.request(self.PLUGIN_API_PREFIX + 'get-material-ids', params,
                                     response_timeout=self.DEFAULT_RESPONSE_TIMEOUT)
+
+
+    def import_compartment_simulation(self, db_connection_string, db_schema, blue_config, report_name, report_id):
+        params = dict()
+        params['connectionString'] = db_connection_string
+        params['schema'] = db_schema
+        params['blueConfig'] = blue_config
+        params['reportName'] = report_name
+        params['reportId'] = report_id
+        return self._client.request(self.PLUGIN_API_PREFIX + 'import-compartment-simulation', params,
+                                    response_timeout=self.DEFAULT_RESPONSE_TIMEOUT)

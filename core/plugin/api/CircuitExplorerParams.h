@@ -277,6 +277,7 @@ struct ImportCompartmentSimulation
     std::string schema;
     std::string blueConfig;
     std::string reportName;
+    uint64_t reportId;
 };
 bool from_json(ImportCompartmentSimulation& param, const std::string& payload);
 #endif
