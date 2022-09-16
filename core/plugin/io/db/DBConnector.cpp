@@ -25,6 +25,7 @@
 #include <brayns/engineapi/Scene.h>
 
 #include <fstream>
+#include <omp.h>
 
 namespace circuitexplorer
 {
@@ -34,7 +35,7 @@ using namespace brayns;
 using namespace neuroscience;
 using namespace common;
 
-const uint16_t NB_CONNECTIONS = 8;
+const uint16_t NB_CONNECTIONS = 20;
 
 DBConnector::DBConnector(const std::string& connectionString,
                          const std::string& schema)
@@ -49,8 +50,8 @@ DBConnector::~DBConnector()
     _connection.disconnect();
 }
 
-void DBConnector::importCompartmentSimulation(const std::string blueConfig,
-                                              const std::string reportName,
+void DBConnector::importCompartmentSimulation(const std::string& blueConfig,
+                                              const std::string& reportName,
                                               const uint64_t reportId)
 {
     std::vector<pqxx::connection*> connections;
@@ -453,51 +454,110 @@ void DBConnector::importVolume(const uint64_t guid, const Vector3f& dimensions,
     }
 }
 
+void DBConnector::importSynapses(const std::string& blueConfig)
+{
+    std::vector<pqxx::connection*> connections;
+    for (size_t i = 0; i < NB_CONNECTIONS; ++i)
+    {
+        PLUGIN_INFO("Initializing connection " << i << ": "
+                                               << _connectionString);
+        connections.push_back(new pqxx::connection(_connectionString));
+        PLUGIN_INFO((connections[i] ? "OK" : "KO"));
+    }
+
+    PLUGIN_INFO("Import synapses");
+    const brion::BlueConfig blueConfiguration(blueConfig);
+    const brain::Circuit circuit(blueConfiguration);
+    const auto allGuids = circuit.getGIDs();
+    uint64_ts guids;
+    for (const auto guid : allGuids)
+        guids.push_back(guid);
+    const auto synapses = std::unique_ptr<brain::Synapses>(
+        new brain::Synapses(circuit.getAfferentSynapses(allGuids)));
+
+    uint64_t progress = 0;
+    uint64_t i;
+#pragma omp parallel for num_threads(NB_CONNECTIONS)
+    for (i = 0; i < synapses->size(); ++i)
+    {
+        pqxx::work transaction(*connections[omp_get_thread_num()]);
+        try
+        {
+            const auto synapse = (*synapses)[i];
+            const auto synapseClass = 0;
+            const auto preNeuronId = synapse.getPresynapticGID() - 1;
+            const auto preSectionId = synapse.getPresynapticSectionID();
+            const auto preSegmentId = synapse.getPresynapticSegmentID();
+            const auto postNeuronId = synapse.getPostsynapticGID() - 1;
+            const auto postSectionId = synapse.getPostsynapticSectionID();
+            const auto postSegmentId = synapse.getPostsynapticSegmentID();
+            const auto postSurface = synapse.getPostsynapticSurfacePosition();
+            const auto preSurface = synapse.getPresynapticSurfacePosition();
+            const auto center = (postSurface + preSurface) * 0.5;
+
+            transaction.exec_params(
+                "INSERT INTO " + _schema +
+                    ".synapse VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, "
+                    "$10, $11, $12, $13)",
+                synapseClass, preNeuronId, preSectionId, preSegmentId,
+                postNeuronId, postSectionId, postSegmentId, preSurface.x,
+                preSurface.y, preSurface.z, center.x, center.y, center.z);
+
+            transaction.exec_params("INSERT INTO " + _schema +
+                                        ".synapse VALUES ($1, $2, $3, $4, $5, "
+                                        "$6, $7, $8, $9, $10, $11, $12, $13)",
+                                    synapseClass, postNeuronId, postSectionId,
+                                    postSegmentId, preNeuronId, preSectionId,
+                                    preSegmentId, postSurface.x, postSurface.y,
+                                    postSurface.z, center.x, center.y,
+                                    center.z);
+
 #if 0
-void DBConnector::clearCompartments()
-{
-    pqxx::work transaction(_connection);
-    try
-    {
-        const auto sql = "DELETE FROM " + _schema + ".cell_compartments";
-        PLUGIN_INFO(sql);
-        transaction.exec(sql);
-        transaction.commit();
-    }
-    catch (pqxx::sql_error& e)
-    {
-        transaction.abort();
-        PLUGIN_THROW(e.what());
-    }
-}
+            const auto afferentSynapses = std::unique_ptr<brain::Synapses>(
+                new brain::Synapses(circuit.getAfferentSynapses({guid})));
+            for (const auto& synapse : *afferentSynapses)
+            {
+                const auto synapseClass = 0;
+                const auto preNeuronId = guid - 1;
+                const auto preSectionId = synapse.getPresynapticSectionID();
+                const auto preSegmentId = synapse.getPresynapticSegmentID();
+                const auto postNeuronId = synapse.getPostsynapticGID() - 1;
+                const auto postSectionId = synapse.getPostsynapticSectionID();
+                const auto postSegmentId = synapse.getPostsynapticSegmentID();
+                const auto postSurface =
+                    synapse.getPostsynapticSurfacePosition();
+                const auto surface = synapse.getPresynapticSurfacePosition();
+                const auto center = surface + (postSurface - surface) * 0.5;
 
-void DBConnector::insertCompartments(const uint64_t guid,
-                                     const Compartments& compartments)
-{
-    pqxx::work transaction(_connection);
-    try
-    {
-        const uint64_t nbCompartments = compartments.size();
-        std::vector<brayns::Vector4f> tmp;
-        tmp.reserve(nbCompartments);
-        for (const auto c : compartments)
-            tmp.push_back(c.second);
-        pqxx::binarystring buffer((void*)tmp.data(),
-                                  nbCompartments * sizeof(brayns::Vector4f));
-        transaction
-            .exec_params("INSERT INTO " + _schema +
-                           ".cell_compartments VALUES ($1, $2, $3)", guid, nbCompartments, buffer);
-
-        transaction.commit();
-        PLUGIN_DEBUG("GUID " << guid << ": " << nbCompartments
-                             << " compartments");
-    }
-    catch (pqxx::sql_error& e)
-    {
-        transaction.abort();
-        PLUGIN_THROW(e.what());
-    }
-}
+                transaction.exec_params(
+                    "INSERT INTO " + _schema +
+                        ".synapse VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, "
+                        "$10, $11, $12, $13)",
+                    synapseClass, preNeuronId, preSectionId, preSegmentId,
+                    postNeuronId, postSectionId, postSegmentId, surface.x,
+                    surface.y, surface.z, center.x, center.y, center.z);
+            }
 #endif
+            transaction.commit();
+        }
+        catch (pqxx::sql_error& e)
+        {
+            PLUGIN_ERROR("PostgreSQL: " << e.what());
+        }
+        catch (const std::runtime_error& e)
+        {
+            PLUGIN_ERROR(e.what());
+        }
+        catch (...)
+        {
+            PLUGIN_ERROR("Unknown exception");
+        }
+#pragma omp critical
+        ++progress;
+
+#pragma omp critical
+        PLUGIN_PROGRESS("Importing synapses", progress, synapses->size());
+    }
+}
 } // namespace db
 } // namespace circuitexplorer

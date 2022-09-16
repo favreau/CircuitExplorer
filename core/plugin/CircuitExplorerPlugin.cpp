@@ -35,9 +35,7 @@
 
 #include <plugin/meshing/PointCloudMesher.h>
 
-#ifdef USE_PQXX
 #include <plugin/io/db/DBConnector.h>
-#endif
 
 #include <brayns/common/ActionInterface.h>
 #include <brayns/common/Progress.h>
@@ -449,7 +447,6 @@ void CircuitExplorerPlugin::init()
                 endPoint, [&](const AttachCircuitSimulationHandler& s)
                 { _attachCircuitSimulationHandler(s); });
 
-#ifdef USE_PQXX
         endPoint = PLUGIN_API_PREFIX + "import-volume";
         PLUGIN_INFO("Registering '" + endPoint + "' endpoint");
         actionInterface->registerRequest<ImportVolume, Response>(
@@ -465,6 +462,13 @@ void CircuitExplorerPlugin::init()
                 [&](const ImportCompartmentSimulation& details) -> Response
                 { return _importCompartmentSimulation(details); });
 
+        endPoint = PLUGIN_API_PREFIX + "import-synapses";
+        PLUGIN_INFO("Registering '" + endPoint + "' endpoint");
+        _api->getActionInterface()->registerRequest<ImportSynapses, Response>(
+            endPoint,
+            [&](const ImportSynapses& details) -> Response
+            { return _importSynapses(details); });
+
         endPoint = PLUGIN_API_PREFIX + "import-morphology";
         PLUGIN_INFO("Registering '" + endPoint + "' endpoint");
         actionInterface->registerRequest<ImportMorphology, Response>(
@@ -478,7 +482,6 @@ void CircuitExplorerPlugin::init()
             endPoint,
             [&](const ImportMorphology& param) -> Response
             { return _importMorphologyAsSDF(param); });
-#endif
 
 #endif
 
@@ -1287,7 +1290,6 @@ Response CircuitExplorerPlugin::_addColumn(const AddColumn& details)
 }
 
 #ifdef USE_MORPHOLOGIES
-#ifdef USE_PQXX
 Response CircuitExplorerPlugin::_importMorphology(
     const ImportMorphology& details)
 {
@@ -1363,7 +1365,22 @@ Response CircuitExplorerPlugin::_importCompartmentSimulation(
     }
     return response;
 }
-#endif
+
+Response CircuitExplorerPlugin::_importSynapses(const ImportSynapses& details)
+{
+    Response response;
+    db::DBConnector connector(details.connectionString, details.schema);
+    try
+    {
+        connector.importSynapses(details.blueConfig);
+        response.status = true;
+    }
+    catch (const std::runtime_error& e)
+    {
+        response.contents = e.what();
+    }
+    return response;
+}
 #endif
 
 extern "C" ExtensionPlugin* brayns_plugin_create(int /*argc*/, char** /*argv*/)

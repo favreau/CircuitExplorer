@@ -25,36 +25,35 @@ find_package(ospray REQUIRED)
 option(${NAME}_USE_MORPHOLOGIES "Use morphologies features" ON)
 
 set(USE_MORPHOLOGIES 0)
+
 if(${NAME}_USE_MORPHOLOGIES)
-  find_package(Brion REQUIRED)
-  set(USE_MORPHOLOGIES 1)
+    find_package(Brion REQUIRED)
+    set(USE_MORPHOLOGIES 1)
 endif()
 
 # OpenMP
 find_package(OpenMP)
+
 if(OPENMP_FOUND)
-    set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
-    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
-    set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}")
 endif()
 
 # Optional packages (managed by Defines.h.in)
 set(CGAL_FOUND 0)
 option(${NAME}_USE_CGAL "Use CGAL meshing features" ON)
+
 if(${${NAME}_USE_CGAL})
     find_package(CGAL REQUIRED)
 endif()
 
-set(PQXX_FOUND 0)
-option(${NAME}_USE_PQXX "Use PostgreSQL database" ON)
-if(${${NAME}_USE_PQXX})
-    unset(PQXX_INCLUDE_DIRECTORIES CACHE)
-    unset(PQXX_LIBRARIES CACHE)
-    find_package(PQXX REQUIRED)
-endif()
+unset(PQXX_INCLUDE_DIRECTORIES CACHE)
+unset(PQXX_LIBRARIES CACHE)
+find_package(PQXX REQUIRED)
 
-configure_file( common/Defines.h.in ${CMAKE_BINARY_DIR}/generated/circuitexplorer/Defines.h )
-include_directories( ${PROJECT_SOURCE_DIR}/core ${CMAKE_BINARY_DIR}/generated/circuitexplorer )
+configure_file(common/Defines.h.in ${CMAKE_BINARY_DIR}/generated/circuitexplorer/Defines.h)
+include_directories(${PROJECT_SOURCE_DIR}/core ${CMAKE_BINARY_DIR}/generated/circuitexplorer)
 
 # ==============================================================================
 # Sources
@@ -83,7 +82,7 @@ set(${NAME}_PUBLIC_HEADERS
 )
 
 if(${NAME}_USE_MORPHOLOGIES)
-    list(APPEND CIRCUITEXPLORER_SOURCES
+    list(APPEND ${NAME}_SOURCES
         module/ispc/render/ProximityDetectionRenderer.cpp
         module/ispc/render/CellGrowthRenderer.cpp
         plugin/neuroscience/common/MorphologyLoader.cpp
@@ -99,8 +98,9 @@ if(${NAME}_USE_MORPHOLOGIES)
         plugin/neuroscience/neuron/AdvancedCircuitLoader.cpp
         plugin/neuroscience/neuron/SynapseCircuitLoader.cpp
         plugin/meshing/MetaballsGenerator.cpp
-        )
-    list(APPEND CIRCUITEXPLORER_PUBLIC_HEADERS
+        plugin/io/db/DBConnector.cpp
+    )
+    list(APPEND ${NAME}_PUBLIC_HEADERS
         plugin/neuroscience/common/ParallelModelContainer.h
         plugin/neuroscience/common/MorphologyLoader.h
         plugin/neuroscience/neuron/CellGrowthHandler.h
@@ -114,17 +114,13 @@ if(${NAME}_USE_MORPHOLOGIES)
         plugin/neuroscience/neuron/AdvancedCircuitLoader.h
         plugin/neuroscience/neuron/SynapseCircuitLoader.h
         plugin/meshing/MetaballsGenerator.h
-        )
+        plugin/io/db/DBConnector.h
+    )
 endif()
 
 if(${CGAL_FOUND})
     list(APPEND ${NAME}_SOURCES plugin/meshing/PointCloudMesher.cpp)
     list(APPEND ${NAME}_PUBLIC_HEADERS plugin/meshing/PointCloudMesher.h)
-endif()
-
-if(${PQXX_FOUND} AND ${NAME}_USE_MORPHOLOGIES)
-    list(APPEND ${NAME}_SOURCES plugin/io/db/DBConnector.cpp)
-    list(APPEND ${NAME}_PUBLIC_HEADERS plugin/io/db/DBConnector.h)
 endif()
 
 set(${NAME}_ISPC_SOURCES
@@ -151,12 +147,14 @@ endif()
 # Compile ispc code
 # ==============================================================================
 list(APPEND CMAKE_MODULE_PATH ${OSPRAY_CMAKE_ROOT})
+
 if(CMAKE_BUILD_TYPE STREQUAL Debug)
-  set(OSPRAY_DEBUG_BUILD ON)
+    set(OSPRAY_DEBUG_BUILD ON)
 endif()
+
 include(ispc)
 list(APPEND ALL_ISPC_INCLUDES ${OSPRAY_INCLUDE_DIRS})
-include_directories_ispc(${ALL_ISPC_INCLUDES} )
+include_directories_ispc(${ALL_ISPC_INCLUDES})
 ospray_ispc_compile(${${NAME}_ISPC_SOURCES})
 list(APPEND ${NAME}_SOURCES ${ISPC_OBJECTS})
 
@@ -171,7 +169,7 @@ include_directories(
 set(${NAME}_LINK_LIBRARIES
     PUBLIC ${OSPRAY_LIBRARIES}
     PRIVATE braynsCommon braynsParameters braynsIO braynsEngine braynsPluginAPI
-    braynsOSPRayEngine glm 
+    braynsOSPRayEngine glm
     ${FREEIMAGE_LIBRARIES} ${HDF5_LIBRARIES}
 )
 

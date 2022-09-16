@@ -407,7 +407,6 @@ bool from_json(AddBox& param, const std::string& payload)
     return true;
 }
 
-#ifdef USE_PQXX
 bool from_json(ImportMorphology& param, const std::string& payload)
 {
     try
@@ -461,6 +460,21 @@ bool from_json(ImportCompartmentSimulation& param, const std::string& payload)
     }
     return true;
 }
-#endif
+
+bool from_json(ImportSynapses& param, const std::string& payload)
+{
+    try
+    {
+        auto js = nlohmann::json::parse(payload);
+        FROM_JSON(param, js, connectionString);
+        FROM_JSON(param, js, schema);
+        FROM_JSON(param, js, blueConfig);
+    }
+    catch (...)
+    {
+        return false;
+    }
+    return true;
+}
 } // namespace api
 } // namespace circuitexplorer

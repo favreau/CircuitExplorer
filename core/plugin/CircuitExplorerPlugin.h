@@ -59,13 +59,12 @@ private:
         const AttachCircuitSimulationHandler& payload);
     Response _setConnectionsPerValue(const ConnectionsPerValue&);
 
-#ifdef USE_PQXX
     // Database
     Response _importVolume(const ImportVolume&);
     Response _importCompartmentSimulation(const ImportCompartmentSimulation&);
+    Response _importSynapses(const ImportSynapses&);
     Response _importMorphology(const ImportMorphology&);
     Response _importMorphologyAsSDF(const ImportMorphology&);
-#endif
 
     SynapseAttributes _synapseAttributes;
 #endif

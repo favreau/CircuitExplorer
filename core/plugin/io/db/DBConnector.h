@@ -41,14 +41,11 @@ public:
                       const brayns::Vector3f& spacing,
                       const std::string& filename);
 
-    void importCompartmentSimulation(const std::string blueConfig,
-                                     const std::string reportName,
+    void importCompartmentSimulation(const std::string& blueConfig,
+                                     const std::string& reportName,
                                      const uint64_t reportId);
-#if 0
-    void clearCompartments();
-    void insertCompartments(const uint64_t guid,
-                            const Compartments& compartments);
-#endif
+
+    void importSynapses(const std::string& blueConfig);
 
 private:
     pqxx::connection _connection;

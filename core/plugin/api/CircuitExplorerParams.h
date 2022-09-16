@@ -250,7 +250,6 @@ struct AddBox
 };
 bool from_json(AddBox& param, const std::string& payload);
 
-#ifdef USE_PQXX
 struct ImportMorphology
 {
     std::string connectionString;
@@ -280,6 +279,13 @@ struct ImportCompartmentSimulation
     uint64_t reportId;
 };
 bool from_json(ImportCompartmentSimulation& param, const std::string& payload);
-#endif
+
+struct ImportSynapses
+{
+    std::string connectionString;
+    std::string schema;
+    std::string blueConfig;
+};
+bool from_json(ImportSynapses& param, const std::string& payload);
 } // namespace api
 } // namespace circuitexplorer

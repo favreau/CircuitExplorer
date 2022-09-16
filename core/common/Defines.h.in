@@ -32,10 +32,5 @@
 #  define USE_CGAL
 #endif
 
-// PQXX
-#if @PQXX_FOUND@==1
-#  define USE_PQXX
-#endif
-
 #define PACKAGE_VERSION "@PACKAGE_VERSION@"
 // clang-format-on

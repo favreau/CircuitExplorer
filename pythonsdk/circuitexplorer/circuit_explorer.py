@@ -948,3 +948,12 @@ class CircuitExplorer:
         params['reportId'] = report_id
         return self._client.request(self.PLUGIN_API_PREFIX + 'import-compartment-simulation', params,
                                     response_timeout=self.DEFAULT_RESPONSE_TIMEOUT)
+
+    
+    def import_synapses(self, db_connection_string, db_schema, blue_config):
+        params = dict()
+        params['connectionString'] = db_connection_string
+        params['schema'] = db_schema
+        params['blueConfig'] = blue_config
+        return self._client.request(self.PLUGIN_API_PREFIX + 'import-synapses', params,
+                                    response_timeout=self.DEFAULT_RESPONSE_TIMEOUT)
