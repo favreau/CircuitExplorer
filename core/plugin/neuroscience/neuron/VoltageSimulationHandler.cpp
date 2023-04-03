@@ -39,14 +39,18 @@ VoltageSimulationHandler::VoltageSimulationHandler(
 {
     // Load simulation information from compartment reports
     _dt = _compartmentReport->getTimestep();
-    _nbFrames = _compartmentReport->getEndTime() / _dt;
+    const auto startTime = _compartmentReport->getStartTime();
+    const auto endTime = _compartmentReport->getEndTime();
+    _startFrame = startTime / _dt;
+    _nbFrames = (endTime - startTime) / _dt;
     _unit = _compartmentReport->getTimeUnit();
     _frameSize = _compartmentReport->getFrameSize();
 
     PLUGIN_INFO("-----------------------------------------------------------");
     PLUGIN_INFO("Voltage simulation information");
     PLUGIN_INFO("----------------------");
-    PLUGIN_INFO("End time             : " << _nbFrames * _dt);
+    PLUGIN_INFO("Start time           : " << startTime);
+    PLUGIN_INFO("End time             : " << endTime);
     PLUGIN_INFO("Steps between frames : " << _dt);
     PLUGIN_INFO("Number of frames     : " << _nbFrames);
     PLUGIN_INFO("Frame size           : " << _frameSize);
@@ -76,7 +80,7 @@ bool VoltageSimulationHandler::isReady() const
 
 void* VoltageSimulationHandler::getFrameData(const uint32_t frame)
 {
-    const auto boundedFrame = _getBoundedFrame(frame);
+    const auto boundedFrame = _startFrame + _getBoundedFrame(frame);
 
     if (!_currentFrameFuture.valid() && _currentFrame != boundedFrame)
         _triggerLoading(boundedFrame);

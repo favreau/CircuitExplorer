@@ -76,6 +76,7 @@ private:
     CompartmentReportPtr _compartmentReport;
     std::future<brion::Frame> _currentFrameFuture;
     std::map<uint64_t, std::vector<float>> _frames;
+    uint64_t _startFrame{0};
     bool _ready{false};
 };
 using VoltageSimulationHandlerPtr = std::shared_ptr<VoltageSimulationHandler>;
