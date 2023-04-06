@@ -143,7 +143,7 @@ class CircuitExplorer:
                      morphology_quality=GEOMETRY_QUALITY_HIGH, max_distance_to_soma=1e6,
                      cell_clipping=False, load_afferent_synapses=False,
                      load_efferent_synapses=False, generate_internals=False, 
-                     generate_externals=False):
+                     generate_externals=False, align_to_grid=0.0):
         """
         Load a circuit from a give Blue/Circuit configuration file
 
@@ -195,6 +195,7 @@ class CircuitExplorer:
         :param bool load_efferent_synapses: Load efferent synapses
         :param bool generate_internals: Generate cell internals (mitochondria and nucleus)
         :param bool generate_externals: Generate cell externals (myelin steath)
+        :param float align_to_grid: Align cells to grid (ignored if 0)
         :return: Result of the request submission
         :rtype: str
         """
@@ -257,6 +258,7 @@ class CircuitExplorer:
 
         props['120Internals'] = generate_internals
         props['121Externals'] = generate_externals
+        props['122AlignToGrid'] = align_to_grid
 
         return self._core.add_model(name=name, path=path, loader_properties=props)
 

@@ -297,6 +297,8 @@ const brayns::Property PROP_INTERNALS = {
     "120Internals", false, {"Generate internals (mitochondria and nucleus)"}};
 const brayns::Property PROP_EXTERNALS = {
     "121Externals", false, {"Generate externals (myelin steath)"}};
+const brayns::Property PROP_ALIGN_TO_GRID = {
+    "122AlignToGrid", 0.0, {"Size of the grid to align to (disabled if 0)"}};
 #endif
 
 const brayns::Property PROP_DB_CONNECTION_STRING = {

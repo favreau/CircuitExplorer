@@ -99,8 +99,8 @@ ParallelModelContainer MorphologyLoader::importMorphology(
                       modelContainer, compartmentReport, synapsesInfo,
                       mitochondriaDensity);
 
-    // Apply transformation to everything except synapes
-    modelContainer.applyTransformation(transformation);
+    // Apply transformation to everything except synapses
+    modelContainer.applyTransformation(properties, transformation);
     return modelContainer;
 }
 
@@ -142,14 +142,13 @@ void MorphologyLoader::_importMorphologyAsPoint(
     if (compartmentReport)
         userDataOffset = compartmentReport->getOffsets()[index][0];
 
-    const float radiusMultiplier =
-        properties.getProperty<double>(PROP_RADIUS_MULTIPLIER.name);
-    const size_t materialId =
+    const auto materialId =
         _getMaterialIdFromColorScheme(properties,
                                       brain::neuron::SectionType::soma);
+
     model.addSphere(materialId,
                     {model.getMorphologyInfo().somaPosition,
-                     static_cast<float>(radiusMultiplier), userDataOffset});
+                     _getCorrectedRadius(properties, 1.f), userDataOffset});
 }
 
 size_t MorphologyLoader::_addSDFGeometry(SDFMorphologyData& sdfMorphologyData,
@@ -462,7 +461,9 @@ void MorphologyLoader::_addSomaGeometry(
     size_t materialId =
         _getMaterialIdFromColorScheme(properties,
                                       brain::neuron::SectionType::soma);
+
     model.getMorphologyInfo().somaPosition = soma.getCentroid();
+
     const float somaRadius =
         _getCorrectedRadius(properties, soma.getMeanRadius());
     const bool useSDFSoma =
@@ -1354,6 +1355,7 @@ PropertyMap MorphologyLoader::getCLIProperties()
     pm.setProperty(PROP_MORPHOLOGY_MAX_DISTANCE_TO_SOMA);
     pm.setProperty(PROP_INTERNALS);
     pm.setProperty(PROP_EXTERNALS);
+    pm.setProperty(PROP_ALIGN_TO_GRID);
     return pm;
 }
 
@@ -1402,6 +1404,7 @@ void MorphologyLoader::createMissingMaterials(Model& model,
         for (const auto& material : materials)
             simulationHandler->bind(material.second);
 }
+
 } // namespace common
 } // namespace neuroscience
 } // namespace circuitexplorer

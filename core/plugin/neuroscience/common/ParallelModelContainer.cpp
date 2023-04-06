@@ -125,30 +125,50 @@ void ParallelModelContainer::_moveSDFGeometriesToModel(Model& model)
     _sdfNeighbours.clear();
 }
 
-void ParallelModelContainer::applyTransformation(const Matrix4f& transformation)
+void ParallelModelContainer::applyTransformation(const PropertyMap& properties,
+                                                 const Matrix4f& transformation)
 {
     for (auto& s : _spheres)
         for (auto& sphere : s.second)
-            sphere.center = transformVector3f(sphere.center, transformation);
+            sphere.center = _getAlignmentToGrid(
+                properties, transformVector3f(sphere.center, transformation));
     for (auto& c : _cylinders)
         for (auto& cylinder : c.second)
         {
-            cylinder.center =
-                transformVector3f(cylinder.center, transformation);
-            cylinder.up = transformVector3f(cylinder.up, transformation);
+            cylinder.center = _getAlignmentToGrid(
+                properties, transformVector3f(cylinder.center, transformation));
+            cylinder.up = _getAlignmentToGrid(
+                properties, transformVector3f(cylinder.up, transformation));
         }
     for (auto& c : _cones)
         for (auto& cone : c.second)
         {
-            cone.center = transformVector3f(cone.center, transformation);
-            cone.up = transformVector3f(cone.up, transformation);
+            cone.center = _getAlignmentToGrid(
+                properties, transformVector3f(cone.center, transformation));
+            cone.up =
+                _getAlignmentToGrid(properties,
+                                    transformVector3f(cone.up, transformation));
         }
     for (auto& s : _sdfGeometries)
     {
-        s.p0 = transformVector3f(s.p0, transformation);
-        s.p1 = transformVector3f(s.p1, transformation);
+        s.p0 = _getAlignmentToGrid(properties,
+                                   transformVector3f(s.p0, transformation));
+        s.p1 = _getAlignmentToGrid(properties,
+                                   transformVector3f(s.p1, transformation));
     }
 }
+
+Vector3d ParallelModelContainer::_getAlignmentToGrid(
+    const PropertyMap& properties, const Vector3d& position) const
+{
+    const double alignToGrid =
+        properties.getProperty<double>(PROP_ALIGN_TO_GRID.name);
+
+    return alignToGrid > 0.0 ? Vector3d(Vector3i(position / alignToGrid) *
+                                        static_cast<int>(alignToGrid))
+                             : position;
+}
+
 } // namespace common
 } // namespace neuroscience
 } // namespace circuitexplorer

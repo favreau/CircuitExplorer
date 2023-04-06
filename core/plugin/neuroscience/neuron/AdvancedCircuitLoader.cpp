@@ -96,6 +96,7 @@ PropertyMap AdvancedCircuitLoader::getCLIProperties()
     pm.setProperty(PROP_LOAD_EFFERENT_SYNAPSES);
     pm.setProperty(PROP_INTERNALS);
     pm.setProperty(PROP_EXTERNALS);
+    pm.setProperty(PROP_ALIGN_TO_GRID);
     return pm;
 }
 } // namespace neuron
