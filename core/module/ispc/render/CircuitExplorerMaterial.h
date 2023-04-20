@@ -20,6 +20,8 @@
 
 #include <common/CommonTypes.h>
 
+#include <brayns/common/CommonTypes.h>
+
 #include <ospray/SDK/common/Material.h>
 #include <ospray/SDK/texture/Texture2D.h>
 
@@ -72,8 +74,8 @@ struct CircuitExplorerMaterial : public ospray::Material
     ospray::affine2f xform_Bump;
     ospray::linear2f rot_Bump;
 
-    /*! Casts simulation data */
-    bool castSimulationData;
+    /*! Casts user data */
+    bool castUserData;
 
     /*! Shading mode (none, diffuse, electron, etc) */
     MaterialShadingMode shadingMode;

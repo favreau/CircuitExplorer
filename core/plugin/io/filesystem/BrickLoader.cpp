@@ -170,8 +170,8 @@ ModelDescriptorPtr BrickLoader::importFromFile(
         auto name = _readString(file);
         materialProps.setProperty({MATERIAL_PROPERTY_CAST_USER_DATA, false});
         materialProps.setProperty(
-            {MATERIAL_PROPERTY_SHADING_MODE,
-             static_cast<int32_t>(MaterialShadingMode::diffuse)});
+            {MATERIAL_PROPERTY_CLIPPING_MODE,
+             static_cast<int32_t>(MaterialClippingMode::no_clipping)});
 
         auto material = model->createMaterial(materialId, name, materialProps);
 
@@ -203,8 +203,8 @@ ModelDescriptorPtr BrickLoader::importFromFile(
 
             size_t shadingMode;
             file.read((char*)&shadingMode, sizeof(size_t));
-            material->updateProperty(MATERIAL_PROPERTY_SHADING_MODE,
-                                     static_cast<int32_t>(shadingMode));
+            material->setShadingMode(
+                static_cast<MaterialShadingMode>(shadingMode));
         }
 
         if (version >= CACHE_VERSION_2)
@@ -216,8 +216,8 @@ ModelDescriptorPtr BrickLoader::importFromFile(
 
             int32_t shadingMode;
             file.read((char*)&shadingMode, sizeof(int32_t));
-            material->updateProperty(MATERIAL_PROPERTY_SHADING_MODE,
-                                     shadingMode);
+            material->setShadingMode(
+                static_cast<MaterialShadingMode>(shadingMode));
         }
 
         if (version == CACHE_VERSION_3)
@@ -765,15 +765,7 @@ void BrickLoader::exportToFile(const ModelDescriptorPtr modelDescriptor,
         }
         file.write((char*)&simulation, sizeof(int32_t));
 
-        int32_t shadingMode = MaterialShadingMode::none;
-        try
-        {
-            shadingMode = material.second->getProperty<int32_t>(
-                MATERIAL_PROPERTY_SHADING_MODE);
-        }
-        catch (const std::runtime_error&)
-        {
-        }
+        int32_t shadingMode = material.second->getShadingMode();
         file.write((char*)&shadingMode, sizeof(int32_t));
 
         // TODO: Change bool to int32_t for Version 4

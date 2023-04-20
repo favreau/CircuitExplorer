@@ -20,6 +20,8 @@
 
 #include "../../../common/CommonTypes.h"
 
+#include <brayns/common/CommonTypes.h>
+
 #include <ospray/SDK/common/Material.ih>
 #include <ospray/SDK/math/vec.ih>
 #include <ospray/SDK/texture/Texture2D.ih>
@@ -51,6 +53,6 @@ struct CircuitExplorerMaterial
     TextureParam map_reflection;
     float reflection;
     MaterialShadingMode shadingMode;
-    MaterialClippingMode clippingMode;
     float userParameter;
+    MaterialClippingMode clippingMode;
 };

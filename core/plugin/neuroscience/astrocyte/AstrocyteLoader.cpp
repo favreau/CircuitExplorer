@@ -228,8 +228,6 @@ void AstrocyteLoader::_importMorphologiesFromURIs(
 
     PropertyMap materialProps;
     materialProps.setProperty({MATERIAL_PROPERTY_CAST_USER_DATA, false});
-    materialProps.setProperty({MATERIAL_PROPERTY_SHADING_MODE,
-                               static_cast<int>(MaterialShadingMode::diffuse)});
     materialProps.setProperty(
         {MATERIAL_PROPERTY_CLIPPING_MODE,
          static_cast<int>(MaterialClippingMode::no_clipping)});

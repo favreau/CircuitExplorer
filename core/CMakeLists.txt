@@ -20,7 +20,7 @@ set(CMAKE_CXX_STANDARD 14) # C++ 14
 
 # Packages
 find_package(Brayns REQUIRED)
-find_package(ospray REQUIRED)
+find_package(ospray REQUIRED SYSTEM)
 
 option(${NAME}_USE_MORPHOLOGIES "Use morphologies features" ON)
 
@@ -71,7 +71,6 @@ set(${NAME}_SOURCES
     module/ispc/render/VoxelizedSimulationRenderer.cpp
     module/ispc/render/utils/CircuitExplorerAbstractRenderer.cpp
     module/ispc/render/utils/CircuitExplorerSimulationRenderer.cpp
-    module/ispc/render/DefaultMaterial.cpp
 )
 
 set(${NAME}_PUBLIC_HEADERS
@@ -133,7 +132,7 @@ set(${NAME}_ISPC_SOURCES
     module/ispc/render/VoxelizedSimulationRenderer.ispc
     module/ispc/render/utils/CircuitExplorerSimulationRenderer.ispc
     module/ispc/render/utils/CircuitExplorerRandomGenerator.ispc
-    module/ispc/render/DefaultMaterial.ispc
+    module/ispc/render/utils/SkyBox.ispc
 )
 
 if(${NAME}_USE_MORPHOLOGIES)
@@ -153,7 +152,10 @@ if(CMAKE_BUILD_TYPE STREQUAL Debug)
 endif()
 
 include(ispc)
+list(APPEND CMAKE_MODULE_PATH ${OSPRAY_CMAKE_ROOT})
+list(APPEND ALL_ISPC_INCLUDES ${${NAME}_MODULES_DIR})
 list(APPEND ALL_ISPC_INCLUDES ${OSPRAY_INCLUDE_DIRS})
+list(APPEND ALL_ISPC_INCLUDES ${GLM_INCLUDE_DIRS})
 include_directories_ispc(${ALL_ISPC_INCLUDES})
 ospray_ispc_compile(${${NAME}_ISPC_SOURCES})
 list(APPEND ${NAME}_SOURCES ${ISPC_OBJECTS})
@@ -164,6 +166,7 @@ list(APPEND ${NAME}_SOURCES ${ISPC_OBJECTS})
 include_directories(
     SYSTEM
     ${CMAKE_CURRENT_SOURCE_DIR}
+    ${BRAYNS_INCLUDE_DIRS}
 )
 
 set(${NAME}_LINK_LIBRARIES

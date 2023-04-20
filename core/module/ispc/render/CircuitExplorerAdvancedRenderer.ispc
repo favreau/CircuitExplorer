@@ -143,9 +143,9 @@ inline bool launchRandomRay(
         if (randomRay.geomID < 0)
         {
             // No intersection
-            backgroundColor = make_vec3f(
-                skyboxMapping((Renderer*)self, randomRay,
-                              (DefaultMaterial*)self->super.super.bgMaterial));
+            backgroundColor = make_vec3f(skyboxMapping(
+                (Renderer*)self, randomRay,
+                (CircuitExplorerMaterial*)self->super.super.bgMaterial));
             return false;
         }
 
@@ -155,8 +155,8 @@ inline bool launchRandomRay(
                           DG_FACEFORWARD | DG_MATERIALID | DG_COLOR |
                           DG_TEXCOORD);
 
-        uniform DefaultMaterial* objMaterial =
-            (uniform DefaultMaterial*)dg.material;
+        uniform CircuitExplorerMaterial* objMaterial =
+            (uniform CircuitExplorerMaterial*)dg.material;
         if (objMaterial)
             foreach_unique(mat in objMaterial)
             {
@@ -622,7 +622,7 @@ inline void setGeometryShadingAttributes(
     attributes.normal = dg.Ns;
 
     // Shading mode
-    attributes.shadingMode = none;
+    attributes.shadingMode = undefined_shading_mode;
 
     // Reflected shading normal
     attributes.reflectedNormal =
@@ -806,7 +806,7 @@ inline void processBackgroundColor(varying ScreenSample& sample,
     // No intersection. Return volume contribution + skybox color
     attributes.bgColor = skyboxMapping(
         (Renderer*)attributes.self, ray,
-        (DefaultMaterial*)attributes.self->super.super.bgMaterial);
+        (CircuitExplorerMaterial*)attributes.self->super.super.bgMaterial);
     attributes.shadingContribution = make_vec3f(attributes.bgColor);
 }
 
@@ -882,7 +882,7 @@ inline void processLightShading(DifferentialGeometry& dg,
         const vec3f lightDirection = lightSample.dir;
         float cosNL = 1.f;
 
-        if (attributes.shadingMode != none)
+        if (attributes.shadingMode != undefined_shading_mode)
         {
             // Phong + Blinn shading
             if (attributes.shadingMode != perlin)
@@ -1052,7 +1052,7 @@ inline vec3f CircuitExplorerAdvancedRenderer_shadeRay(
     vec4f color = make_vec4f(0.f);
     vec3f bgColor = make_vec3f(
         skyboxMapping((Renderer*)self, ray,
-                      (DefaultMaterial*)self->super.super.bgMaterial));
+                      (CircuitExplorerMaterial*)self->super.super.bgMaterial));
 
     uint32 depth = 0;
     float oldlocalRefraction = 1.f;

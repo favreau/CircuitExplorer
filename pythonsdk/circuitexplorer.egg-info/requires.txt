@@ -1,1 +1,1 @@
-bioexplorer~=1.4.0
+bioexplorer~=1.5.0

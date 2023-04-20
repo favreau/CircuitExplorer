@@ -164,9 +164,12 @@ Vector3d ParallelModelContainer::_getAlignmentToGrid(
     const double alignToGrid =
         properties.getProperty<double>(PROP_ALIGN_TO_GRID.name);
 
-    return alignToGrid > 0.0 ? Vector3d(Vector3i(position / alignToGrid) *
-                                        static_cast<int>(alignToGrid))
-                             : position;
+    if (alignToGrid <= 0.0)
+        return position;
+
+    const Vector3d tmp = Vector3d(Vector3i(position / alignToGrid) *
+                                  static_cast<int>(alignToGrid));
+    return Vector3d(std::floor(tmp.x), std::floor(tmp.y), std::floor(tmp.z));
 }
 
 } // namespace common

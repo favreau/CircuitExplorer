@@ -56,7 +56,7 @@ inline vec3f ProximityDetectionRenderer_shadeRay(
         {
             vec4f bgColor =
                 skyboxMapping((Renderer*)self, ray,
-                              (DefaultMaterial*)self->super.bgMaterial);
+                              (CircuitExplorerMaterial*)self->super.bgMaterial);
             bgColor.w = 1.f;
             composite(bgColor, color, self->alphaCorrection);
             return make_vec3f(color) * self->super.exposure;
@@ -122,7 +122,7 @@ inline vec3f ProximityDetectionRenderer_shadeRay(
 
         if (processSurfaceShading && self->surfaceShadingEnabled)
         {
-            MaterialShadingMode shadingMode = none;
+            MaterialShadingMode shadingMode = undefined_shading_mode;
             vec3f Kd;
             float Ns = 1.f;
             float opacity = 1.f;
@@ -153,7 +153,7 @@ inline vec3f ProximityDetectionRenderer_shadeRay(
                 if (reduce_max(radiance) > 0.f)
                 {
                     // Head-light shading
-                    float cosNL = (shadingMode == none
+                    float cosNL = (shadingMode == undefined_shading_mode
                                        ? 1.f
                                        : max(0.f, dot(neg(ray.dir), dg.Ns)));
 

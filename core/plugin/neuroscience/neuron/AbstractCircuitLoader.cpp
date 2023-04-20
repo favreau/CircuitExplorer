@@ -461,8 +461,6 @@ ModelDescriptorPtr AbstractCircuitLoader::importCircuit(
         {MATERIAL_PROPERTY_CAST_USER_DATA,
          (compartmentReport || userDataType == UserDataType::distance_to_soma ||
           reportType == ReportType::spikes)});
-    materialProps.setProperty({MATERIAL_PROPERTY_SHADING_MODE,
-                               static_cast<int>(MaterialShadingMode::diffuse)});
     materialProps.setProperty(
         {MATERIAL_PROPERTY_CLIPPING_MODE,
          static_cast<int>(MaterialClippingMode::no_clipping)});
@@ -666,8 +664,6 @@ void AbstractCircuitLoader::_importMeshes(
     {
         PropertyMap props;
         props.setProperty({MATERIAL_PROPERTY_CAST_USER_DATA, true});
-        props.setProperty({MATERIAL_PROPERTY_SHADING_MODE,
-                           static_cast<int>(MaterialShadingMode::diffuse)});
         props.setProperty(
             {MATERIAL_PROPERTY_CLIPPING_MODE,
              static_cast<int>(MaterialClippingMode::no_clipping)});

@@ -50,9 +50,9 @@ inline vec3f CircuitExplorerBasicRenderer_shadeRay(
         if (ray.geomID < 0)
         {
             // No intersection
-            colorContribution =
-                skyboxMapping((Renderer*)self, ray,
-                              (DefaultMaterial*)self->super.super.bgMaterial);
+            colorContribution = skyboxMapping((Renderer*)self, ray,
+                                              (CircuitExplorerMaterial*)
+                                                  self->super.super.bgMaterial);
             colorContribution.w = 1.f;
             composite(colorContribution, pathColor, self->alphaCorrection);
             break;
@@ -118,9 +118,9 @@ inline vec3f CircuitExplorerBasicRenderer_shadeRay(
             if (!ignoreIntersection)
             {
                 // Head-light shading
-                float cosNL =
-                    (shadingMode == none ? 1.f
-                                         : max(0.f, dot(neg(ray.dir), dg.Ns)));
+                float cosNL = (shadingMode == undefined_shading_mode
+                                   ? 1.f
+                                   : max(0.f, dot(neg(ray.dir), dg.Ns)));
 
                 switch (shadingMode)
                 {

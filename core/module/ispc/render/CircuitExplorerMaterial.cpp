@@ -74,20 +74,21 @@ void CircuitExplorerMaterial::commit()
     // Glossiness
     glossiness = getParam1f("glossiness", 1.f);
 
-    // Cast simulation data
-    castSimulationData = getParam(MATERIAL_PROPERTY_CAST_USER_DATA.c_str(), 0);
-
     // Shading mode
-    shadingMode = static_cast<MaterialShadingMode>(
-        getParam1i(MATERIAL_PROPERTY_SHADING_MODE.c_str(),
-                   static_cast<int>(MaterialShadingMode::none)));
+    shadingMode = static_cast<MaterialShadingMode>(getParam1i(
+        "shading_mode",
+        static_cast<int>(MaterialShadingMode::undefined_shading_mode)));
+
+    // User parameter
+    userParameter = getParam1f("user_parameter", 1.f);
+
+    // Cast user data
+    castUserData = getParam(MATERIAL_PROPERTY_CAST_USER_DATA.c_str(), 0);
+
     // Clipping mode
     clippingMode = static_cast<MaterialClippingMode>(
         getParam1i(MATERIAL_PROPERTY_CLIPPING_MODE.c_str(),
                    static_cast<int>(MaterialClippingMode::no_clipping)));
-
-    // User parameter
-    userParameter = getParam1f(MATERIAL_PROPERTY_USER_PARAMETER.c_str(), 1.f);
 
     ispc::CircuitExplorerMaterial_set(
         getIE(), map_d ? map_d->getIE() : nullptr,
@@ -97,7 +98,7 @@ void CircuitExplorerMaterial::commit()
         map_Reflection ? map_Reflection->getIE() : nullptr,
         (const ispc::AffineSpace2f&)xform_Reflection, reflection,
         map_a ? map_a->getIE() : nullptr, (const ispc::AffineSpace2f&)xform_a,
-        a, glossiness, castSimulationData, map_Kd ? map_Kd->getIE() : nullptr,
+        a, glossiness, castUserData, map_Kd ? map_Kd->getIE() : nullptr,
         (const ispc::AffineSpace2f&)xform_Kd, (ispc::vec3f&)Kd,
         map_Ks ? map_Ks->getIE() : nullptr,
         (const ispc::AffineSpace2f&)xform_Ks, (ispc::vec3f&)Ks,
@@ -106,8 +107,8 @@ void CircuitExplorerMaterial::commit()
         map_Bump ? map_Bump->getIE() : nullptr,
         (const ispc::AffineSpace2f&)xform_Bump,
         (const ispc::LinearSpace2f&)rot_Bump,
-        (const ispc::MaterialShadingMode&)shadingMode,
-        (const ispc::MaterialClippingMode&)clippingMode, userParameter);
+        (const ispc::MaterialShadingMode&)shadingMode, userParameter,
+        (const ispc::MaterialClippingMode&)clippingMode);
 }
 
 OSP_REGISTER_MATERIAL(circuit_explorer_basic, CircuitExplorerMaterial, default);

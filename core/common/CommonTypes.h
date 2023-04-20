@@ -18,18 +18,6 @@
 
 #pragma once
 
-enum MaterialShadingMode
-{
-    none = 0,
-    diffuse = 1,
-    electron = 2,
-    cartoon = 3,
-    electron_transparency = 4,
-    perlin = 5,
-    diffuse_transparency = 6,
-    checker = 7
-};
-
 enum MaterialClippingMode
 {
     no_clipping = 0,

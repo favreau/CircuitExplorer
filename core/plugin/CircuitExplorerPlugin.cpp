@@ -371,9 +371,6 @@ void CircuitExplorerPlugin::init()
     _addDOFPerspectiveCamera(engine);
     _addSphereClippingPerspectiveCamera(engine);
 
-    _api->getParametersManager().getRenderingParameters().setCurrentRenderer(
-        "circuit_explorer_advanced");
-
     // End-points
     auto actionInterface = _api->getActionInterface();
     if (actionInterface)
@@ -550,12 +547,8 @@ Response CircuitExplorerPlugin::_setMaterialExtraAttributes(
                 PropertyMap props;
                 props.setProperty({MATERIAL_PROPERTY_CAST_USER_DATA, false});
                 props.setProperty(
-                    {MATERIAL_PROPERTY_SHADING_MODE,
-                     static_cast<int>(MaterialShadingMode::diffuse)});
-                props.setProperty(
                     {MATERIAL_PROPERTY_CLIPPING_MODE,
                      static_cast<int>(MaterialClippingMode::no_clipping)});
-                props.setProperty({MATERIAL_PROPERTY_USER_PARAMETER, 1.0});
                 material.second->updateProperties(props);
             }
             _markModified();
@@ -594,14 +587,13 @@ Response CircuitExplorerPlugin::_setMaterial(const MaterialDescriptor& md)
                 material->setRefractionIndex(md.refractionIndex);
                 material->setEmission(md.emission);
                 material->setGlossiness(md.glossiness);
+                material->setShadingMode(
+                    static_cast<MaterialShadingMode>(md.shadingMode));
+                material->setUserParameter(md.userParameter);
                 material->updateProperty(MATERIAL_PROPERTY_CAST_USER_DATA,
                                          md.simulationDataCast);
-                material->updateProperty(MATERIAL_PROPERTY_SHADING_MODE,
-                                         md.shadingMode);
                 material->updateProperty(MATERIAL_PROPERTY_CLIPPING_MODE,
                                          md.clippingMode);
-                material->updateProperty(MATERIAL_PROPERTY_USER_PARAMETER,
-                                         static_cast<double>(md.userParameter));
                 material->markModified(); // This is needed to properly apply
                                           // modifications
                 material->commit();
@@ -678,24 +670,24 @@ Response CircuitExplorerPlugin::_setMaterials(const MaterialsDescriptor& md)
                                 material->setEmission(md.emissions[id]);
                             if (!md.glossinesses.empty())
                                 material->setGlossiness(md.glossinesses[id]);
+                            if (!md.shadingModes.empty())
+                                material->setShadingMode(
+                                    static_cast<MaterialShadingMode>(
+                                        md.shadingModes[id]));
+                            if (!md.userParameters.empty())
+                                material->setUserParameter(
+                                    md.userParameters[id]);
+
                             if (!md.simulationDataCasts.empty())
                             {
                                 const bool value = md.simulationDataCasts[id];
                                 material->updateProperty(
                                     MATERIAL_PROPERTY_CAST_USER_DATA, value);
                             }
-                            if (!md.shadingModes.empty())
-                                material->updateProperty(
-                                    MATERIAL_PROPERTY_SHADING_MODE,
-                                    md.shadingModes[id]);
                             if (!md.clippingModes.empty())
                                 material->updateProperty(
                                     MATERIAL_PROPERTY_CLIPPING_MODE,
                                     md.clippingModes[id]);
-                            if (!md.userParameters.empty())
-                                material->updateProperty(
-                                    MATERIAL_PROPERTY_USER_PARAMETER,
-                                    static_cast<double>(md.userParameters[id]));
                             material->markModified(); // This is needed to apply
                                                       // propery modifications
                             material->commit();
@@ -771,15 +763,13 @@ Response CircuitExplorerPlugin::_setMaterialRange(
                     material->setRefractionIndex(mrd.refractionIndex);
                     material->setEmission(mrd.emission);
                     material->setGlossiness(mrd.glossiness);
+                    material->setShadingMode(
+                        static_cast<MaterialShadingMode>(mrd.shadingMode));
+                    material->setUserParameter(mrd.userParameter);
                     material->updateProperty(MATERIAL_PROPERTY_CAST_USER_DATA,
                                              mrd.simulationDataCast);
-                    material->updateProperty(MATERIAL_PROPERTY_SHADING_MODE,
-                                             mrd.shadingMode);
                     material->updateProperty(MATERIAL_PROPERTY_CLIPPING_MODE,
                                              mrd.clippingMode);
-                    material->updateProperty(MATERIAL_PROPERTY_USER_PARAMETER,
-                                             static_cast<double>(
-                                                 mrd.userParameter));
                     material->markModified(); // This is needed to apply
                                               // propery modifications
                     material->commit();
@@ -1007,12 +997,10 @@ void CircuitExplorerPlugin::_createShapeMaterial(ModelPtr& model,
     material->setDiffuseColor(color);
     material->setOpacity(opacity);
     material->setSpecularExponent(0.0);
+    material->setShadingMode(MaterialShadingMode::diffuse_transparency);
 
     PropertyMap props;
     props.setProperty({MATERIAL_PROPERTY_CAST_USER_DATA, false});
-    props.setProperty(
-        {MATERIAL_PROPERTY_SHADING_MODE,
-         static_cast<int>(MaterialShadingMode::diffuse_transparency)});
     props.setProperty({MATERIAL_PROPERTY_CLIPPING_MODE,
                        static_cast<int>(MaterialClippingMode::no_clipping)});
 
@@ -1239,8 +1227,6 @@ Response CircuitExplorerPlugin::_addColumn(const AddColumn& details)
 
         PropertyMap props;
         props.setProperty({MATERIAL_PROPERTY_CAST_USER_DATA, false});
-        props.setProperty({MATERIAL_PROPERTY_SHADING_MODE,
-                           static_cast<int>(MaterialShadingMode::diffuse)});
         props.setProperty(
             {MATERIAL_PROPERTY_CLIPPING_MODE,
              static_cast<int>(MaterialClippingMode::no_clipping)});
